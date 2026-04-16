@@ -1543,6 +1543,7 @@ function update(dt) {
 
   camera.position.copy(player.position).add(CAM_OFFSET);
   camera.lookAt(player.position);
+  document.getElementById('coordHUD').textContent = `${Math.round(player.position.x)}, ${Math.round(player.position.z)}`;
   rimLight.position.set(player.position.x, 1, player.position.z);
 
   // Snow
