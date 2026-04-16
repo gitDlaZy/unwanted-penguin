@@ -130,9 +130,11 @@ const pillarMat = new THREE.MeshStandardMaterial({ color: 0x44aacc, emissive: 0x
 
 // ── Mountain (North-West) ─────────────────────────────────────────────────────
 
+const mountainColliders = []; // { x, z, r } for player collision
+
 function buildMountain(cx, cz) {
-  const rockMat  = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.9 });
-  const snowMat  = new THREE.MeshStandardMaterial({ color: 0xeef4ff, roughness: 1.0 });
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.9 });
+  const snowMat = new THREE.MeshStandardMaterial({ color: 0xeef4ff, roughness: 1.0 });
   const peaks = [
     { x: cx,     z: cz,     h: 22, r: 12 },
     { x: cx+10,  z: cz+8,   h: 16, r: 9  },
@@ -145,12 +147,11 @@ function buildMountain(cx, cz) {
     peak.position.set(x, h / 2, z);
     peak.castShadow = true;
     scene.add(peak);
-    // Snow cap
     const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.38, h * 0.3, 8), snowMat);
     cap.position.set(x, h * 0.87, z);
     scene.add(cap);
+    mountainColliders.push({ x, z, r }); // register for collision
   });
-  // Rocky base boulders
   for (let i = 0; i < 12; i++) {
     const bx = cx + (Math.random() - 0.5) * 30;
     const bz = cz + (Math.random() - 0.5) * 30;
@@ -159,9 +160,10 @@ function buildMountain(cx, cz) {
     boulder.position.set(bx, bs * 0.5, bz);
     boulder.rotation.set(Math.random(), Math.random(), Math.random());
     scene.add(boulder);
+    mountainColliders.push({ x: bx, z: bz, r: bs * 1.2 });
   }
 }
-buildMountain(-72, -72);
+buildMountain(-52, -52);
 
 // ── Water Zone (South-East) ───────────────────────────────────────────────────
 
@@ -1225,6 +1227,8 @@ function applyTome(id) {
   }
   tomeScreen.style.display = 'none';
   choosingTome = false;
+  touchInput.dx = 0; touchInput.dz = 0; touchInput.jump = false;
+  movementLockout = 0.3;
 }
 
 function updateTomeInput(dt) {
@@ -1467,18 +1471,23 @@ const CAM_OFFSET = new THREE.Vector3(0, 14, 13);
 
 let lastTime = performance.now();
 
+let movementLockout = 0;
+
 function update(dt) {
   updateTomeInput(dt);
   if (playerState.dead || choosingTome) return;
-  playerState.iframes = Math.max(0, playerState.iframes - dt);
+  playerState.iframes   = Math.max(0, playerState.iframes - dt);
+  movementLockout       = Math.max(0, movementLockout - dt);
 
   // Player movement
-  let dx = touchInput.dx;
-  let dz = touchInput.dz;
-  if (keys['w'] || keys['arrowup'])    dz -= 1;
-  if (keys['s'] || keys['arrowdown'])  dz += 1;
-  if (keys['a'] || keys['arrowleft'])  dx -= 1;
-  if (keys['d'] || keys['arrowright']) dx += 1;
+  let dx = movementLockout > 0 ? 0 : touchInput.dx;
+  let dz = movementLockout > 0 ? 0 : touchInput.dz;
+  if (movementLockout <= 0) {
+    if (keys['w'] || keys['arrowup'])    dz -= 1;
+    if (keys['s'] || keys['arrowdown'])  dz += 1;
+    if (keys['a'] || keys['arrowleft'])  dx -= 1;
+    if (keys['d'] || keys['arrowright']) dx += 1;
+  }
 
   if (dx !== 0 || dz !== 0) {
     const len = Math.sqrt(dx*dx + dz*dz);
@@ -1493,6 +1502,17 @@ function update(dt) {
     playerVel.set(dx * effSpeed, 0, dz * effSpeed);
   } else {
     playerVel.set(0, 0, 0);
+  }
+
+  // Mountain collision — push player out of peak radii
+  for (const col of mountainColliders) {
+    const mdx = player.position.x - col.x;
+    const mdz = player.position.z - col.z;
+    const dist = Math.hypot(mdx, mdz);
+    if (dist < col.r && dist > 0.01) {
+      player.position.x = col.x + (mdx / dist) * col.r;
+      player.position.z = col.z + (mdz / dist) * col.r;
+    }
   }
 
   // Jump (L or P)
