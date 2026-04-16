@@ -4,7 +4,7 @@
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x050d1a);
-scene.fog = new THREE.FogExp2(0x0a1a2e, 0.018);
+scene.fog = new THREE.FogExp2(0x0a1a2e, 0.008);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
 
@@ -34,28 +34,28 @@ scene.add(rimLight);
 // ── Ice Floor ─────────────────────────────────────────────────────────────────
 
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(120, 120, 40, 40),
+  new THREE.PlaneGeometry(500, 500, 80, 80),
   new THREE.MeshStandardMaterial({ color: 0x6ab8d4, roughness: 0.05, metalness: 0.4 })
 );
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-const grid = new THREE.GridHelper(120, 40, 0x88ccff, 0x224466);
+const grid = new THREE.GridHelper(500, 80, 0x88ccff, 0x224466);
 grid.position.y = 0.01;
-grid.material.opacity = 0.15;
+grid.material.opacity = 0.1;
 grid.material.transparent = true;
 scene.add(grid);
 
 // ── Snow Patches ──────────────────────────────────────────────────────────────
 
 const snowPatchMat = new THREE.MeshStandardMaterial({ color: 0xddeeff, roughness: 1.0 });
-const snowPatches = []; // { x, z, r } for slow collision
-for (let i = 0; i < 40; i++) {
-  const r = Math.random() * 2.5 + 0.5;
-  const px = (Math.random() - 0.5) * 110;
-  const pz = (Math.random() - 0.5) * 110;
-  const p = new THREE.Mesh(new THREE.CircleGeometry(r, 10), snowPatchMat);
+const snowPatches = [];
+for (let i = 0; i < 120; i++) {
+  const r  = Math.random() * 3.5 + 0.5;
+  const px = (Math.random() - 0.5) * 200;
+  const pz = (Math.random() - 0.5) * 200;
+  const p  = new THREE.Mesh(new THREE.CircleGeometry(r, 10), snowPatchMat);
   p.rotation.x = -Math.PI / 2;
   p.position.set(px, 0.012, pz);
   scene.add(p);
@@ -63,9 +63,7 @@ for (let i = 0; i < 40; i++) {
 }
 
 function isOnSnowPatch(x, z) {
-  for (const sp of snowPatches) {
-    if (Math.hypot(x - sp.x, z - sp.z) < sp.r) return true;
-  }
+  for (const sp of snowPatches) { if (Math.hypot(x - sp.x, z - sp.z) < sp.r) return true; }
   return false;
 }
 
@@ -86,19 +84,109 @@ function makeCrystalCluster(x, z) {
   g.position.set(x, 0, z);
   scene.add(g);
 }
-[[12,12],[-12,12],[12,-12],[-12,-12],[22,5],[-22,5],[22,-5],[-22,-5],
- [5,22],[-5,22],[5,-22],[-5,-22],[18,18],[-18,18],[18,-18],[-18,-18],[30,0],[-30,0],[0,30],[0,-30]]
-.forEach(([x,z]) => makeCrystalCluster(x, z));
+// Spread clusters across the full new map
+[
+  [12,12],[-12,12],[12,-12],[-12,-12],[22,5],[-22,5],[22,-5],[-22,-5],
+  [5,22],[-5,22],[5,-22],[-5,-22],[18,18],[-18,18],[18,-18],[-18,-18],
+  [30,0],[-30,0],[0,30],[0,-30],[40,20],[-40,20],[40,-20],[-40,-20],
+  [20,40],[-20,40],[20,-40],[-20,-40],[55,10],[-55,10],[55,-10],[-55,-10],
+  [10,55],[-10,55],[10,-55],[-10,-55],[50,50],[-50,50],[50,-50],[70,30],[-70,-30]
+].forEach(([x,z]) => makeCrystalCluster(x, z));
 
-// ── Boundary Pillars ──────────────────────────────────────────────────────────
+// ── Boundary Wall ─────────────────────────────────────────────────────────────
 
-const ARENA = 48;
-const pillarMat = new THREE.MeshStandardMaterial({ color: 0x44aacc, roughness: 0.0, metalness: 0.7, transparent: true, opacity: 0.5 });
-for (let i = 0; i < 24; i++) {
-  const a = (i / 24) * Math.PI * 2;
-  const m = new THREE.Mesh(new THREE.ConeGeometry(0.6, 5, 6), pillarMat);
-  m.position.set(Math.cos(a) * ARENA, 2.5, Math.sin(a) * ARENA);
-  scene.add(m);
+const ARENA = 96;
+
+// Solid glowing wall around the arena border
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x224488, emissiveIntensity: 0.6, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.7 });
+const wallH = 4;
+const wallT = 0.8;
+[
+  { w: ARENA*2+wallT*2, d: wallT, x: 0,      z: -ARENA },
+  { w: ARENA*2+wallT*2, d: wallT, x: 0,      z:  ARENA },
+  { w: wallT, d: ARENA*2,         x: -ARENA, z: 0      },
+  { w: wallT, d: ARENA*2,         x:  ARENA, z: 0      },
+].forEach(({w, d, x, z}) => {
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, d), wallMat);
+  wall.position.set(x, wallH / 2, z);
+  scene.add(wall);
+  // Glowing top strip
+  const top = new THREE.Mesh(new THREE.BoxGeometry(w, 0.3, d + 0.1),
+    new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x44aaff, emissiveIntensity: 2, roughness: 0 }));
+  top.position.set(x, wallH + 0.15, z);
+  scene.add(top);
+});
+
+// Corner pillars for extra clarity
+const pillarMat = new THREE.MeshStandardMaterial({ color: 0x44aacc, emissive: 0x0044aa, emissiveIntensity: 0.8, roughness: 0.0, metalness: 0.7 });
+[[-ARENA,-ARENA],[-ARENA,ARENA],[ARENA,-ARENA],[ARENA,ARENA]].forEach(([x,z]) => {
+  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 10, 8), pillarMat);
+  pillar.position.set(x, 5, z);
+  scene.add(pillar);
+  const glow = new THREE.PointLight(0x44aaff, 2, 15);
+  glow.position.set(x, 8, z);
+  scene.add(glow);
+});
+
+// ── Mountain (North-West) ─────────────────────────────────────────────────────
+
+function buildMountain(cx, cz) {
+  const rockMat  = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.9 });
+  const snowMat  = new THREE.MeshStandardMaterial({ color: 0xeef4ff, roughness: 1.0 });
+  const peaks = [
+    { x: cx,     z: cz,     h: 22, r: 12 },
+    { x: cx+10,  z: cz+8,   h: 16, r: 9  },
+    { x: cx-8,   z: cz+10,  h: 14, r: 8  },
+    { x: cx+5,   z: cz-10,  h: 12, r: 7  },
+    { x: cx-12,  z: cz-4,   h: 10, r: 7  },
+  ];
+  peaks.forEach(({ x, z, h, r }) => {
+    const peak = new THREE.Mesh(new THREE.ConeGeometry(r, h, 8), rockMat);
+    peak.position.set(x, h / 2, z);
+    peak.castShadow = true;
+    scene.add(peak);
+    // Snow cap
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.38, h * 0.3, 8), snowMat);
+    cap.position.set(x, h * 0.87, z);
+    scene.add(cap);
+  });
+  // Rocky base boulders
+  for (let i = 0; i < 12; i++) {
+    const bx = cx + (Math.random() - 0.5) * 30;
+    const bz = cz + (Math.random() - 0.5) * 30;
+    const bs = Math.random() * 2 + 1;
+    const boulder = new THREE.Mesh(new THREE.DodecahedronGeometry(bs, 0), rockMat);
+    boulder.position.set(bx, bs * 0.5, bz);
+    boulder.rotation.set(Math.random(), Math.random(), Math.random());
+    scene.add(boulder);
+  }
+}
+buildMountain(-72, -72);
+
+// ── Water Zone (South-East) ───────────────────────────────────────────────────
+
+const WATER_CX = 68, WATER_CZ = 68, WATER_R = 32;
+
+const waterMesh = new THREE.Mesh(
+  new THREE.CircleGeometry(WATER_R, 48),
+  new THREE.MeshStandardMaterial({ color: 0x1166aa, emissive: 0x003366, emissiveIntensity: 0.4, roughness: 0.0, metalness: 0.5, transparent: true, opacity: 0.75 })
+);
+waterMesh.rotation.x = -Math.PI / 2;
+waterMesh.position.set(WATER_CX, 0.02, WATER_CZ);
+scene.add(waterMesh);
+
+// Water glow light
+const waterLight = new THREE.PointLight(0x0088ff, 1.5, 50);
+waterLight.position.set(WATER_CX, 2, WATER_CZ);
+scene.add(waterLight);
+
+// Water edge label ring
+const waterLabel = document.createElement('div');
+waterLabel.style.cssText = 'display:none'; // shown via HUD when on water
+document.body.appendChild(waterLabel);
+
+function isInWater(x, z) {
+  return Math.hypot(x - WATER_CX, z - WATER_CZ) < WATER_R;
 }
 
 // ── Falling Snow ──────────────────────────────────────────────────────────────
@@ -448,7 +536,7 @@ function spawnSeal(hpScale = 1) {
   const angle = Math.random() * Math.PI * 2;
   const elite = Math.random() < 0.05;
   const mesh = elite ? buildPolarBear() : buildSeal();
-  mesh.position.set(Math.cos(angle) * 44, 0, Math.sin(angle) * 44);
+  mesh.position.set(Math.cos(angle) * 88, 0, Math.sin(angle) * 88);
   scene.add(mesh);
   enemies.push({ mesh, type: 'seal', hp: Math.round((elite ? 120 : 45) * hpScale), elite });
 }
@@ -456,15 +544,15 @@ function spawnSeal(hpScale = 1) {
 function spawnSkua(hpScale = 1) {
   const angle = Math.random() * Math.PI * 2;
   const mesh = buildSkua();
-  mesh.position.set(Math.cos(angle) * 80, 7, Math.sin(angle) * 80);
+  mesh.position.set(Math.cos(angle) * 140, 7, Math.sin(angle) * 140);
   const elite = Math.random() < 0.05;
   if (elite) makeElite(mesh);
   scene.add(mesh);
   enemies.push({ mesh, type: 'skua', hp: Math.round((elite ? 40 : 20) * hpScale), dropTimer: 3 + Math.random() * 3, state: 'approaching', elite });
 }
 
-let sealSpawnTimer = 3;
-let skuaSpawnTimer = 3;
+let sealSpawnTimer = 4;
+let skuaSpawnTimer = 4;
 let gameTime = 0; // seconds elapsed
 
 function updateEnemies(dt) {
@@ -474,8 +562,8 @@ function updateEnemies(dt) {
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
   const hpScale = 1 + gameTime / 150; // enemies get tankier, slower ramp
-  if (sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (2.5 + Math.random() * 1.5) * pressure; }
-  if (skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (5 + Math.random() * 3) * pressure; }
+  if (sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (3.5 + Math.random() * 2) * pressure; }
+  if (skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (7 + Math.random() * 4) * pressure; }
 
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
@@ -498,8 +586,8 @@ function updateEnemies(dt) {
         e.mesh.position.x += sepX * 0.3;
         e.mesh.position.z += sepZ * 0.3;
 
-        e.mesh.position.x += (dx / dist) * 6.5 * dt;
-        e.mesh.position.z += (dz / dist) * 6.5 * dt;
+        e.mesh.position.x += (dx / dist) * 6.4 * dt;
+        e.mesh.position.z += (dz / dist) * 6.4 * dt;
         // Model faces +X — use atan2(-dz, dx) for correct orientation
         e.mesh.rotation.y = Math.atan2(-dz, dx);
       }
@@ -800,14 +888,16 @@ function spawnCrack(x, z, length, angle) {
 }
 
 // Place cracks — avoid the spawn area near center
-spawnCrack(  8,  3, 6, 0.3);
-spawnCrack( -7, -5, 5, 1.1);
-spawnCrack(  4, -9, 7, 0.0);
-spawnCrack(-10,  8, 6, 0.7);
-spawnCrack( 14, -2, 5, 1.4);
-spawnCrack( -4, 13, 8, 0.2);
-spawnCrack( 10, 10, 6, 0.9);
-spawnCrack(-15,  0, 7, 0.5);
+// Cracks spread across the full 96-radius map (avoid NW mountain & SE water)
+[
+  [  8,  3, 6, 0.3], [ -7, -5, 5, 1.1], [  4, -9, 7, 0.0], [-10,  8, 6, 0.7],
+  [ 14, -2, 5, 1.4], [ -4, 13, 8, 0.2], [ 10, 10, 6, 0.9], [-15,  0, 7, 0.5],
+  [ 28,  5, 7, 0.6], [-28,  8, 6, 1.2], [ 20,-25, 8, 0.4], [-20, 25, 5, 1.0],
+  [ 35,-15, 6, 0.8], [-35, 15, 7, 0.3], [ 45,  5, 8, 1.3], [-45,-10, 6, 0.7],
+  [  5, 40, 7, 0.1], [ -5,-40, 5, 0.9], [ 30, 35, 6, 1.5], [-30,-35, 8, 0.5],
+  [ 55,-30, 7, 0.2], [-55, 30, 6, 1.1], [ 15,-60, 5, 0.6], [-15, 60, 7, 1.4],
+  [ 60, 20, 6, 0.8],
+].forEach(([x, z, len, ang]) => spawnCrack(x, z, len, ang));
 
 // ── Snowstorm ─────────────────────────────────────────────────────────────────
 
@@ -1393,8 +1483,10 @@ function update(dt) {
   if (dx !== 0 || dz !== 0) {
     const len = Math.sqrt(dx*dx + dz*dz);
     dx /= len; dz /= len;
-    const onSnow = playerY < 0.3 && isOnSnowPatch(player.position.x, player.position.z);
-    const effSpeed = SPEED * stormSlow * playerStats.moveSpeed * (onSnow ? 0.8 : 1.0);
+    const onSnow  = playerY < 0.3 && isOnSnowPatch(player.position.x, player.position.z);
+    const onWater = playerY < 0.3 && isInWater(player.position.x, player.position.z);
+    const effSpeed = SPEED * stormSlow * playerStats.moveSpeed * (onSnow ? 0.8 : onWater ? 1.2 : 1.0);
+    document.getElementById('ui').style.color = onWater ? '#44ffcc' : '#aee8ff';
     player.position.x = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.x + dx * effSpeed * dt));
     player.position.z = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.z + dz * effSpeed * dt));
     player.rotation.y = Math.atan2(-dx, -dz);
