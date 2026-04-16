@@ -861,13 +861,33 @@ function updateStorm(dt) {
 
 // ── Scoreboard ────────────────────────────────────────────────────────────────
 
+// Generate or retrieve a persistent device ID
+function getDeviceId() {
+  let id = localStorage.getItem('frostbite_device_id');
+  if (!id) { id = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('frostbite_device_id', id); }
+  return id;
+}
+
 function loadScores() {
   try { return JSON.parse(localStorage.getItem('frostbite_scores') || '[]'); } catch { return []; }
 }
 
 function saveScore(name, kills, level) {
-  const scores = loadScores();
-  scores.push({ name: name.trim().slice(0, 16) || 'Anonymous', kills, level, date: new Date().toLocaleDateString() });
+  const deviceId = getDeviceId();
+  const scores   = loadScores();
+  const existing = scores.findIndex(s => s.deviceId === deviceId);
+
+  if (existing !== -1) {
+    if (kills > scores[existing].kills) {
+      // Same device, better score — update
+      scores[existing] = { ...scores[existing], name: name.trim().slice(0, 16) || scores[existing].name, kills, level, date: new Date().toLocaleDateString() };
+    } else {
+      return; // Same device, worse score — don't save
+    }
+  } else {
+    scores.push({ name: name.trim().slice(0, 16) || 'Anonymous', kills, level, date: new Date().toLocaleDateString(), deviceId });
+  }
+
   scores.sort((a, b) => b.kills - a.kills);
   localStorage.setItem('frostbite_scores', JSON.stringify(scores.slice(0, 10)));
 }
@@ -953,7 +973,10 @@ function showDeathScreen() {
   setTimeout(() => input.focus(), 100);
 }
 
-window.addEventListener('keydown', e => { if ((e.code === 'Space' || e.key === 'l' || e.key === 'p') && playerState.dead) location.reload(); });
+window.addEventListener('keydown', e => {
+  const typingName = document.activeElement && document.activeElement.id === 'nameInput';
+  if ((e.code === 'Space' || e.key === 'l' || e.key === 'p') && playerState.dead && !typingName) location.reload();
+});
 
 function killPlayer() {
   if (playerState.dead) return;
