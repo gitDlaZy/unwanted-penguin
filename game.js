@@ -861,40 +861,51 @@ function updateStorm(dt) {
 
 // ── Scoreboard ────────────────────────────────────────────────────────────────
 
-// Generate or retrieve a persistent device ID
+// ── Online Leaderboard (Supabase) ─────────────────────────────────────────────
+
+const SUPABASE_URL = 'https://geylqcfmkxcflbcksrjt.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdleWxxY2Zta3hjZmxiY2tzcmp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjM4MjQsImV4cCI6MjA5MTkzOTgyNH0.XC8kpKHnhybR8xC7Th_BX9KIpmFrpcH2CXgeeklUSOI';
+
 function getDeviceId() {
   let id = localStorage.getItem('frostbite_device_id');
   if (!id) { id = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('frostbite_device_id', id); }
   return id;
 }
 
-function loadScores() {
-  try { return JSON.parse(localStorage.getItem('frostbite_scores') || '[]'); } catch { return []; }
+async function fetchLeaderboard() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/scores?select=name,kills,level,date&order=kills.desc&limit=10`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    return res.ok ? res.json() : [];
+  } catch { return []; }
 }
 
-function saveScore(name, kills, level) {
+async function submitOnlineScore(name, kills, level) {
   const deviceId = getDeviceId();
-  const scores   = loadScores();
-  const existing = scores.findIndex(s => s.deviceId === deviceId);
+  try {
+    // Check existing score for this device
+    const check = await fetch(`${SUPABASE_URL}/rest/v1/scores?device_id=eq.${deviceId}&select=kills`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    const existing = await check.json();
+    if (existing.length && existing[0].kills >= kills) return false; // not a new high score
 
-  if (existing !== -1) {
-    if (kills > scores[existing].kills) {
-      // Same device, better score — update
-      scores[existing] = { ...scores[existing], name: name.trim().slice(0, 16) || scores[existing].name, kills, level, date: new Date().toLocaleDateString() };
-    } else {
-      return; // Same device, worse score — don't save
-    }
-  } else {
-    scores.push({ name: name.trim().slice(0, 16) || 'Anonymous', kills, level, date: new Date().toLocaleDateString(), deviceId });
-  }
-
-  scores.sort((a, b) => b.kills - a.kills);
-  localStorage.setItem('frostbite_scores', JSON.stringify(scores.slice(0, 10)));
+    await fetch(`${SUPABASE_URL}/rest/v1/scores`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({ name: name.trim().slice(0,16) || 'Anonymous', kills, level, device_id: deviceId, date: new Date().toLocaleDateString() })
+    });
+    return true;
+  } catch { return false; }
 }
 
-function renderScoreboard() {
-  const scores = loadScores();
-  if (!scores.length) return '<div style="opacity:0.4;font-size:13px">No scores yet</div>';
+function renderScoreboard(scores) {
+  if (!scores.length) return '<div style="opacity:0.4;font-size:13px;padding:12px">No scores yet — be the first!</div>';
   return `
     <table style="border-collapse:collapse;font-size:13px;width:320px">
       <tr style="opacity:0.5;border-bottom:1px solid #44aaff44">
@@ -929,7 +940,6 @@ function showDeathScreen() {
     <div style="font-size:46px;font-weight:bold;letter-spacing:6px;text-shadow:0 0 30px #00aaff">YOU FROZE</div>
     <div style="font-size:15px;opacity:0.5">☠ ${killCount} kills &nbsp;|&nbsp; Level ${playerLevel}</div>
     <div style="font-size:13px;opacity:0.35;margin-bottom:4px">💡 L / P to jump over cracks</div>
-
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:4px">
       <input id="nameInput" type="text" maxlength="16" placeholder="Enter your name"
         style="background:rgba(0,20,50,0.8);border:1px solid #44aaff;color:#aee8ff;
@@ -938,33 +948,37 @@ function showDeathScreen() {
       <button id="submitScore"
         style="background:transparent;border:2px solid #44aaff;color:#aee8ff;
                font-family:monospace;font-size:14px;padding:8px 18px;cursor:pointer;border-radius:4px;
-               letter-spacing:2px;white-space:nowrap">
-        SUBMIT
-      </button>
+               letter-spacing:2px;white-space:nowrap">SUBMIT</button>
     </div>
-
-    <div id="scoreboardEl">${renderScoreboard()}</div>
-
+    <div id="scoreboardEl" style="min-height:60px"><div style="opacity:0.4;font-size:13px">Loading scores...</div></div>
     <button id="retryBtn"
       style="margin-top:8px;background:transparent;border:2px solid #44aaff55;color:#aee8ff;
-             font-family:monospace;font-size:18px;padding:10px 36px;cursor:pointer;letter-spacing:3px">
-      RETRY
-    </button>
+             font-family:monospace;font-size:18px;padding:10px 36px;cursor:pointer;letter-spacing:3px">RETRY</button>
   `;
   deathScreen.style.display = 'flex';
 
-  const input = document.getElementById('nameInput');
+  // Load leaderboard immediately
+  fetchLeaderboard().then(scores => {
+    const el = document.getElementById('scoreboardEl');
+    if (el) el.innerHTML = renderScoreboard(scores);
+  });
+
+  const input  = document.getElementById('nameInput');
   const submit = document.getElementById('submitScore');
   let submitted = false;
 
-  function doSubmit() {
+  async function doSubmit() {
     if (submitted) return;
     submitted = true;
-    saveScore(input.value, killCount, playerLevel);
-    document.getElementById('scoreboardEl').innerHTML = renderScoreboard();
-    submit.textContent = '✓ SAVED';
+    submit.textContent = 'SAVING...';
+    const isNewHigh = await submitOnlineScore(input.value, killCount, playerLevel);
+    submit.textContent = isNewHigh ? '✓ SAVED' : '✓ DONE';
     submit.style.borderColor = '#44ffaa';
     submit.style.color = '#44ffaa';
+    // Refresh leaderboard after submit
+    const scores = await fetchLeaderboard();
+    const el = document.getElementById('scoreboardEl');
+    if (el) el.innerHTML = renderScoreboard(scores);
   }
 
   submit.addEventListener('click', doSubmit);
