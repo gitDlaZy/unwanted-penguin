@@ -280,6 +280,7 @@ const playerStats = {
   critChance:   0,     // 0–1
   attackRate:   1.0,   // multiplier on cooldown (lower = faster)
   projCount:    1,     // snowballs per shot
+  projExtraChance: 0, // fractional extra projectile chance
   projSize:     1.0,
   projSpeed:    1.0,
   maxShield:    0,
@@ -299,7 +300,11 @@ const TOME_DEFS = [
   { id:'damage',     name:'Damage Tome',           emoji:'⚔️',  color:'#ff6644', desc:'+10% snowball damage',      apply: s => { s.damage     *= 1.1; } },
   { id:'precision',  name:'Precision Tome',        emoji:'🎯',  color:'#ffaa22', desc:'+5% critical hit chance',   apply: s => { s.critChance  = Math.min(0.9, s.critChance+0.05); } },
   { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-6% attack cooldown',       apply: s => { s.attackRate *= 0.94; } },
-  { id:'quantity',   name:'Quantity Tome',         emoji:'❄️',  color:'#aaddff', desc:'+1 snowball per shot',      apply: s => { s.projCount  += 1; } },
+  { id:'quantity',   name:'Quantity Tome',         emoji:'❄️',  color:'#aaddff', desc:'+1 snowball (50% less each stack)', apply: (s) => {
+    const stacks = tomeStacks['quantity'] || 0;
+    if (stacks === 0) { s.projCount += 1; }           // 1st: guaranteed +1 (1→2, +100%)
+    else { s.projExtraChance = Math.min(1, (s.projExtraChance||0) + 0.5); } // 2nd+: +50% chance
+  }},
   { id:'size',       name:'Size Tome',             emoji:'🔮',  color:'#cc88ff', desc:'+20% projectile size',      apply: s => { s.projSize   *= 1.2; } },
   { id:'projspeed',  name:'Speed Tome',            emoji:'💨',  color:'#88ffcc', desc:'+15% projectile speed',     apply: s => { s.projSpeed  *= 1.15; } },
   { id:'shield',     name:'Shield Tome',           emoji:'🛡️', color:'#44aaff', desc:'+1 shield charge',          apply: s => { s.maxShield += 1; s.shield = s.maxShield; updateHUD(); } },
@@ -344,6 +349,27 @@ shieldBarOuter.appendChild(shieldBarInner);
 shieldRow.appendChild(shieldLabel);
 shieldRow.appendChild(shieldBarOuter);
 hud.insertBefore(shieldRow, hpLabel);
+
+// XP bar
+const xpRow = document.createElement('div');
+xpRow.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:4px';
+const xpLabelEl = document.createElement('div');
+xpLabelEl.style.cssText = 'color:#ffee44;font-family:monospace;font-size:11px;text-shadow:0 0 6px #ffaa00';
+xpLabelEl.textContent = 'LVL 1 — XP 0 / 3';
+const xpBarOuter = document.createElement('div');
+xpBarOuter.style.cssText = 'width:180px;height:6px;background:#1a1400;border:1px solid #ffaa0066;border-radius:3px;overflow:hidden';
+const xpBarInner = document.createElement('div');
+xpBarInner.style.cssText = 'width:0%;height:100%;background:#ffcc00;border-radius:3px;transition:width 0.2s';
+xpBarOuter.appendChild(xpBarInner);
+xpRow.appendChild(xpLabelEl);
+xpRow.appendChild(xpBarOuter);
+hud.appendChild(xpRow);
+
+function updateXPBar() {
+  const needed = xpToNext(playerLevel);
+  xpLabelEl.textContent = `LVL ${playerLevel} — XP ${playerXP} / ${needed}`;
+  xpBarInner.style.width = (playerXP / needed * 100) + '%';
+}
 
 function updateHUD() {
   const pct = Math.max(0, playerState.hp / playerState.maxHp) * 100;
@@ -545,7 +571,8 @@ function findNearestEnemy() {
 const burstQueue = []; // sequential snowball shots
 
 function fireSnowball(target) {
-  const count = playerStats.projCount;
+  const bonus = Math.random() < (playerStats.projExtraChance || 0) ? 1 : 0;
+  const count = playerStats.projCount + bonus;
   for (let i = 0; i < count; i++) {
     burstQueue.push({ target, delay: i * 0.13 });
   }
@@ -608,6 +635,9 @@ function updateSnowballs(dt) {
         }
         if (e.hp <= 0) {
           if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
+          if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 3 : 1);
+          killCount++;
+          document.getElementById('killHUD').textContent = `☠ ${killCount}`;
           scene.remove(e.mesh);
           enemies.splice(j, 1);
         }
@@ -829,29 +859,101 @@ function updateStorm(dt) {
 
 // ── Death ─────────────────────────────────────────────────────────────────────
 
+// ── Scoreboard ────────────────────────────────────────────────────────────────
+
+function loadScores() {
+  try { return JSON.parse(localStorage.getItem('frostbite_scores') || '[]'); } catch { return []; }
+}
+
+function saveScore(name, kills, level) {
+  const scores = loadScores();
+  scores.push({ name: name.trim().slice(0, 16) || 'Anonymous', kills, level, date: new Date().toLocaleDateString() });
+  scores.sort((a, b) => b.kills - a.kills);
+  localStorage.setItem('frostbite_scores', JSON.stringify(scores.slice(0, 10)));
+}
+
+function renderScoreboard() {
+  const scores = loadScores();
+  if (!scores.length) return '<div style="opacity:0.4;font-size:13px">No scores yet</div>';
+  return `
+    <table style="border-collapse:collapse;font-size:13px;width:320px">
+      <tr style="opacity:0.5;border-bottom:1px solid #44aaff44">
+        <td style="padding:4px 10px">#</td>
+        <td style="padding:4px 10px">Name</td>
+        <td style="padding:4px 10px">Kills</td>
+        <td style="padding:4px 10px">Lvl</td>
+        <td style="padding:4px 10px">Date</td>
+      </tr>
+      ${scores.map((s, i) => `
+        <tr style="background:${i===0?'rgba(255,220,50,0.07)':''}">
+          <td style="padding:4px 10px;opacity:0.5">${i+1}</td>
+          <td style="padding:4px 10px;color:${i===0?'#ffee44':'#aee8ff'};font-weight:${i===0?'bold':'normal'}">${s.name}</td>
+          <td style="padding:4px 10px;color:#ff8888">☠ ${s.kills}</td>
+          <td style="padding:4px 10px;color:#ffcc44">${s.level}</td>
+          <td style="padding:4px 10px;opacity:0.4">${s.date}</td>
+        </tr>`).join('')}
+    </table>`;
+}
+
 const deathScreen = document.createElement('div');
 deathScreen.style.cssText = `
-  display:none; position:fixed; inset:0;
-  background:rgba(0,10,30,0.82);
-  flex-direction:column; align-items:center; justify-content:center;
-  font-family:monospace; color:#aee8ff;
-`;
-deathScreen.innerHTML = `
-  <div style="font-size:52px;font-weight:bold;letter-spacing:6px;text-shadow:0 0 30px #00aaff;margin-bottom:12px">YOU FROZE</div>
-  <div style="font-size:16px;opacity:0.6;margin-bottom:36px">The tundra claims another penguin.</div>
-  <div style="font-size:13px;opacity:0.4;margin-bottom:28px">💡 Tip: Press L or P to jump over ice cracks</div>
-  <button id="retryBtn" style="
-    background:transparent; border:2px solid #44aaff; color:#aee8ff;
-    font-family:monospace; font-size:20px; padding:12px 40px;
-    cursor:pointer; letter-spacing:3px;
-    text-shadow:0 0 8px #44aaff; box-shadow:0 0 16px #0044aa;
-  ">RETRY</button>
+  display:none; position:fixed; inset:0; overflow-y:auto;
+  background:rgba(0,10,30,0.92);
+  flex-direction:column; align-items:center; justify-content:center; gap:16px;
+  font-family:monospace; color:#aee8ff; padding:20px;
 `;
 document.body.appendChild(deathScreen);
 
-document.getElementById('retryBtn').addEventListener('click', () => location.reload());
+function showDeathScreen() {
+  deathScreen.innerHTML = `
+    <div style="font-size:46px;font-weight:bold;letter-spacing:6px;text-shadow:0 0 30px #00aaff">YOU FROZE</div>
+    <div style="font-size:15px;opacity:0.5">☠ ${killCount} kills &nbsp;|&nbsp; Level ${playerLevel}</div>
+    <div style="font-size:13px;opacity:0.35;margin-bottom:4px">💡 L / P to jump over cracks</div>
+
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:4px">
+      <input id="nameInput" type="text" maxlength="16" placeholder="Enter your name"
+        style="background:rgba(0,20,50,0.8);border:1px solid #44aaff;color:#aee8ff;
+               font-family:monospace;font-size:16px;padding:8px 14px;border-radius:4px;
+               outline:none;width:200px;text-align:center;-webkit-appearance:none;" />
+      <button id="submitScore"
+        style="background:transparent;border:2px solid #44aaff;color:#aee8ff;
+               font-family:monospace;font-size:14px;padding:8px 18px;cursor:pointer;border-radius:4px;
+               letter-spacing:2px;white-space:nowrap">
+        SUBMIT
+      </button>
+    </div>
+
+    <div id="scoreboardEl">${renderScoreboard()}</div>
+
+    <button id="retryBtn"
+      style="margin-top:8px;background:transparent;border:2px solid #44aaff55;color:#aee8ff;
+             font-family:monospace;font-size:18px;padding:10px 36px;cursor:pointer;letter-spacing:3px">
+      RETRY
+    </button>
+  `;
+  deathScreen.style.display = 'flex';
+
+  const input = document.getElementById('nameInput');
+  const submit = document.getElementById('submitScore');
+  let submitted = false;
+
+  function doSubmit() {
+    if (submitted) return;
+    submitted = true;
+    saveScore(input.value, killCount, playerLevel);
+    document.getElementById('scoreboardEl').innerHTML = renderScoreboard();
+    submit.textContent = '✓ SAVED';
+    submit.style.borderColor = '#44ffaa';
+    submit.style.color = '#44ffaa';
+  }
+
+  submit.addEventListener('click', doSubmit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') doSubmit(); });
+  document.getElementById('retryBtn').addEventListener('click', () => location.reload());
+  setTimeout(() => input.focus(), 100);
+}
+
 window.addEventListener('keydown', e => { if ((e.code === 'Space' || e.key === 'l' || e.key === 'p') && playerState.dead) location.reload(); });
-// Tap RETRY button on death screen (touchstart on the button itself handles it via onclick)
 
 function killPlayer() {
   if (playerState.dead) return;
@@ -871,13 +973,12 @@ function killPlayer() {
   playerState.hp = 0;
   updateHUD();
   penguinMesh.visible = false;
-  deathScreen.style.display = 'flex';
+  showDeathScreen();
 }
 
 // ── Map Items & Tome Choice ───────────────────────────────────────────────────
 
-const mapItems   = [];
-let itemSpawnTimer = 6;
+const mapItems   = []; // still used by elite drops
 let choosingTome        = false;
 let selectedTomeIdx     = 1;
 let tomeInputDelay      = 0;
@@ -1028,37 +1129,15 @@ function spawnMapItem(x, z) {
   mapItems.push({ group, orb, glow, bobOffset: Math.random() * Math.PI * 2 });
 }
 
-// Scatter 5 items at start — keep clear of center
-// 2 items at start — fully random positions
-for (let i = 0; i < 2; i++) {
-  const a = Math.random() * Math.PI * 2;
-  const r = 10 + Math.random() * 25;
-  spawnMapItem(Math.cos(a) * r, Math.sin(a) * r);
-}
-
 function updateItems(dt) {
+  // Elite-drop items (purple orbs) still work
   if (choosingTome) return;
-
-  // Spawn new items over time
-  itemSpawnTimer -= dt;
-  const spawnInterval = Math.max(3, 6 - playerStats.cursed * 1);
-  if (itemSpawnTimer <= 0) {
-    const a = Math.random() * Math.PI * 2;
-    const r = 8 + Math.random() * 28;
-    spawnMapItem(Math.cos(a) * r, Math.sin(a) * r);
-    itemSpawnTimer = spawnInterval;
-  }
-
   const t = Date.now() / 1000;
   for (let i = mapItems.length - 1; i >= 0; i--) {
     const item = mapItems[i];
-    // Bob and spin
     item.group.position.y = 1.0 + Math.sin(t * 2 + item.bobOffset) * 0.25;
     item.orb.rotation.y += dt * 1.5;
-    // Pulse glow
     item.glow.intensity = 1.2 + Math.sin(t * 3 + item.bobOffset) * 0.4;
-
-    // Pickup check
     const dx = player.position.x - item.group.position.x;
     const dz = player.position.z - item.group.position.z;
     if (Math.sqrt(dx*dx + dz*dz) < playerStats.pickupRadius) {
@@ -1066,6 +1145,63 @@ function updateItems(dt) {
       mapItems.splice(i, 1);
       showTomeChoice();
       break;
+    }
+  }
+}
+
+// ── XP System ─────────────────────────────────────────────────────────────────
+
+let playerLevel = 1;
+let playerXP    = 0;
+let killCount   = 0;
+
+function xpToNext(level) {
+  // 3, 5, 8, 12, 17, 23 ... using triangular growth
+  return 2 + Math.round(level * (level + 1) / 2);
+}
+
+const xpOrbs = [];
+
+function spawnXpOrb(x, z, amount = 1) {
+  const group = new THREE.Group();
+  const orb = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.15, 0),
+    new THREE.MeshStandardMaterial({ color: 0xffee44, emissive: 0xffaa00, emissiveIntensity: 1.6, roughness: 0 })
+  );
+  group.add(orb);
+  const glow = new THREE.PointLight(0xffcc00, 1.2, 5);
+  group.add(glow);
+  group.position.set(x, 0.5, z);
+  scene.add(group);
+  xpOrbs.push({ group, orb, glow, amount, bobOffset: Math.random() * Math.PI * 2 });
+}
+
+function gainXP(amount) {
+  playerXP += amount;
+  const needed = xpToNext(playerLevel);
+  if (playerXP >= needed) {
+    playerXP -= needed;
+    playerLevel++;
+    updateXPBar();
+    showTomeChoice();
+  }
+  updateXPBar();
+}
+
+function updateXpOrbs(dt) {
+  if (choosingTome) return;
+  const t = Date.now() / 1000;
+  for (let i = xpOrbs.length - 1; i >= 0; i--) {
+    const orb = xpOrbs[i];
+    orb.group.position.y = 0.5 + Math.sin(t * 3 + orb.bobOffset) * 0.15;
+    orb.orb.rotation.y += dt * 2;
+    orb.glow.intensity = 1.0 + Math.sin(t * 4 + orb.bobOffset) * 0.3;
+    const dx = player.position.x - orb.group.position.x;
+    const dz = player.position.z - orb.group.position.z;
+    if (Math.sqrt(dx*dx + dz*dz) < playerStats.pickupRadius + 0.8) {
+      scene.remove(orb.group);
+      xpOrbs.splice(i, 1);
+      gainXP(orb.amount);
     }
   }
 }
@@ -1279,6 +1415,7 @@ function update(dt) {
 
   updateBurst(dt);
   updateItems(dt);
+  updateXpOrbs(dt);
   updateStorm(dt);
   updateEnemies(dt);
   updateSnowballs(dt);
