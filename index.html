@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FrostBite</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #050d1a; }
+    canvas { display: block; }
+    #ui {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #aee8ff;
+      font-family: monospace;
+      font-size: 18px;
+      text-shadow: 0 0 8px #44aaff;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">FROSTBITE &mdash; WASD move &nbsp;|&nbsp; L / P jump &nbsp;|&nbsp; jump over cracks!</div>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
