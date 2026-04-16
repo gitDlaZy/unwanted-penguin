@@ -882,26 +882,30 @@ async function fetchLeaderboard() {
 }
 
 async function submitOnlineScore(name, kills, level) {
-  const deviceId = getDeviceId();
+  const deviceId  = getDeviceId();
+  const cleanName = name.trim().slice(0, 16) || 'Anonymous';
+  const date      = new Date().toLocaleDateString();
+  const headers   = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
   try {
-    // Check existing score for this device
-    const check = await fetch(`${SUPABASE_URL}/rest/v1/scores?device_id=eq.${deviceId}&select=kills`, {
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
-    });
+    const check    = await fetch(`${SUPABASE_URL}/rest/v1/scores?device_id=eq.${deviceId}&select=kills`, { headers });
     const existing = await check.json();
-    if (existing.length && existing[0].kills >= kills) return false; // not a new high score
 
-    await fetch(`${SUPABASE_URL}/rest/v1/scores`, {
-      method: 'POST',
-      headers: {
-        apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        Prefer: 'resolution=merge-duplicates'
-      },
-      body: JSON.stringify({ name: name.trim().slice(0,16) || 'Anonymous', kills, level, device_id: deviceId, date: new Date().toLocaleDateString() })
-    });
+    if (existing.length > 0) {
+      if (existing[0].kills >= kills) return false; // not a new high score
+      // Update existing row
+      await fetch(`${SUPABASE_URL}/rest/v1/scores?device_id=eq.${deviceId}`, {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ name: cleanName, kills, level, date })
+      });
+    } else {
+      // Insert new row
+      await fetch(`${SUPABASE_URL}/rest/v1/scores`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ name: cleanName, kills, level, device_id: deviceId, date })
+      });
+    }
     return true;
-  } catch { return false; }
+  } catch(e) { console.error(e); return false; }
 }
 
 function renderScoreboard(scores) {
@@ -971,18 +975,19 @@ function showDeathScreen() {
     if (submitted) return;
     submitted = true;
     submit.textContent = 'SAVING...';
+    submit.disabled = true;
     const isNewHigh = await submitOnlineScore(input.value, killCount, playerLevel);
-    submit.textContent = isNewHigh ? '✓ SAVED' : '✓ DONE';
+    submit.textContent = isNewHigh ? '✓ NEW HIGH SCORE' : '✓ SUBMITTED';
     submit.style.borderColor = '#44ffaa';
     submit.style.color = '#44ffaa';
-    // Refresh leaderboard after submit
-    const scores = await fetchLeaderboard();
     const el = document.getElementById('scoreboardEl');
+    if (el) el.innerHTML = '<div style="opacity:0.4;font-size:13px">Refreshing...</div>';
+    const scores = await fetchLeaderboard();
     if (el) el.innerHTML = renderScoreboard(scores);
   }
 
   submit.addEventListener('click', doSubmit);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') doSubmit(); });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSubmit(); } });
   document.getElementById('retryBtn').addEventListener('click', () => location.reload());
   setTimeout(() => input.focus(), 100);
 }
