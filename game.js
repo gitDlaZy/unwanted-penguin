@@ -2655,6 +2655,7 @@ const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   if (e.key.toLowerCase() === 'o') openPendingTome();
+  if (e.key.toLowerCase() === 't' && !playerState.dead) queueTome(); // debug: instant level-up
   const typing = document.activeElement?.id === 'nameInput';
   if (!typing) resumeGame();
 });
