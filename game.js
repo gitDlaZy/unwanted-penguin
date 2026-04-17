@@ -1174,10 +1174,11 @@ function updateSnowballs(dt) {
       const dz = s.mesh.position.z - e.mesh.position.z;
       if (Math.sqrt(dx*dx + dz*dz) < 1.2 * playerStats.projSize) {
         if (s.boomerang) {
-          // Outgoing: one hit only, then fly through until return
-          if (!s.returning && !s.hitOut) { s.hitOut = true; hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z); }
-          // Returning: one hit only
-          else if (s.returning && !s.hitReturn) { s.hitReturn = true; hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z); }
+          // Each enemy hit once per leg — pierces through all
+          if (!s.hitSet) s.hitSet = { out: new Set(), ret: new Set() };
+          const legSet = s.returning ? s.hitSet.ret : s.hitSet.out;
+          if (!legSet.has(e)) { legSet.add(e); hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z); }
+          continue; // pierce — keep checking other enemies this frame
         } else {
           hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z);
           hit = true;
