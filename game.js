@@ -1098,7 +1098,7 @@ function fireNomOrb() {
   const tz = target.mesh.position.z - player.position.z;
   const len = Math.sqrt(tx*tx + tz*tz) || 1;
   const dir = new THREE.Vector3(tx / len, 0, tz / len);
-  const speed = 8; // slow independent speed
+  const speed = 4; // slow independent speed
   const w = 1.0 * playerStats.projSize; // width scales with Size Tome
   // Elongated capsule oriented in travel direction
   const geo = new THREE.CapsuleGeometry(w, 0.55, 4, 8);
