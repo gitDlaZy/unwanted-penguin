@@ -448,7 +448,7 @@ const WEAPON_DEFS = [
     name:     'Aura Farmer',
     emoji:    '🌀',
     color:    '#44ffaa',
-    desc:     'Every 2s, deals damage to ALL enemies within radius 3. Uses all tome multipliers.',
+    desc:     'Every 2s, damages ALL enemies in radius 3 (scales with Size Tome).',
     isWeapon: true,
     cooldown: 2.0,
   },
@@ -524,37 +524,61 @@ function fireGandalfStaff() {
   }
 }
 
-function showAuraPulse(x, z) {
-  const geo  = new THREE.RingGeometry(2.8, 3.0, 32);
-  const mat  = new THREE.MeshBasicMaterial({ color: 0x44ffaa, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
-  const ring = new THREE.Mesh(geo, mat);
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.set(x, 0.1, z);
-  scene.add(ring);
+// Aura Farmer persistent ring — outer edge indicator, scales with projSize
+const auraRingMat = new THREE.MeshBasicMaterial({ color: 0x44ffaa, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+let   auraRingMesh = null;
+let   auraRingLastSize = -1;
 
-  const light = new THREE.PointLight(0x44ffaa, 6, 8);
-  light.position.set(x, 1, z);
+function getAuraRadius() { return 3 * playerStats.projSize; }
+
+function updateAuraRing() {
+  const r = getAuraRadius();
+  if (r !== auraRingLastSize) {
+    if (auraRingMesh) { scene.remove(auraRingMesh); auraRingMesh.geometry.dispose(); }
+    const geo = new THREE.RingGeometry(r - 0.12, r, 48);
+    auraRingMesh = new THREE.Mesh(geo, auraRingMat);
+    auraRingMesh.rotation.x = -Math.PI / 2;
+    scene.add(auraRingMesh);
+    auraRingLastSize = r;
+  }
+  auraRingMesh.position.x = player.position.x;
+  auraRingMesh.position.z = player.position.z;
+  auraRingMat.opacity = 0.5 + Math.sin(Date.now() / 350) * 0.15;
+}
+
+function showAuraDamageFlash(px, pz) {
+  const r   = getAuraRadius();
+  const geo  = new THREE.CircleGeometry(r, 48);
+  const mat  = new THREE.MeshBasicMaterial({ color: 0x44ffaa, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+  const fill = new THREE.Mesh(geo, mat);
+  fill.rotation.x = -Math.PI / 2;
+  fill.position.set(px, 0.08, pz);
+  scene.add(fill);
+
+  const light = new THREE.PointLight(0x44ffaa, 8, r * 3);
+  light.position.set(px, 1, pz);
   scene.add(light);
 
   let age = 0;
   const tick = setInterval(() => {
     age += 0.05;
-    mat.opacity     = Math.max(0, 0.9 - age * 3.5);
-    light.intensity = Math.max(0, 6 - age * 25);
+    mat.opacity     = Math.max(0, 0.35 - age * 1.5);
+    light.intensity = Math.max(0, 8  - age * 35);
     if (age >= 0.35) {
       clearInterval(tick);
-      scene.remove(ring);
-      scene.remove(light);
-      geo.dispose();
-      mat.dispose();
+      scene.remove(fill); scene.remove(light);
+      geo.dispose(); mat.dispose();
     }
   }, 50);
 }
 
 function fireAuraFarmer() {
   const px = player.position.x, pz = player.position.z;
+  const r = getAuraRadius();
   const inRange = enemies.filter(e => !e.dead && e.mesh &&
-    Math.sqrt((e.mesh.position.x - px) ** 2 + (e.mesh.position.z - pz) ** 2) <= 3);
+    Math.sqrt((e.mesh.position.x - px) ** 2 + (e.mesh.position.z - pz) ** 2) <= r);
+  // always show flash even if no enemies (so player sees the aura active)
+  showAuraDamageFlash(px, pz);
   if (!inRange.length) return;
   inRange.forEach(e => {
     const isCrit = Math.random() < playerStats.critChance;
@@ -570,7 +594,6 @@ function fireAuraFarmer() {
     playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
     updateHUD();
   }
-  showAuraPulse(px, pz);
 }
 
 function tickWeapons(dt) {
@@ -2577,6 +2600,7 @@ function update(dt) {
     toxicRing.position.z = player.position.z;
     toxicRingMat.opacity = 0.45 + Math.sin(Date.now() / 400) * 0.1;
   }
+  if (equippedWeapons.has('aura_farmer')) updateAuraRing();
   updateBurst(dt);
   updateOrcas(dt);
   updateHumans(dt);
