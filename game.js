@@ -431,7 +431,7 @@ const TOME_DEFS = [
   { id:'knockback',  name:'Knockback Tome',        emoji:'💥',  color:'#ff8844', desc:'+1.5 knockback on hit',     apply: s => { s.knockback  += 1.5; } },
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'Enemies tougher, more drops',apply:s => { s.cursed += 1; } },
   { id:'chaos',      name:'Chaos Tome',            emoji:'🎲',  color:'#ff44ff', desc:'Random tome effect!',        apply: (s, chaos) => chaos() },
-  { id:'hasper',     name:'Hasper Keijnen',        emoji:'🪃',  color:'#ffaa88', desc:'Your snowball boomerangs back — deals damage both ways. Next shot waits for return.', apply: s => { s.boomerang = true; } },
+  { id:'hasper',     name:'Hasper Keijnen',        emoji:'🪃',  color:'#ffaa88', desc:'Boomerang snowball — deals damage both ways, +0.5 damage. Next shot waits for return.', apply: s => { s.boomerang = true; s.damage += 0.5; } },
   { id:'shaggy',    name:'Shaggy',                emoji:'🧍', color:'#cc9966', desc:'After taking damage, become invulnerable for 2 seconds.', apply: s => { s.iframeDuration = 2.0; } },
 ];
 
@@ -624,12 +624,34 @@ function tickWeapons(dt) {
 }
 
 // Toxic Friend persistent ring (follows player when equipped)
-const toxicRingGeo = new THREE.RingGeometry(1.85, 2.0, 40);
-const toxicRingMat = new THREE.MeshBasicMaterial({ color: 0x88ff44, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
-const toxicRing    = new THREE.Mesh(toxicRingGeo, toxicRingMat);
-toxicRing.rotation.x = -Math.PI / 2;
-toxicRing.visible = false;
-// scene.add deferred until scene exists — added after scene init below
+// Toxic Friend — stationary dropped pools
+const toxicPools = []; // { mesh, x, z, life }
+const TOXIC_POOL_DURATION = 8;
+const TOXIC_POOL_INTERVAL = 5;
+
+function dropToxicPool() {
+  const x = player.position.x, z = player.position.z;
+  const geo = new THREE.RingGeometry(1.85, 2.0, 40);
+  const mat = new THREE.MeshBasicMaterial({ color: 0x88ff44, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(x, 0.08, z);
+  scene.add(mesh);
+  toxicPools.push({ mesh, mat, x, z, life: TOXIC_POOL_DURATION });
+}
+
+function updateToxicPools(dt) {
+  for (let i = toxicPools.length - 1; i >= 0; i--) {
+    const p = toxicPools[i];
+    p.life -= dt;
+    p.mat.opacity = Math.max(0, 0.6 * (p.life / TOXIC_POOL_DURATION));
+    if (p.life <= 0) {
+      scene.remove(p.mesh);
+      p.mat.dispose(); p.mesh.geometry.dispose();
+      toxicPools.splice(i, 1);
+    }
+  }
+}
 
 function applyWeapon(id) {
   if (equippedWeapons.has(id)) {
@@ -638,13 +660,13 @@ function applyWeapon(id) {
     equippedWeapons.add(id);
     weaponStacks[id] = 1;
     weaponTimers[id] = 0;
-    if (id === 'toxic_friend') { toxicRing.visible = true; scene.add(toxicRing); }
+    if (id === 'toxic_friend') { dropToxicPool(); weaponTimers['toxic_drop'] = TOXIC_POOL_INTERVAL; }
   }
 }
 
 function getToxicSlow() {
   const stacks = weaponStacks['toxic_friend'] || 1;
-  return 1 - Math.min(0.8, 0.15 + 0.05 * stacks); // 20% at 1 stack, +5% each
+  return 1 - Math.min(0.8, 0.15 + 0.05 * stacks);
 }
 
 // ── HUD ───────────────────────────────────────────────────────────────────────
@@ -904,7 +926,8 @@ function updateEnemies(dt) {
         e.mesh.position.x += sepX * 0.3;
         e.mesh.position.z += sepZ * 0.3;
 
-        const toxicMult = (equippedWeapons.has('toxic_friend') && dist < 2) ? getToxicSlow() : 1;
+        const inPool = toxicPools.some(p => Math.sqrt((e.mesh.position.x-p.x)**2+(e.mesh.position.z-p.z)**2) < 2);
+        const toxicMult = inPool ? getToxicSlow() : 1;
         e.mesh.position.x += (dx / dist) * 6.3 * dt * toxicMult;
         e.mesh.position.z += (dz / dist) * 6.3 * dt * toxicMult;
         // Model faces +X — use atan2(-dz, dx) for correct orientation
@@ -2701,9 +2724,9 @@ function update(dt) {
 
   tickWeapons(dt);
   if (equippedWeapons.has('toxic_friend')) {
-    toxicRing.position.x = player.position.x;
-    toxicRing.position.z = player.position.z;
-    toxicRingMat.opacity = 0.45 + Math.sin(Date.now() / 400) * 0.1;
+    weaponTimers['toxic_drop'] = (weaponTimers['toxic_drop'] || 0) - dt;
+    if (weaponTimers['toxic_drop'] <= 0) { dropToxicPool(); weaponTimers['toxic_drop'] = TOXIC_POOL_INTERVAL; }
+    updateToxicPools(dt);
   }
   if (equippedWeapons.has('aura_farmer')) updateAuraRing();
   updateBurst(dt);
