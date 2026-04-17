@@ -439,7 +439,7 @@ const WEAPON_DEFS = [
     name:     'Staff of Gandalf',
     emoji:    '🪄',
     color:    '#ffffff',
-    desc:     'Every 2.5s, strikes a random enemy within range 10. Uses all tome multipliers.',
+    desc:     'Every 2.5s, strikes a random enemy within range 10. Pick again to add +1 shock.',
     isWeapon: true,
     cooldown: 2.5,
   },
@@ -456,6 +456,7 @@ const WEAPON_DEFS = [
 
 const equippedWeapons = new Set();   // supports multiple weapons at once
 const weaponTimers    = {};          // per-weapon cooldown timers
+const weaponStacks    = {};          // extra hits per proc (gandalf_staff stacks here)
 
 function showLightningStrike(x, z) {
   const boltH = 18;
@@ -487,23 +488,31 @@ function showLightningStrike(x, z) {
 
 function fireGandalfStaff() {
   const px = player.position.x, pz = player.position.z;
-  const inRange = enemies.filter(e => !e.dead && e.mesh &&
+  const pool = enemies.filter(e => !e.dead && e.mesh &&
     Math.sqrt((e.mesh.position.x - px) ** 2 + (e.mesh.position.z - pz) ** 2) <= 10);
-  if (!inRange.length) return;
-  const target = inRange[Math.floor(Math.random() * inRange.length)];
-  const isCrit = Math.random() < playerStats.critChance;
-  target.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1) * (1 + playerStats.projSize * 0.5 - 0.5);
-  if (playerStats.knockback > 0 && target.mesh) {
-    const dx = target.mesh.position.x - px, dz = target.mesh.position.z - pz;
-    const dist = Math.sqrt(dx * dx + dz * dz) || 1;
-    target.mesh.position.x += (dx / dist) * playerStats.knockback;
-    target.mesh.position.z += (dz / dist) * playerStats.knockback;
+  if (!pool.length) return;
+  const shocks = weaponStacks['gandalf_staff'] || 1;
+  const targets = [];
+  const available = pool.slice();
+  for (let i = 0; i < shocks && available.length; i++) {
+    const idx = Math.floor(Math.random() * available.length);
+    targets.push(available.splice(idx, 1)[0]);
   }
+  targets.forEach(target => {
+    const isCrit = Math.random() < playerStats.critChance;
+    target.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1) * (1 + playerStats.projSize * 0.5 - 0.5);
+    if (playerStats.knockback > 0 && target.mesh) {
+      const dx = target.mesh.position.x - px, dz = target.mesh.position.z - pz;
+      const dist = Math.sqrt(dx * dx + dz * dz) || 1;
+      target.mesh.position.x += (dx / dist) * playerStats.knockback;
+      target.mesh.position.z += (dz / dist) * playerStats.knockback;
+    }
+    showLightningStrike(target.mesh.position.x, target.mesh.position.z);
+  });
   if (playerStats.lifesteal > 0 && Math.random() < playerStats.lifesteal && playerStats.shield < playerStats.maxShield) {
     playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
     updateHUD();
   }
-  showLightningStrike(target.mesh.position.x, target.mesh.position.z);
 }
 
 function showAuraPulse(x, z) {
@@ -569,8 +578,14 @@ function tickWeapons(dt) {
 }
 
 function applyWeapon(id) {
-  equippedWeapons.add(id);
-  weaponTimers[id] = 0; // fire immediately on next tick
+  if (equippedWeapons.has(id)) {
+    // Already equipped — add an extra shock instead
+    weaponStacks[id] = (weaponStacks[id] || 1) + 1;
+  } else {
+    equippedWeapons.add(id);
+    weaponStacks[id] = 1;
+    weaponTimers[id] = 0;
+  }
 }
 
 // ── HUD ───────────────────────────────────────────────────────────────────────
@@ -1608,7 +1623,7 @@ function showTomeChoice() {
       <div style="font-size:15px;font-weight:bold;color:${tome.color};margin-bottom:8px">${tome.name}</div>
       <div style="font-size:12px;opacity:0.75;line-height:1.4">${tome.desc}</div>
       ${!tome.isWeapon && stacks > 0 ? `<div style="font-size:11px;opacity:0.45;margin-top:8px">Stack: ${stacks}</div>` : ''}
-      ${tome.isWeapon && equippedWeapons.has(tome.id) ? `<div style="font-size:11px;opacity:0.55;margin-top:8px;color:${tome.color}">✓ Equipped</div>` : ''}
+      ${tome.isWeapon && equippedWeapons.has(tome.id) ? `<div style="font-size:11px;opacity:0.55;margin-top:8px;color:${tome.color}">✓ ${tome.id === 'gandalf_staff' ? `${weaponStacks['gandalf_staff'] || 1} shocks` : 'Equipped'}</div>` : ''}
     `;
     card.onclick = () => { selectedTomeIdx = i; applyTome(tome.id); };
     container.appendChild(card);
