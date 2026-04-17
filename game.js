@@ -2,6 +2,14 @@
 
 // ── Renderer ──────────────────────────────────────────────────────────────────
 
+// Games played counter
+(function() {
+  const plays = (parseInt(localStorage.getItem('up_plays') || '0')) + 1;
+  localStorage.setItem('up_plays', plays);
+  const el = document.getElementById('playsHUD');
+  if (el) el.textContent = `▶ ${plays} play${plays === 1 ? '' : 's'}`;
+})();
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x050d1a);
 scene.fog = new THREE.FogExp2(0x0a1a2e, 0.008);
@@ -1376,7 +1384,7 @@ let pendingTomes = 0;
 // Right-side level-up indicator (mid-screen)
 const levelIndicator = document.createElement('div');
 levelIndicator.style.cssText = `
-  display:none; position:fixed; left:calc(50% + 20%); top:50%; transform:translate(-50%, -50%);
+  display:none; position:fixed; left:calc(50% + 10%); top:37%; transform:translate(-50%, -50%);
   font-family:monospace; font-size:13px; font-weight:bold; color:#ffee44;
   text-shadow:0 0 10px #ffaa00; letter-spacing:2px; pointer-events:none;
   z-index:100; text-align:center; line-height:1.6;
@@ -1520,7 +1528,15 @@ function applyTome(id) {
   }
   tomeScreen.style.display = 'none';
   choosingTome = false;
-  enterResumeState();
+  touchInput.dx = 0; touchInput.dz = 0; touchInput.jump = false;
+  // Chain to next pending tome immediately, resume gate only after all done
+  if (pendingTomes > 0) {
+    pendingTomes--;
+    updateLevelBtn();
+    showTomeChoice();
+  } else {
+    enterResumeState();
+  }
 }
 
 function updateTomeInput(dt) {
