@@ -384,7 +384,7 @@ player.add(penguinMesh);
 player.position.set(35, 0, 25);
 scene.add(player);
 
-const playerState = { hp: 2, maxHp: 2, iframes: 0, dead: false,
+const playerState = { hp: 100, maxHp: 100, iframes: 0, dead: false,
   shaggyCharges: 0, shaggyMaxCharges: 0, shaggyRechargeTimer: 0 };
 
 // ── Player Stats (tome upgrades) ──────────────────────────────────────────────
@@ -445,7 +445,7 @@ const TOME_DEFS = [
   { id:'shield',     name:'Shield Tome',           emoji:'🛡️', color:'#44aaff', desc:'+1 shield charge',          apply: s => { s.maxShield += 1; s.shield = s.maxShield; updateHUD(); } },
   { id:'evasion',    name:'Evasion Tome',          emoji:'🌀',  color:'#44ffaa', desc:'+10% dodge chance',         apply: s => { s.evasion    = Math.min(0.7, s.evasion+0.1); } },
   { id:'bloody',     name:'Bloody Tome',           emoji:'🩸',  color:'#ff4466', desc:'+20% lifesteal on hit',     apply: s => { s.lifesteal  = Math.min(1, s.lifesteal+0.2); } },
-  { id:'hp',         name:'HP Tome',               emoji:'💙',  color:'#2266ff', desc:'+1 max HP',                 apply: s => { s.maxShield += 1; s.shield = s.maxShield; playerState.maxHp+=1; playerState.hp+=1; updateHUD(); } },
+  { id:'hp',         name:'HP Tome',               emoji:'💙',  color:'#2266ff', desc:'+25 max HP',                apply: s => { s.maxShield += 1; s.shield = s.maxShield; playerState.maxHp+=25; playerState.hp+=25; updateHUD(); } },
   { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+4% movement speed. "You obtained ADHD!"', apply: s => { s.moveSpeed *= 1.04; showAdhdMsg(); } },
   { id:'attraction', name:'Attraction Tome',       emoji:'🧲',  color:'#ffaa44', desc:'+1 pickup radius',          apply: s => { s.pickupRadius += 1; } },
   { id:'knockback',  name:'Knockback Tome',        emoji:'💥',  color:'#ff8844', desc:'+1.5 knockback on hit',     apply: s => { s.knockback  += 1.5; } },
@@ -590,7 +590,7 @@ function updateAuraRing() {
   }
   auraRingMesh.position.x = player.position.x;
   auraRingMesh.position.z = player.position.z;
-  auraRingMat.opacity = 0.5 + Math.sin(Date.now() / 350) * 0.15;
+  auraRingMat.opacity = 0.5 + Math.sin(frameTime * 1000 / 350) * 0.15;
 }
 
 function showAuraDamageFlash(px, pz) {
@@ -911,6 +911,165 @@ function buildPolarBear() {
   return g;
 }
 
+function buildKrill() {
+  const g = new THREE.Group();
+  const pink    = new THREE.MeshStandardMaterial({ color: 0xff4477, roughness: 0.6, emissive: 0x880022, emissiveIntensity: 0.3 });
+  const darkPink = new THREE.MeshStandardMaterial({ color: 0xcc2255, roughness: 0.7 });
+  const eye     = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
+
+  // Body segments (3)
+  [0, 0.9, 1.7].forEach((x, i) => {
+    const seg = new THREE.Mesh(new THREE.SphereGeometry(0.45 - i * 0.08, 10, 8), pink);
+    seg.scale.set(1.1, 0.7, 0.9); seg.position.set(x, 0.5, 0); seg.castShadow = true;
+    g.add(seg);
+  });
+
+  // Tail fan
+  [-0.3, 0, 0.3].forEach(z => {
+    const fan = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 5), darkPink);
+    fan.scale.set(0.8, 0.25, 0.5); fan.position.set(2.4, 0.5, z); g.add(fan);
+  });
+
+  // Head / eyes
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 8), pink);
+  head.position.set(-0.55, 0.6, 0); g.add(head);
+  [-0.18, 0.18].forEach(z => {
+    const e = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 6), eye);
+    e.position.set(-0.85, 0.78, z); g.add(e);
+  });
+
+  // Antennae
+  [-0.22, 0.22].forEach(z => {
+    const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.01, 1.2, 5), darkPink);
+    ant.rotation.z = z > 0 ? -0.4 : 0.4; ant.position.set(-1.1, 1.1, z * 2); g.add(ant);
+  });
+
+  // Legs (pairs)
+  [-0.1, 0.4, 0.9].forEach(x => {
+    [-1, 1].forEach(side => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.02, 0.7, 5), darkPink);
+      leg.rotation.z = side * 0.5; leg.position.set(x, 0.2, side * 0.55); g.add(leg);
+    });
+  });
+
+  // Boss glow
+  const glow = new THREE.PointLight(0xff2255, 3, 12);
+  glow.position.set(0, 1.2, 0); g.add(glow);
+
+  return g;
+}
+
+let boss = null;
+let bossProjectiles = [];
+const bossHUDEl    = document.getElementById('bossHUD');
+const bossBarInner = document.getElementById('bossBarInner');
+const bossArrowEl  = document.getElementById('bossArrow');
+const bossProjectileGeo = new THREE.SphereGeometry(0.3, 8, 8);
+const bossProjectileMat = new THREE.MeshStandardMaterial({ color: 0xff2255, emissive: 0xff0033, emissiveIntensity: 0.8, transparent: true, opacity: 0.9 });
+
+function spawnBoss(x, z) {
+  if (x === undefined) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist  = 40 + Math.random() * 40; // 40–80 units from center
+    x = Math.cos(angle) * dist;
+    z = Math.sin(angle) * dist;
+  }
+  if (boss) return;
+  const mesh = buildKrill();
+  mesh.position.set(x, 0, z);
+  mesh.scale.setScalar(2.5);
+  scene.add(mesh);
+  boss = { mesh, hp: 500, maxHp: 500, shootTimer: 2.0, age: 0 };
+  bossHUDEl.style.display = 'block';
+}
+
+function updateBoss(dt) {
+  if (!boss) return;
+
+  const px = player.position.x, pz = player.position.z;
+  const dx = px - boss.mesh.position.x;
+  const dz = pz - boss.mesh.position.z;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+
+  boss.age += dt;
+  bossBarInner.style.width = Math.max(0, boss.hp / boss.maxHp * 100) + '%';
+
+  // Screen-edge arrow — camera is fixed: right=+X, down-screen=+Z
+  const wdx = boss.mesh.position.x - player.position.x;
+  const wdz = boss.mesh.position.z - player.position.z;
+  const wlen = Math.sqrt(wdx * wdx + wdz * wdz) || 1;
+  const nx = wdx / wlen, nz = wdz / wlen; // screen: nx=right, nz=down
+
+  // On-screen when boss is close and roughly in front of camera
+  const bossScreen = boss.mesh.position.clone().project(camera);
+  const onScreen = bossScreen.z < 1 && bossScreen.x > -0.9 && bossScreen.x < 0.9 && bossScreen.y > -0.9 && bossScreen.y < 0.9;
+  if (onScreen) {
+    bossArrowEl.style.display = 'none';
+  } else {
+    const W = window.innerWidth, H = window.innerHeight, pad = 30;
+    const cx = W / 2, cy = H / 2;
+    const tx = nx !== 0 ? (nx > 0 ? (W/2 - pad) : -(W/2 - pad)) / nx : Infinity;
+    const ty = nz !== 0 ? (nz > 0 ? (H/2 - pad) : -(H/2 - pad)) / nz : Infinity;
+    const t = Math.min(Math.abs(tx), Math.abs(ty));
+    const ex = cx + nx * t, ey = cy + nz * t;
+    bossArrowEl.style.display = 'block';
+    bossArrowEl.style.left = (ex - 11) + 'px';
+    bossArrowEl.style.top  = (ey - 11) + 'px';
+    bossArrowEl.style.transform = `rotate(${Math.atan2(nx, -nz)}rad)`;
+  }
+
+  // Face player — krill head faces -X so use atan2(dz, -dx)
+  boss.mesh.rotation.y = Math.atan2(dz, -dx);
+
+  // Shoot interval ramps from 2s down to 0.3s after 3s of existence
+  const shootInterval = boss.age < 3 ? 2.0 : Math.max(0.3, 2.0 - (boss.age - 3) * 0.1);
+
+  boss.shootTimer -= dt;
+  if (boss.shootTimer <= 0) {
+    boss.shootTimer = shootInterval;
+    if (dist > 0.1) {
+      const speed = 8;
+      const nx = dx / dist, nz = dz / dist;
+      const mesh = new THREE.Mesh(bossProjectileGeo, bossProjectileMat);
+      mesh.position.set(boss.mesh.position.x + nx * 2, 0.6, boss.mesh.position.z + nz * 2);
+      const light = new THREE.PointLight(0xff2255, 2, 4);
+      mesh.add(light);
+      scene.add(mesh);
+      bossProjectiles.push({ mesh, vx: nx * speed, vz: nz * speed });
+    }
+  }
+
+  // Update projectiles
+  for (let i = bossProjectiles.length - 1; i >= 0; i--) {
+    const p = bossProjectiles[i];
+    p.mesh.position.x += p.vx * dt;
+    p.mesh.position.z += p.vz * dt;
+    const pdx = p.mesh.position.x - px;
+    const pdz = p.mesh.position.z - pz;
+    if (pdx * pdx + pdz * pdz < 0.64) {
+      damagePlayer(98);
+      scene.remove(p.mesh);
+      bossProjectiles.splice(i, 1);
+      continue;
+    }
+    // Remove if too far (120² = 14400)
+    const odx = p.mesh.position.x - boss.mesh.position.x;
+    const odz = p.mesh.position.z - boss.mesh.position.z;
+    if (odx * odx + odz * odz > 14400) {
+      scene.remove(p.mesh); bossProjectiles.splice(i, 1);
+    }
+  }
+
+  if (boss.hp <= 0) {
+    disposeMesh(boss.mesh); scene.remove(boss.mesh);
+    boss = null;
+    bossHUDEl.style.display = 'none';
+    bossArrowEl.style.display = 'none';
+    bossProjectiles.forEach(p => scene.remove(p.mesh));
+    bossProjectiles = [];
+  }
+}
+
 function spawnSeal(hpScale = 1) {
   const angle = Math.random() * Math.PI * 2;
   const elite = Math.random() < 0.05;
@@ -918,7 +1077,7 @@ function spawnSeal(hpScale = 1) {
   if (!elite) mesh.scale.setScalar(0.8);
   mesh.position.set(Math.cos(angle) * 88, 0, Math.sin(angle) * 88);
   scene.add(mesh);
-  enemies.push({ mesh, type: 'seal', hp: Math.round((elite ? 120 : 30) * hpScale), elite });
+  enemies.push({ mesh, type: 'seal', hp: Math.round((elite ? 100 : 30) * hpScale), elite });
 }
 
 function spawnSkua(hpScale = 1) {
@@ -984,10 +1143,13 @@ function spawnSwarmWave() {
 
 function updateEnemies(dt) {
   gameTime += dt;
-  if (gameTime >= 300 && !playerState.dead) { playerState.dead = true; penguinMesh.visible = false; showDeathScreen(); return; }
+  if (gameTime >= 300 && !boss && !playerState.dead) { spawnBoss(); }
   const remaining = Math.max(0, 300 - gameTime);
   const mins = Math.floor(remaining / 60), secs = Math.floor(remaining % 60);
-  if (timerHUDEl) timerHUDEl.textContent = `⏱ ${mins}:${String(secs).padStart(2,'0')}`;
+  if (timerHUDEl) {
+    if (gameTime >= 4) timerHUDEl.style.display = 'block';
+    timerHUDEl.textContent = `⏱ ${mins}:${String(secs).padStart(2,'0')}`;
+  }
 
   // Pressure hits floor at ~3.5 min (k=111); cursed stacks each add 25% spawn rate
   const pressure = Math.max(0.15, Math.exp(-gameTime / 111)) * Math.pow(0.75, playerStats.cursed);
@@ -1028,7 +1190,7 @@ function updateEnemies(dt) {
         e.mesh.rotation.y = Math.atan2(-dz, dx);
       }
       if (dist < 0.7 && playerY < 0.5 && playerState.iframes <= 0) {
-        killPlayer();
+        damagePlayer(e.elite ? 85 : 51);
       }
     }
 
@@ -1039,7 +1201,7 @@ function updateEnemies(dt) {
           e.mesh.position.x += (dx / dist) * 1.5 * dt;
           e.mesh.position.z += (dz / dist) * 1.5 * dt;
         }
-        e.mesh.position.y = 7 + Math.sin(Date.now() / 500 + i) * 0.4;
+        e.mesh.position.y = 7 + Math.sin(frameTime * 1000 / 500 + i) * 0.4;
         e.mesh.rotation.y = Math.atan2(-dz, dx);
 
         e.dropTimer -= dt;
@@ -1075,7 +1237,7 @@ function updateEnemies(dt) {
         e.mesh.rotation.y = Math.atan2(-dz, dx);
       }
       // Kill player on contact
-      if (dist < 0.6 && playerState.iframes <= 0) killPlayer();
+      if (dist < 0.6 && playerState.iframes <= 0) damagePlayer(51);
     }
   }
 
@@ -1158,15 +1320,22 @@ function updateNomOrbs(dt) {
 }
 const ATTACK_RATE = 0.8; // seconds between shots
 const SNOWBALL_SPEED = 23.4;
-const SNOWBALL_DAMAGE = 15;
+const SNOWBALL_DAMAGE = 10;
 
 function findNearestEnemy() {
   let nearest = null, bestDist = Infinity;
   for (const e of enemies) {
     const dx = e.mesh.position.x - player.position.x;
     const dz = e.mesh.position.z - player.position.z;
-    const d = Math.sqrt(dx*dx + dz*dz);
+    const d = dx*dx + dz*dz;
     if (d < bestDist) { bestDist = d; nearest = e; }
+  }
+  // Prefer boss if it's closer
+  if (boss) {
+    const bdx = boss.mesh.position.x - player.position.x;
+    const bdz = boss.mesh.position.z - player.position.z;
+    const bd = bdx*bdx + bdz*bdz;
+    if (bd < bestDist) nearest = boss;
   }
   return nearest;
 }
@@ -1274,7 +1443,7 @@ function updateSnowballs(dt) {
       const e = enemies[j];
       const dx = s.mesh.position.x - e.mesh.position.x;
       const dz = s.mesh.position.z - e.mesh.position.z;
-      if (Math.sqrt(dx*dx + dz*dz) < 1.2 * playerStats.projSize) {
+      if (dx*dx + dz*dz < (1.2 * playerStats.projSize) ** 2) {
         if (s.boomerang) {
           // Each enemy hit once per leg — pierces through all
           if (!s.hitSet) s.hitSet = { out: new Set(), ret: new Set() };
@@ -1286,6 +1455,17 @@ function updateSnowballs(dt) {
           hit = true;
         }
         break;
+      }
+    }
+    // Check hit against boss
+    if (!hit && boss) {
+      const bdx = s.mesh.position.x - boss.mesh.position.x;
+      const bdz = s.mesh.position.z - boss.mesh.position.z;
+      if (bdx*bdx + bdz*bdz < (3.0 * playerStats.projSize) ** 2) {
+        const isCrit = Math.random() < playerStats.critChance;
+        boss.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+        spawnImpact(s.mesh.position.x, s.mesh.position.y, s.mesh.position.z, isCrit);
+        if (!s.boomerang) hit = true;
       }
     }
 
@@ -1344,7 +1524,7 @@ function updateBombs(dt) {
     } else {
       b.timer -= dt;
       // pulsing warning — speeds up as time runs out
-      const pulse = Math.sin(Date.now() / (b.timer * 80 + 20));
+      const pulse = Math.sin(frameTime * 1000 / (b.timer * 80 + 20));
       b.warnMesh.material.opacity = 0.2 + Math.abs(pulse) * 0.55;
       b.mesh.material.emissiveIntensity = 0.4 + Math.abs(pulse) * 0.8;
 
@@ -1768,19 +1948,16 @@ function triggerShaggy() {
   }
 }
 
-function killPlayer() {
+function damagePlayer(amount) {
   if (playerState.dead || playerState.iframes > 0) return;
-  // Evasion — chance to completely dodge
   if (playerStats.evasion > 0 && Math.random() < playerStats.evasion) {
     playerState.iframes = 0.8;
     return;
   }
-  // Shaggy charges absorb the hit
   if (playerState.shaggyCharges > 0) {
     triggerShaggy();
     return;
   }
-  // Shield absorbs hit (regen blocked for 30s after shield damage)
   if (playerStats.shield > 0) {
     playerStats.shield--;
     playerStats.shieldDmgTimer = 30;
@@ -1788,8 +1965,7 @@ function killPlayer() {
     updateHUD();
     return;
   }
-  // Lose 1 HP — survive if still above 0
-  playerState.hp--;
+  playerState.hp = Math.max(0, playerState.hp - amount);
   updateHUD();
   if (playerState.hp > 0) {
     playerState.iframes = playerStats.iframeDuration;
@@ -1799,6 +1975,8 @@ function killPlayer() {
   penguinMesh.visible = false;
   showDeathScreen();
 }
+
+function killPlayer() { damagePlayer(playerState.maxHp); }
 
 // ── Map Items & Tome Choice ───────────────────────────────────────────────────
 
@@ -1984,7 +2162,7 @@ function resumeGame() {
   if (!waitingToResume) return;
   waitingToResume             = false;
   resumeHint.style.display    = 'none';
-  playerState.iframes         = 0.3; // brief safe window after resuming
+  playerState.iframes         = 0;
   movementLockout             = 0.3;
   touchInput.dx = 0; touchInput.dz = 0; touchInput.jump = false;
 }
@@ -2071,7 +2249,7 @@ function spawnMapItem(x, z) {
 function updateItems(dt) {
   // Elite-drop items (purple orbs) still work
   if (choosingTome) return;
-  const t = Date.now() / 1000;
+  const t = frameTime;
   for (let i = mapItems.length - 1; i >= 0; i--) {
     const item = mapItems[i];
     item.group.position.y = 1.0 + Math.sin(t * 2 + item.bobOffset) * 0.25;
@@ -2095,9 +2273,9 @@ let playerXP    = 0;
 let killCount   = 0;
 
 // Cached DOM refs — avoid getElementById every frame/kill
-const killHUDEl  = document.getElementById('killHUD');
-const coordHUDEl = document.getElementById('coordHUD');
-const timerHUDEl = document.getElementById('timerHUD');
+const killHUDEl    = document.getElementById('killHUD');
+const coordHUDEl   = document.getElementById('coordHUD');
+const timerHUDEl   = document.getElementById('timerHUD');
 
 function disposeMesh(obj) {
   obj.traverse(child => {
@@ -2140,7 +2318,7 @@ function gainXP(amount) {
 
 function updateXpOrbs(dt) {
   if (choosingTome) return;
-  const t = Date.now() / 1000;
+  const t = frameTime;
   for (let i = xpOrbs.length - 1; i >= 0; i--) {
     const orb = xpOrbs[i];
     orb.group.position.y = 0.5 + Math.sin(t * 3 + orb.bobOffset) * 0.15;
@@ -2148,7 +2326,8 @@ function updateXpOrbs(dt) {
     orb.glow.intensity = 1.0 + Math.sin(t * 4 + orb.bobOffset) * 0.3;
     const dx = player.position.x - orb.group.position.x;
     const dz = player.position.z - orb.group.position.z;
-    if (Math.sqrt(dx*dx + dz*dz) < playerStats.pickupRadius + 0.8) {
+    const pr = playerStats.pickupRadius + 0.8;
+    if (dx*dx + dz*dz < pr * pr) {
       disposeMesh(orb.group); scene.remove(orb.group);
       xpOrbs.splice(i, 1);
       gainXP(orb.amount);
@@ -2222,7 +2401,7 @@ function showFishFlash(text, color) {
 })();
 
 function updateFish(dt) {
-  const t = Date.now() / 1000;
+  const t = frameTime;
   for (let i = fish.length - 1; i >= 0; i--) {
     const f = fish[i];
     f.mesh.position.y = 0.25 + Math.sin(t * 2 + f.bobOffset) * 0.08;
@@ -2317,7 +2496,7 @@ function updateOrcas(dt) {
   // While airborne: preserve chasing state — no position reset
 
   for (const o of orcas) {
-    const bob = Math.sin(Date.now() / 700 + o.idleAngle) * 0.08;
+    const bob = Math.sin(frameTime * 1000 / 700 + o.idleAngle) * 0.08;
 
     if (orcasChasing) {
       const dx   = player.position.x - o.mesh.position.x;
@@ -2746,8 +2925,10 @@ const CAM_OFFSET = new THREE.Vector3(0, 14, 13);
 let lastTime = performance.now();
 
 let movementLockout = 0;
+let frameTime = 0; // cached Date.now()/1000 per frame — avoids repeated calls in update loops
 
 function update(dt) {
+  frameTime = Date.now() / 1000;
   updateTomeInput(dt);
   if (playerState.dead || choosingTome || waitingToResume) return;
   playerState.iframes   = Math.max(0, playerState.iframes - dt);
@@ -2760,41 +2941,53 @@ function update(dt) {
   }
   // Shield lifesteal blocked for 30s after taking shield damage
   if (playerStats.shieldDmgTimer > 0) playerStats.shieldDmgTimer = Math.max(0, playerStats.shieldDmgTimer - dt);
+  // HP regen — 1 HP every 5s
+  playerState.regenTimer = (playerState.regenTimer || 0) + dt;
+  if (playerState.regenTimer >= 5 && playerState.hp < playerState.maxHp && !playerState.dead) {
+    playerState.hp = Math.min(playerState.maxHp, playerState.hp + 1);
+    playerState.regenTimer = 0;
+    updateHUD();
+  }
   // Shaggy gold ring follows player
   if (shaggyRing) {
     shaggyRing.visible = playerState.shaggyCharges > 0;
     if (shaggyRing.visible) {
       shaggyRing.position.x = player.position.x;
       shaggyRing.position.z = player.position.z;
-      shaggyRingMat.opacity = 0.55 + Math.sin(Date.now() / 300) * 0.15;
+      shaggyRingMat.opacity = 0.55 + Math.sin(frameTime * 1000 / 300) * 0.15;
     }
   }
   movementLockout       = Math.max(0, movementLockout - dt);
 
-  // Player movement
-  let dx = movementLockout > 0 ? 0 : touchInput.dx;
-  let dz = movementLockout > 0 ? 0 : touchInput.dz;
-  if (movementLockout <= 0) {
-    if (keys['w'] || keys['arrowup'])    dz -= 1;
-    if (keys['s'] || keys['arrowdown'])  dz += 1;
-    if (keys['a'] || keys['arrowleft'])  dx -= 1;
-    if (keys['d'] || keys['arrowright']) dx += 1;
-  }
-
-  if (dx !== 0 || dz !== 0) {
-    const len = Math.sqrt(dx*dx + dz*dz);
-    dx /= len; dz /= len;
-    const onSnow  = playerY < 0.3 && isOnSnowPatch(player.position.x, player.position.z);
-    const onWater = playerY < 0.3 && isInWater(player.position.x, player.position.z);
-    const stunMult = playerPhotoStun > 0 ? 0.35 : 1.0;
-    const effSpeed = SPEED * stormSlow * playerStats.moveSpeed * stunMult * (onSnow ? 0.7 : onWater ? 1.2 : 1.0);
-    document.getElementById('ui').style.color = onWater ? '#44ffcc' : '#aee8ff';
-    player.position.x = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.x + dx * effSpeed * dt));
-    player.position.z = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.z + dz * effSpeed * dt));
-    player.rotation.y = Math.atan2(-dx, -dz);
-    playerVel.set(dx * effSpeed, 0, dz * effSpeed);
+  // Player movement — preserve air momentum during post-tome lockout
+  if (movementLockout > 0 && playerY > 0 && (playerVel.x !== 0 || playerVel.z !== 0)) {
+    player.position.x = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.x + playerVel.x * dt));
+    player.position.z = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.z + playerVel.z * dt));
   } else {
-    playerVel.set(0, 0, 0);
+    let dx = movementLockout > 0 ? 0 : touchInput.dx;
+    let dz = movementLockout > 0 ? 0 : touchInput.dz;
+    if (movementLockout <= 0) {
+      if (keys['w'] || keys['arrowup'])    dz -= 1;
+      if (keys['s'] || keys['arrowdown'])  dz += 1;
+      if (keys['a'] || keys['arrowleft'])  dx -= 1;
+      if (keys['d'] || keys['arrowright']) dx += 1;
+    }
+
+    if (dx !== 0 || dz !== 0) {
+      const len = Math.sqrt(dx*dx + dz*dz);
+      dx /= len; dz /= len;
+      const onSnow  = playerY < 0.3 && isOnSnowPatch(player.position.x, player.position.z);
+      const onWater = playerY < 0.3 && isInWater(player.position.x, player.position.z);
+      const stunMult = playerPhotoStun > 0 ? 0.35 : 1.0;
+      const effSpeed = SPEED * stormSlow * playerStats.moveSpeed * stunMult * (onSnow ? 0.7 : onWater ? 1.2 : 1.0);
+      document.getElementById('ui').style.color = onWater ? '#44ffcc' : '#aee8ff';
+      player.position.x = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.x + dx * effSpeed * dt));
+      player.position.z = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.z + dz * effSpeed * dt));
+      player.rotation.y = Math.atan2(-dx, -dz);
+      playerVel.set(dx * effSpeed, 0, dz * effSpeed);
+    } else {
+      playerVel.set(0, 0, 0);
+    }
   }
 
   // Mountain collision — push player out of peak radii
@@ -2881,7 +3074,7 @@ function update(dt) {
   pos.needsUpdate = true;
 
   // Auto-attack (boomerang waits for return before firing again)
-  if (enemies.length > 0 && !boomerangInFlight) {
+  if ((enemies.length > 0 || boss) && !boomerangInFlight) {
     attackTimer -= dt;
     if (attackTimer <= 0) {
       const target = findNearestEnemy();
@@ -2906,6 +3099,7 @@ function update(dt) {
   updateThinIce(dt);
   updateStorm(dt);
   updateEnemies(dt);
+  updateBoss(dt);
   updateSnowballs(dt);
   updateNomOrbs(dt);
   updateBombs(dt);
