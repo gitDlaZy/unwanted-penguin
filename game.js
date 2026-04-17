@@ -1098,8 +1098,8 @@ function fireNomOrb() {
   const tz = target.mesh.position.z - player.position.z;
   const len = Math.sqrt(tx*tx + tz*tz) || 1;
   const dir = new THREE.Vector3(tx / len, 0, tz / len);
-  const speed = SNOWBALL_SPEED * 1.4;
-  const w = 0.10 * playerStats.projSize; // narrow width scales with Size Tome
+  const speed = SNOWBALL_SPEED * 0.7;
+  const w = 0.50 * playerStats.projSize; // width scales with Size Tome
   // Elongated capsule oriented in travel direction
   const geo = new THREE.CapsuleGeometry(w, 0.55, 4, 8);
   const mat = new THREE.MeshStandardMaterial({ color: 0x9933ff, emissive: 0x6600cc, emissiveIntensity: 1.0, roughness: 0.1 });
