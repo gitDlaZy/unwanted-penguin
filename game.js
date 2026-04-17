@@ -405,6 +405,7 @@ const playerStats = {
   pickupRadius: 0.7,
   knockback:    0,
   cursed:       0,
+  boomerang:    false,
 };
 
 const tomeStacks = {};
@@ -429,6 +430,7 @@ const TOME_DEFS = [
   { id:'knockback',  name:'Knockback Tome',        emoji:'💥',  color:'#ff8844', desc:'+1.5 knockback on hit',     apply: s => { s.knockback  += 1.5; } },
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'Enemies tougher, more drops',apply:s => { s.cursed += 1; } },
   { id:'chaos',      name:'Chaos Tome',            emoji:'🎲',  color:'#ff44ff', desc:'Random tome effect!',        apply: (s, chaos) => chaos() },
+  { id:'hasper',     name:'Hasper Keijnen',        emoji:'🪃',  color:'#ffaa88', desc:'Your snowball boomerangs back — deals damage both ways. Next shot waits for return.', apply: s => { s.boomerang = true; } },
 ];
 
 // ── Weapons ───────────────────────────────────────────────────────────────────
@@ -460,6 +462,15 @@ const WEAPON_DEFS = [
     desc:     'Slows enemies within radius 2 by 20%. Pick again for +5% slow.',
     isWeapon: true,
     cooldown: 0,
+  },
+  {
+    id:       'homhomnomnom',
+    name:     'Homhomnomnom',
+    emoji:    '🍡',
+    color:    '#ffffff',
+    desc:     'Every 3s fires a piercing orb through all enemies in its path (range 12).',
+    isWeapon: true,
+    cooldown: 3.0,
   },
 ];
 
@@ -604,7 +615,8 @@ function tickWeapons(dt) {
     if (weaponTimers[id] <= 0) {
       weaponTimers[id] = def.cooldown * playerStats.attackRate;
       if (id === 'gandalf_staff') fireGandalfStaff();
-      if (id === 'aura_farmer')   fireAuraFarmer();
+      if (id === 'aura_farmer')    fireAuraFarmer();
+      if (id === 'homhomnomnom')   fireNomOrb();
     }
   });
 }
@@ -965,6 +977,58 @@ const explosionFX = [];
 
 const snowballs = [];
 let attackTimer = 0;
+let boomerangInFlight = false; // blocks next shot until boomerang returns
+
+// Homhomnomnom piercing orbs
+const nomOrbs = [];
+function fireNomOrb() {
+  const target = findNearestEnemy();
+  if (!target || !target.mesh) return;
+  const tx = target.mesh.position.x - player.position.x;
+  const tz = target.mesh.position.z - player.position.z;
+  const len = Math.sqrt(tx*tx + tz*tz) || 1;
+  const dir = new THREE.Vector3(tx / len, 0, tz / len);
+  const speed = SNOWBALL_SPEED * 1.4;
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 7, 7),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.2, roughness: 0.1 })
+  );
+  mesh.position.copy(player.position);
+  mesh.position.y = 1.0;
+  scene.add(mesh);
+  nomOrbs.push({ mesh, vel: dir.clone().multiplyScalar(speed), spawnPos: player.position.clone(), hitSet: new Set() });
+}
+
+function updateNomOrbs(dt) {
+  for (let i = nomOrbs.length - 1; i >= 0; i--) {
+    const orb = nomOrbs[i];
+    orb.mesh.position.addScaledVector(orb.vel, dt);
+    for (const e of enemies) {
+      if (e.dead || !e.mesh || orb.hitSet.has(e)) continue;
+      const dx = orb.mesh.position.x - e.mesh.position.x;
+      const dz = orb.mesh.position.z - e.mesh.position.z;
+      if (Math.sqrt(dx*dx + dz*dz) < 1.0) {
+        orb.hitSet.add(e);
+        const isCrit = Math.random() < playerStats.critChance;
+        e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+        spawnImpact(orb.mesh.position.x, orb.mesh.position.y, orb.mesh.position.z, isCrit);
+        if (e.hp <= 0) {
+          if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
+          if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 3 : 1);
+          if (e.type === 'belgica') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, 1);
+          killCount++;
+          document.getElementById('killHUD').textContent = `☠ ${killCount}`;
+          scene.remove(e.mesh);
+          enemies.splice(enemies.indexOf(e), 1);
+        }
+      }
+    }
+    if (orb.mesh.position.distanceTo(orb.spawnPos) > 12) {
+      scene.remove(orb.mesh);
+      nomOrbs.splice(i, 1);
+    }
+  }
+}
 const ATTACK_RATE = 0.8; // seconds between shots
 const SNOWBALL_SPEED = 23.4;
 const SNOWBALL_DAMAGE = 15;
@@ -1005,7 +1069,11 @@ function fireSingleSnowball(target) {
   mesh.position.copy(player.position);
   mesh.position.y = 1.0;
   scene.add(mesh);
-  snowballs.push({ mesh, vel: dir.multiplyScalar(speed), target });
+  const isBoomerang = playerStats.boomerang;
+  if (isBoomerang) boomerangInFlight = true;
+  snowballs.push({ mesh, vel: dir.clone().multiplyScalar(speed), target,
+    boomerang: isBoomerang, returning: false, spawnPos: player.position.clone(),
+    hitThisWay: isBoomerang ? new Set() : null });
 }
 
 function updateBurst(dt) {
@@ -1018,9 +1086,59 @@ function updateBurst(dt) {
   }
 }
 
+function hitEnemy(j, impactX, impactY, impactZ) {
+  const e = enemies[j];
+  const isCrit = Math.random() < playerStats.critChance;
+  e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+  spawnImpact(impactX, impactY, impactZ, isCrit);
+  if (playerStats.knockback > 0 && e.mesh) {
+    const kx = impactX - e.mesh.position.x, kz = impactZ - e.mesh.position.z;
+    const kd = Math.sqrt(kx*kx + kz*kz) || 1;
+    e.mesh.position.x -= (kx / kd) * playerStats.knockback;
+    e.mesh.position.z -= (kz / kd) * playerStats.knockback;
+  }
+  if (playerStats.lifesteal > 0 && Math.random() < playerStats.lifesteal && playerStats.shield < playerStats.maxShield) {
+    playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
+    updateHUD();
+  }
+  if (e.hp <= 0) {
+    if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
+    if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 3 : 1);
+    if (e.type === 'belgica') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, 1);
+    killCount++;
+    document.getElementById('killHUD').textContent = `☠ ${killCount}`;
+    scene.remove(e.mesh);
+    enemies.splice(j, 1);
+    return true; // killed
+  }
+  return false;
+}
+
 function updateSnowballs(dt) {
   for (let i = snowballs.length - 1; i >= 0; i--) {
     const s = snowballs[i];
+
+    // Boomerang: flip direction when far enough from spawn, return to player
+    if (s.boomerang) {
+      if (!s.returning && s.spawnPos.distanceTo(s.mesh.position) > 9) {
+        s.returning = true;
+        s.hitThisWay = new Set(); // reset hit tracking for return trip
+      }
+      if (s.returning) {
+        const toPlayer = new THREE.Vector3(
+          player.position.x - s.mesh.position.x, 0,
+          player.position.z - s.mesh.position.z
+        ).normalize().multiplyScalar(SNOWBALL_SPEED * playerStats.projSpeed);
+        s.vel.lerp(toPlayer, 0.15);
+        if (s.mesh.position.distanceTo(player.position) < 1.2) {
+          boomerangInFlight = false;
+          scene.remove(s.mesh);
+          snowballs.splice(i, 1);
+          continue;
+        }
+      }
+    }
+
     s.mesh.position.addScaledVector(s.vel, dt);
 
     // Check hit against all enemies
@@ -1030,36 +1148,21 @@ function updateSnowballs(dt) {
       const dx = s.mesh.position.x - e.mesh.position.x;
       const dz = s.mesh.position.z - e.mesh.position.z;
       if (Math.sqrt(dx*dx + dz*dz) < 1.2 * playerStats.projSize) {
-        const isCrit = Math.random() < playerStats.critChance;
-        e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+        // Boomerang: skip enemies already hit on this leg
+        if (s.boomerang && s.hitThisWay && s.hitThisWay.has(e)) continue;
+        if (s.boomerang && s.hitThisWay) s.hitThisWay.add(e);
+        hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z);
         hit = true;
-        spawnImpact(s.mesh.position.x, s.mesh.position.y, s.mesh.position.z, isCrit);
-        // Knockback
-        if (playerStats.knockback > 0 && e.mesh) {
-          const kDist = Math.sqrt(dx*dx + dz*dz) || 1;
-          e.mesh.position.x -= (dx / kDist) * playerStats.knockback;
-          e.mesh.position.z -= (dz / kDist) * playerStats.knockback;
-        }
-        // Lifesteal — restore shield
-        if (playerStats.lifesteal > 0 && Math.random() < playerStats.lifesteal && playerStats.shield < playerStats.maxShield) {
-          playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
-          updateHUD();
-        }
-        if (e.hp <= 0) {
-          if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
-          if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 3 : 1);
-          if (e.type === 'belgica') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, 1);
-          killCount++;
-          document.getElementById('killHUD').textContent = `☠ ${killCount}`;
-          scene.remove(e.mesh);
-          enemies.splice(j, 1);
-        }
         break;
       }
     }
 
+    // Boomerang: don't remove on hit — only remove when out of range or returned
+    if (s.boomerang) { hit = false; }
+
     // Remove if hit or out of range
     if (hit || s.mesh.position.distanceTo(player.position) > 12) {
+      if (s.boomerang) boomerangInFlight = false;
       scene.remove(s.mesh);
       snowballs.splice(i, 1);
     }
@@ -2584,8 +2687,8 @@ function update(dt) {
   }
   pos.needsUpdate = true;
 
-  // Auto-attack
-  if (enemies.length > 0) {
+  // Auto-attack (boomerang waits for return before firing again)
+  if (enemies.length > 0 && !boomerangInFlight) {
     attackTimer -= dt;
     if (attackTimer <= 0) {
       const target = findNearestEnemy();
@@ -2611,6 +2714,7 @@ function update(dt) {
   updateStorm(dt);
   updateEnemies(dt);
   updateSnowballs(dt);
+  updateNomOrbs(dt);
   updateBombs(dt);
   updateExplosions(dt);
 }
