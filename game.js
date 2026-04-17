@@ -470,7 +470,7 @@ let crackJumps = 0;
 
 // Crack jump progress HUD
 const crackHUD = document.createElement('div');
-crackHUD.style.cssText = 'position:fixed;bottom:160px;left:50%;transform:translateX(-50%);pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:3px';
+crackHUD.style.cssText = 'position:fixed;bottom:24px;left:16px;pointer-events:none;display:flex;flex-direction:column;align-items:flex-start;gap:3px';
 const crackHUDLabel = document.createElement('div');
 crackHUDLabel.style.cssText = 'color:#aee8ff;font-family:monospace;font-size:12px;text-shadow:0 0 6px #44aaff';
 crackHUDLabel.textContent = '🧊 0 / 10';
