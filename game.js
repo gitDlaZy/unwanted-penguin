@@ -1506,7 +1506,7 @@ function resumeGame() {
   if (!waitingToResume) return;
   waitingToResume             = false;
   resumeHint.style.display    = 'none';
-  playerState.iframes         = 1.5; // brief safe window after resuming
+  playerState.iframes         = 0.2; // brief safe window after resuming
   movementLockout             = 0.3;
   touchInput.dx = 0; touchInput.dz = 0; touchInput.jump = false;
 }
@@ -2081,6 +2081,9 @@ function updateHumans(dt) {
 }
 
 spawnHumans();
+
+// Test tome pickup at (31, 10)
+spawnMapItem(31, 10);
 
 // ── Touch Controls ───────────────────────────────────────────────────────────
 
