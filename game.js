@@ -1012,9 +1012,11 @@ function updateEnemies(dt) {
         e.mesh.position.z += sepZ * 0.3;
 
         const inPool = toxicPools.some(p => Math.sqrt((e.mesh.position.x-p.x)**2+(e.mesh.position.z-p.z)**2) < p.r);
+        if (e.nomSlowTimer > 0) e.nomSlowTimer -= dt;
         const toxicMult = inPool ? getToxicSlow() : 1;
-        e.mesh.position.x += (dx / dist) * 6.3 * dt * toxicMult;
-        e.mesh.position.z += (dz / dist) * 6.3 * dt * toxicMult;
+        const nomMult   = (e.nomSlowTimer > 0) ? 0.8 : 1;
+        e.mesh.position.x += (dx / dist) * 6.3 * dt * toxicMult * nomMult;
+        e.mesh.position.z += (dz / dist) * 6.3 * dt * toxicMult * nomMult;
         // Model faces +X — use atan2(-dz, dx) for correct orientation
         e.mesh.rotation.y = Math.atan2(-dz, dx);
       }
@@ -1129,6 +1131,7 @@ function updateNomOrbs(dt) {
         const cd = orb.hitCooldowns.get(e) || 0;
         if (cd > 0) continue;
         orb.hitCooldowns.set(e, 0.4);
+        e.nomSlowTimer = 1.0; // 20% slow for 1 second
         const isCrit = Math.random() < playerStats.critChance;
         e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1) * 3;
         spawnImpact(orb.mesh.position.x, orb.mesh.position.y, orb.mesh.position.z, isCrit);
