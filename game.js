@@ -384,7 +384,8 @@ player.add(penguinMesh);
 player.position.set(35, 0, 25);
 scene.add(player);
 
-const playerState = { hp: 2, maxHp: 2, iframes: 0, dead: false };
+const playerState = { hp: 2, maxHp: 2, iframes: 0, dead: false,
+  shaggyCharges: 0, shaggyMaxCharges: 0, shaggyRechargeTimer: 0 };
 
 // ── Player Stats (tome upgrades) ──────────────────────────────────────────────
 
@@ -420,7 +421,10 @@ const TOME_DEFS = [
     const stacks = tomeStacks['quantity'] || 0;
     if (stacks === 0) { s.projCount += 1; }
     else { s.projExtraChance = Math.min(1, (s.projExtraChance||0) + 0.5); }
-    if (s.shaggyStacks > 0) s.shaggyStacks++; // Quantity stacks Shaggy if equipped
+    if (playerState.shaggyMaxCharges > 0) {
+      playerState.shaggyMaxCharges++;
+      playerState.shaggyCharges = Math.min(playerState.shaggyCharges + 1, playerState.shaggyMaxCharges);
+    }
   }},
   { id:'size',       name:'Size Tome',             emoji:'🔮',  color:'#cc88ff', desc:'+20% projectile size',      apply: s => { s.projSize   *= 1.2; } },
   { id:'projspeed',  name:'Speed Tome',            emoji:'💨',  color:'#88ffcc', desc:'+15% projectile speed',     apply: s => { s.projSpeed  *= 1.15; } },
@@ -434,7 +438,13 @@ const TOME_DEFS = [
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'Enemies tougher, more drops',apply:s => { s.cursed += 1; } },
   { id:'chaos',      name:'Chaos Tome',            emoji:'🎲',  color:'#ff44ff', desc:'Random tome effect!',        apply: (s, chaos) => chaos() },
   { id:'hasper',     name:'Hasper Keijnen',        emoji:'🪃',  color:'#ffaa88', desc:'Boomerang snowball — deals damage both ways, +0.5 damage. Next shot waits for return.', apply: s => { s.boomerang = true; s.damage += 0.5; } },
-  { id:'shaggy',    name:'Shaggy',                emoji:'🦬', color:'#cc9966', desc:'2s invulnerability after damage + deal 1 dmg to nearest enemy. Quantity adds stacks.', apply: s => { s.iframeDuration = 2.0; s.shaggyStacks = Math.max(1, s.shaggyStacks + 1); } },
+  { id:'shaggy',    name:'Shaggy',                emoji:'🦬', color:'#cc9966', desc:'Absorb hits with charges (2s iframes + counter dmg). Refresh after 15s no damage. Quantity adds charges.', apply: s => {
+    s.iframeDuration = 2.0;
+    s.shaggyStacks = Math.max(1, s.shaggyStacks + 1);
+    playerState.shaggyMaxCharges++;
+    playerState.shaggyCharges = playerState.shaggyMaxCharges;
+    playerState.shaggyRechargeTimer = 0;
+  }},
 ];
 
 // ── Weapons ───────────────────────────────────────────────────────────────────
@@ -1651,11 +1661,26 @@ window.addEventListener('keydown', e => {
   if ((e.code === 'Space' || e.key === 'l' || e.key === 'p') && playerState.dead && !typingName) location.reload();
 });
 
+function triggerShaggy() {
+  playerState.shaggyCharges--;
+  playerState.shaggyRechargeTimer = 0;
+  playerState.iframes = playerStats.iframeDuration;
+  if (playerStats.shaggyStacks > 0) {
+    const nearest = findNearestEnemy();
+    if (nearest) nearest.hp -= playerStats.shaggyStacks;
+  }
+}
+
 function killPlayer() {
   if (playerState.dead || playerState.iframes > 0) return;
   // Evasion — chance to completely dodge
   if (playerStats.evasion > 0 && Math.random() < playerStats.evasion) {
     playerState.iframes = 0.8;
+    return;
+  }
+  // Shaggy charges absorb the hit
+  if (playerState.shaggyCharges > 0) {
+    triggerShaggy();
     return;
   }
   // Shield absorbs hit
@@ -1670,10 +1695,6 @@ function killPlayer() {
   updateHUD();
   if (playerState.hp > 0) {
     playerState.iframes = playerStats.iframeDuration;
-    if (playerStats.shaggyStacks > 0) {
-      const nearest = findNearestEnemy();
-      if (nearest) { nearest.hp -= playerStats.shaggyStacks; }
-    }
     return;
   }
   playerState.dead = true;
@@ -2612,6 +2633,13 @@ function update(dt) {
   updateTomeInput(dt);
   if (playerState.dead || choosingTome || waitingToResume) return;
   playerState.iframes   = Math.max(0, playerState.iframes - dt);
+  if (playerState.shaggyMaxCharges > 0 && playerState.shaggyCharges < playerState.shaggyMaxCharges) {
+    playerState.shaggyRechargeTimer += dt;
+    if (playerState.shaggyRechargeTimer >= 15) {
+      playerState.shaggyCharges = playerState.shaggyMaxCharges;
+      playerState.shaggyRechargeTimer = 0;
+    }
+  }
   movementLockout       = Math.max(0, movementLockout - dt);
 
   // Player movement
