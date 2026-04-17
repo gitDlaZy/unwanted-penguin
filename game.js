@@ -435,17 +435,27 @@ const TOME_DEFS = [
 
 const WEAPON_DEFS = [
   {
-    id:      'gandalf_staff',
-    name:    'Staff of Gandalf',
-    emoji:   '🪄',
-    color:   '#ffffff',
-    desc:    'Every 2.5s, strikes a random enemy within range 10. Uses all tome multipliers.',
+    id:       'gandalf_staff',
+    name:     'Staff of Gandalf',
+    emoji:    '🪄',
+    color:    '#ffffff',
+    desc:     'Every 2.5s, strikes a random enemy within range 10. Uses all tome multipliers.',
     isWeapon: true,
+    cooldown: 2.5,
+  },
+  {
+    id:       'aura_farmer',
+    name:     'Aura Farmer',
+    emoji:    '🌀',
+    color:    '#44ffaa',
+    desc:     'Every 2s, deals damage to ALL enemies within radius 3. Uses all tome multipliers.',
+    isWeapon: true,
+    cooldown: 2.0,
   },
 ];
 
-let equippedWeapon = null;
-let weaponCooldown = 0;
+const equippedWeapons = new Set();   // supports multiple weapons at once
+const weaponTimers    = {};          // per-weapon cooldown timers
 
 function showLightningStrike(x, z) {
   const boltH = 18;
@@ -496,18 +506,71 @@ function fireGandalfStaff() {
   showLightningStrike(target.mesh.position.x, target.mesh.position.z);
 }
 
-function tickWeapons(dt) {
-  if (!equippedWeapon || choosingTome || playerState.dead) return;
-  weaponCooldown -= dt;
-  if (weaponCooldown <= 0) {
-    weaponCooldown = 2.5 * playerStats.attackRate;
-    if (equippedWeapon === 'gandalf_staff') fireGandalfStaff();
+function showAuraPulse(x, z) {
+  const geo  = new THREE.RingGeometry(2.8, 3.0, 32);
+  const mat  = new THREE.MeshBasicMaterial({ color: 0x44ffaa, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+  const ring = new THREE.Mesh(geo, mat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(x, 0.1, z);
+  scene.add(ring);
+
+  const light = new THREE.PointLight(0x44ffaa, 6, 8);
+  light.position.set(x, 1, z);
+  scene.add(light);
+
+  let age = 0;
+  const tick = setInterval(() => {
+    age += 0.05;
+    mat.opacity     = Math.max(0, 0.9 - age * 3.5);
+    light.intensity = Math.max(0, 6 - age * 25);
+    if (age >= 0.35) {
+      clearInterval(tick);
+      scene.remove(ring);
+      scene.remove(light);
+      geo.dispose();
+      mat.dispose();
+    }
+  }, 50);
+}
+
+function fireAuraFarmer() {
+  const px = player.position.x, pz = player.position.z;
+  const inRange = enemies.filter(e => !e.dead && e.mesh &&
+    Math.sqrt((e.mesh.position.x - px) ** 2 + (e.mesh.position.z - pz) ** 2) <= 3);
+  if (!inRange.length) return;
+  inRange.forEach(e => {
+    const isCrit = Math.random() < playerStats.critChance;
+    e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+    if (playerStats.knockback > 0 && e.mesh) {
+      const dx = e.mesh.position.x - px, dz = e.mesh.position.z - pz;
+      const dist = Math.sqrt(dx * dx + dz * dz) || 1;
+      e.mesh.position.x += (dx / dist) * playerStats.knockback;
+      e.mesh.position.z += (dz / dist) * playerStats.knockback;
+    }
+  });
+  if (playerStats.lifesteal > 0 && Math.random() < playerStats.lifesteal && playerStats.shield < playerStats.maxShield) {
+    playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
+    updateHUD();
   }
+  showAuraPulse(px, pz);
+}
+
+function tickWeapons(dt) {
+  if (!equippedWeapons.size || choosingTome || playerState.dead) return;
+  equippedWeapons.forEach(id => {
+    const def = WEAPON_DEFS.find(w => w.id === id);
+    weaponTimers[id] = (weaponTimers[id] || 0) - dt;
+    if (weaponTimers[id] <= 0) {
+      weaponTimers[id] = def.cooldown * playerStats.attackRate;
+      if (id === 'gandalf_staff') fireGandalfStaff();
+      if (id === 'aura_farmer')   fireAuraFarmer();
+    }
+  });
 }
 
 function applyWeapon(id) {
-  equippedWeapon = id;
-  weaponCooldown = 0; // fire immediately on next tick
+  equippedWeapons.add(id);
+  weaponTimers[id] = 0; // fire immediately on next tick
 }
 
 // ── HUD ───────────────────────────────────────────────────────────────────────
@@ -1545,7 +1608,7 @@ function showTomeChoice() {
       <div style="font-size:15px;font-weight:bold;color:${tome.color};margin-bottom:8px">${tome.name}</div>
       <div style="font-size:12px;opacity:0.75;line-height:1.4">${tome.desc}</div>
       ${!tome.isWeapon && stacks > 0 ? `<div style="font-size:11px;opacity:0.45;margin-top:8px">Stack: ${stacks}</div>` : ''}
-      ${tome.isWeapon && equippedWeapon === tome.id ? `<div style="font-size:11px;opacity:0.55;margin-top:8px;color:${tome.color}">✓ Equipped</div>` : ''}
+      ${tome.isWeapon && equippedWeapons.has(tome.id) ? `<div style="font-size:11px;opacity:0.55;margin-top:8px;color:${tome.color}">✓ Equipped</div>` : ''}
     `;
     card.onclick = () => { selectedTomeIdx = i; applyTome(tome.id); };
     container.appendChild(card);
