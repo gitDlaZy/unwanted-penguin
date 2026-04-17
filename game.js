@@ -16,6 +16,18 @@ scene.fog = new THREE.FogExp2(0x0a1a2e, 0.008);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
 
+// Cap horizontal FOV at 80° so landscape/widescreen doesn't reveal dramatically more
+function adaptFOV() {
+  const aspect = window.innerWidth / window.innerHeight;
+  const maxHRad = 80 * Math.PI / 180;
+  const hRad = 2 * Math.atan(Math.tan(Math.PI / 3) * aspect); // based on vFOV=60°
+  camera.fov = hRad > maxHRad
+    ? (2 * Math.atan(Math.tan(maxHRad / 2) / aspect) * 180 / Math.PI)
+    : 60;
+  camera.updateProjectionMatrix();
+}
+adaptFOV();
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
@@ -2391,6 +2403,6 @@ loop();
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  adaptFOV();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
