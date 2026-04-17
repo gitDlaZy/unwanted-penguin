@@ -163,7 +163,7 @@ function buildMountain(cx, cz) {
     mountainColliders.push({ x: bx, z: bz, r: bs * 1.2 });
   }
 }
-buildMountain(-52, -52);
+buildMountain(-20, -20);
 
 // ── Water Zone (South-East) ───────────────────────────────────────────────────
 
@@ -357,11 +357,12 @@ function buildSkua() {
 // Wrapper group controls position/rotation; model inside is pre-rotated 180°
 const player = new THREE.Group();
 const penguinMesh = buildPenguin();
-penguinMesh.rotation.y = Math.PI; // face forward correctly
+penguinMesh.rotation.y = Math.PI;
 player.add(penguinMesh);
+player.position.set(35, 0, 25);
 scene.add(player);
 
-const playerState = { hp: 1, maxHp: 1, iframes: 0, dead: false };
+const playerState = { hp: 2, maxHp: 2, iframes: 0, dead: false };
 
 // ── Player Stats (tome upgrades) ──────────────────────────────────────────────
 
@@ -455,6 +456,36 @@ xpRow.appendChild(xpLabelEl);
 xpRow.appendChild(xpBarOuter);
 hud.appendChild(xpRow);
 
+let crackJumps = 0;
+
+// Crack jump progress HUD
+const crackHUD = document.createElement('div');
+crackHUD.style.cssText = 'position:fixed;bottom:160px;left:50%;transform:translateX(-50%);pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:3px';
+const crackHUDLabel = document.createElement('div');
+crackHUDLabel.style.cssText = 'color:#aee8ff;font-family:monospace;font-size:12px;text-shadow:0 0 6px #44aaff';
+crackHUDLabel.textContent = '🧊 0 / 10';
+const crackHUDPips = document.createElement('div');
+crackHUDPips.style.cssText = 'display:flex;gap:3px';
+for (let i = 0; i < 10; i++) {
+  const pip = document.createElement('div');
+  pip.style.cssText = 'width:10px;height:10px;border-radius:2px;border:1px solid #44aaff44;background:#0a2233';
+  crackHUDPips.appendChild(pip);
+}
+crackHUD.appendChild(crackHUDLabel);
+crackHUD.appendChild(crackHUDPips);
+document.body.appendChild(crackHUD);
+
+function updateJumpHUD() {
+  const progress = crackJumps % 10;
+  const milestone = Math.floor(crackJumps / 10);
+  crackHUDLabel.textContent = `🧊 ${progress} / 10`;
+  const pips = crackHUDPips.children;
+  for (let i = 0; i < 10; i++) {
+    pips[i].style.background = i < progress ? '#44aaff' : '#0a2233';
+    pips[i].style.borderColor = i < progress ? '#88ddff' : '#44aaff44';
+  }
+}
+
 function updateXPBar() {
   const needed = xpToNext(playerLevel);
   xpLabelEl.textContent = `LVL ${playerLevel} — XP ${playerXP} / ${needed}`;
@@ -540,7 +571,7 @@ function spawnSeal(hpScale = 1) {
   const mesh = elite ? buildPolarBear() : buildSeal();
   mesh.position.set(Math.cos(angle) * 88, 0, Math.sin(angle) * 88);
   scene.add(mesh);
-  enemies.push({ mesh, type: 'seal', hp: Math.round((elite ? 120 : 45) * hpScale), elite });
+  enemies.push({ mesh, type: 'seal', hp: Math.round((elite ? 120 : 30) * hpScale), elite });
 }
 
 function spawnSkua(hpScale = 1) {
@@ -556,6 +587,53 @@ function spawnSkua(hpScale = 1) {
 let sealSpawnTimer = 4;
 let skuaSpawnTimer = 4;
 let gameTime = 0; // seconds elapsed
+let swarmTimer = 90; // seconds until first belgica swarm
+
+function buildBelgica() {
+  const g = new THREE.Group();
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+
+  // Elongated body
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), blackMat);
+  body.scale.set(2.2, 1.0, 1.0);
+  body.position.y = 0.09;
+  g.add(body);
+
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.065, 6, 5), blackMat);
+  head.position.set(0.22, 0.09, 0);
+  g.add(head);
+
+  // 6 tiny legs (3 per side)
+  [-1, 1].forEach(side => {
+    for (let i = 0; i < 3; i++) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.06, 0.005), blackMat);
+      leg.position.set((i - 1) * 0.08, 0.03, side * 0.09);
+      leg.rotation.z = side * 0.4;
+      g.add(leg);
+    }
+  });
+
+  return g;
+}
+
+function spawnSwarmWave() {
+  const count = 15 + Math.floor(Math.random() * 6); // 15-20
+  for (let i = 0; i < count; i++) {
+    const edge = Math.floor(Math.random() * 4);
+    let sx, sz;
+    const edgeVal = 85 + Math.random() * 8;
+    if      (edge === 0) { sx =  edgeVal; sz = (Math.random() - 0.5) * 160; }
+    else if (edge === 1) { sx = -edgeVal; sz = (Math.random() - 0.5) * 160; }
+    else if (edge === 2) { sx = (Math.random() - 0.5) * 160; sz =  edgeVal; }
+    else                 { sx = (Math.random() - 0.5) * 160; sz = -edgeVal; }
+
+    const mesh = buildBelgica();
+    mesh.position.set(sx, 0, sz);
+    scene.add(mesh);
+    enemies.push({ mesh, type: 'belgica', hp: 8 });
+  }
+}
 
 function updateEnemies(dt) {
   gameTime += dt;
@@ -631,6 +709,25 @@ function updateEnemies(dt) {
         }
       }
     }
+
+    if (e.type === 'belgica') {
+      // Ground-based walk toward player at speed 3
+      if (dist > 0.1) {
+        e.mesh.position.x += (dx / dist) * 3 * dt;
+        e.mesh.position.z += (dz / dist) * 3 * dt;
+        e.mesh.position.y = 0;
+        e.mesh.rotation.y = Math.atan2(-dz, dx);
+      }
+      // Kill player on contact
+      if (dist < 0.6 && playerState.iframes <= 0) killPlayer();
+    }
+  }
+
+  // Swarm timer — independent of storm
+  swarmTimer -= dt;
+  if (swarmTimer <= 0) {
+    spawnSwarmWave();
+    swarmTimer = 90;
   }
 }
 
@@ -726,6 +823,7 @@ function updateSnowballs(dt) {
         if (e.hp <= 0) {
           if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
           if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 3 : 1);
+          if (e.type === 'belgica') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, 1);
           killCount++;
           document.getElementById('killHUD').textContent = `☠ ${killCount}`;
           scene.remove(e.mesh);
@@ -886,26 +984,111 @@ function spawnCrack(x, z, length, angle) {
     ax: x + Math.cos(angle)*half, az: z + Math.sin(angle)*half,
     bx: x - Math.cos(angle)*half, bz: z - Math.sin(angle)*half,
     halfWidth: 0.32,
+    cooldownTimer: 0, // 20-sec cooldown after jump-clear
   });
 }
 
-// Place cracks — avoid the spawn area near center
-// Cracks spread across the full 96-radius map (avoid NW mountain & SE water)
-[
-  [  8,  3, 6, 0.3], [ -7, -5, 5, 1.1], [  4, -9, 7, 0.0], [-10,  8, 6, 0.7],
-  [ 14, -2, 5, 1.4], [ -4, 13, 8, 0.2], [ 10, 10, 6, 0.9], [-15,  0, 7, 0.5],
-  [ 28,  5, 7, 0.6], [-28,  8, 6, 1.2], [ 20,-25, 8, 0.4], [-20, 25, 5, 1.0],
-  [ 35,-15, 6, 0.8], [-35, 15, 7, 0.3], [ 45,  5, 8, 1.3], [-45,-10, 6, 0.7],
-  [  5, 40, 7, 0.1], [ -5,-40, 5, 0.9], [ 30, 35, 6, 1.5], [-30,-35, 8, 0.5],
-  [ 55,-30, 7, 0.2], [-55, 30, 6, 1.1], [ 15,-60, 5, 0.6], [-15, 60, 7, 1.4],
-  [ 60, 20, 6, 0.8],
-].forEach(([x, z, len, ang]) => spawnCrack(x, z, len, ang));
+// Generate cracks across the full map on a jittered grid
+(function placeCracks() {
+  const step = 14;
+  for (let gx = -85; gx <= 85; gx += step) {
+    for (let gz = -85; gz <= 85; gz += step) {
+      const x = gx + (Math.random() - 0.5) * 12;
+      const z = gz + (Math.random() - 0.5) * 12;
+      if (Math.hypot(x, z) < 9) continue;                      // spawn area
+      if (Math.hypot(x + 20, z + 20) < 22) continue;           // mountain
+      if (Math.hypot(x - WATER_CX, z - WATER_CZ) < 36) continue; // water
+      if (Math.abs(x) > 90 || Math.abs(z) > 90) continue;
+      spawnCrack(x, z, Math.random() * 4 + 4, Math.random() * Math.PI);
+    }
+  }
+})();
+
+// ── Thin Ice Zone (South-West) ────────────────────────────────────────────────
+
+const THIN_ICE_CX = -60, THIN_ICE_CZ = 60, THIN_ICE_R = 20;
+const thinIceTiles = [];
+
+const thinIceNormalMat  = new THREE.MeshStandardMaterial({ color: 0x99ccee, roughness: 0.1, metalness: 0.5, transparent: true, opacity: 0.75 });
+const thinIceCrackedMat = new THREE.MeshStandardMaterial({ color: 0x556677, roughness: 0.5, transparent: true, opacity: 0.9 });
+const thinIceBrokenMat  = new THREE.MeshStandardMaterial({ color: 0x050d14, roughness: 1.0, transparent: true, opacity: 0.95 });
+
+// Build thin ice tiles on a grid inside the SW zone
+(function placeThinIce() {
+  const step = 5;
+  for (let tx = THIN_ICE_CX - THIN_ICE_R; tx <= THIN_ICE_CX + THIN_ICE_R; tx += step) {
+    for (let tz = THIN_ICE_CZ - THIN_ICE_R; tz <= THIN_ICE_CZ + THIN_ICE_R; tz += step) {
+      const jx = tx + (Math.random() - 0.5) * 2;
+      const jz = tz + (Math.random() - 0.5) * 2;
+      if (Math.hypot(jx - THIN_ICE_CX, jz - THIN_ICE_CZ) > THIN_ICE_R) continue;
+      if (Math.hypot(jx, jz) < 10) continue; // avoid spawn
+      const tileR = 1.8 + Math.random() * 0.4;
+      const mesh = new THREE.Mesh(new THREE.CircleGeometry(tileR, 10), thinIceNormalMat.clone());
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(jx, 0.03, jz);
+      scene.add(mesh);
+      thinIceTiles.push({ mesh, x: jx, z: jz, r: tileR, state: 'normal', crackTimer: 0, recoverTimer: 0 });
+    }
+  }
+
+  // Stepping stone ice spots in the zone
+  for (let i = 0; i < 5; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const d = Math.random() * (THIN_ICE_R - 2);
+    const sx = THIN_ICE_CX + Math.cos(a) * d;
+    const sz = THIN_ICE_CZ + Math.sin(a) * d;
+    const spot = new THREE.Mesh(new THREE.CircleGeometry(1.5, 10),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.3 }));
+    spot.rotation.x = -Math.PI / 2;
+    spot.position.set(sx, 0.06, sz);
+    scene.add(spot);
+  }
+})();
+
+function updateThinIce(dt) {
+  if (playerState.dead) return;
+  const px = player.position.x, pz = player.position.z;
+  const onGround = playerY === 0;
+
+  for (const tile of thinIceTiles) {
+    const dist = Math.hypot(px - tile.x, pz - tile.z);
+    const playerOnTile = dist < tile.r && onGround;
+
+    if (tile.state === 'normal') {
+      if (playerOnTile) {
+        // Start cracking
+        tile.state = 'cracking';
+        tile.crackTimer = 0.5;
+        tile.mesh.material = thinIceCrackedMat.clone();
+        movementLockout = Math.max(movementLockout, 0); // slight warning
+      }
+    } else if (tile.state === 'cracking') {
+      tile.crackTimer -= dt;
+      if (tile.crackTimer <= 0) {
+        tile.state = 'broken';
+        tile.recoverTimer = 20;
+        tile.mesh.material = thinIceBrokenMat.clone();
+        if (playerOnTile) movementLockout = Math.max(movementLockout, 1.0);
+      }
+    } else if (tile.state === 'broken') {
+      tile.recoverTimer -= dt;
+      // Kill player if standing on broken tile at ground level
+      if (playerOnTile && playerY === 0 && playerState.iframes <= 0) {
+        killPlayer();
+      }
+      if (tile.recoverTimer <= 0) {
+        tile.state = 'normal';
+        tile.mesh.material = thinIceNormalMat.clone();
+      }
+    }
+  }
+}
 
 // ── Snowstorm ─────────────────────────────────────────────────────────────────
 
-let stormTriggered = false;
 let stormActive    = false;
 let stormTimer     = 0;
+let stormCooldown  = 30; // seconds until next storm (replaces one-shot flag)
 let stormSlow      = 1.0; // multiplier on player speed
 
 const stormOverlay = document.createElement('div');
@@ -925,23 +1108,29 @@ stormLabel.style.cssText = `
 stormLabel.textContent = '❄ SNOWSTORM — movement slowed ❄';
 document.body.appendChild(stormLabel);
 
+function triggerStorm() {
+  stormActive   = true;
+  stormTimer    = 5;
+  stormOverlay.style.display = 'block';
+  stormLabel.style.display   = 'block';
+  // Triple snow speed visually
+  for (let i = 0; i < SNOW_COUNT; i++) snowVel[i] *= 3;
+}
+
 function updateStorm(dt) {
-  if (!stormTriggered && gameTime >= 30) {
-    stormTriggered = true;
-    stormActive    = true;
-    stormTimer     = 5;
-    stormOverlay.style.display = 'block';
-    stormLabel.style.display   = 'block';
-    // Triple snow speed visually
-    for (let i = 0; i < SNOW_COUNT; i++) snowVel[i] *= 3;
+  if (!stormActive) {
+    // Count down until next storm
+    stormCooldown -= dt;
+    if (stormCooldown <= 0) triggerStorm();
   }
 
   if (stormActive) {
     stormTimer -= dt;
     stormSlow   = 0.85;
     if (stormTimer <= 0) {
-      stormActive = false;
-      stormSlow   = 1.0;
+      stormActive   = false;
+      stormSlow     = 1.0;
+      stormCooldown = 30; // reset for next storm
       stormOverlay.style.display = 'none';
       stormLabel.style.display   = 'none';
       for (let i = 0; i < SNOW_COUNT; i++) snowVel[i] /= 3;
@@ -1035,8 +1224,7 @@ function showDeathScreen() {
   deathScreen.innerHTML = `
     <div style="font-size:46px;font-weight:bold;letter-spacing:6px;text-shadow:0 0 30px #00aaff">YOU FROZE</div>
     <div style="font-size:15px;opacity:0.5">☠ ${killCount} kills &nbsp;|&nbsp; Level ${playerLevel}</div>
-    <div style="font-size:13px;opacity:0.35;margin-bottom:4px">💡 L / P to jump over cracks</div>
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:4px">
+<div style="display:flex;gap:10px;align-items:center;margin-bottom:4px">
       <input id="nameInput" type="text" maxlength="16" placeholder="Enter your name"
         style="background:rgba(0,20,50,0.8);border:1px solid #44aaff;color:#aee8ff;
                font-family:monospace;font-size:16px;padding:8px 14px;border-radius:4px;
@@ -1045,6 +1233,12 @@ function showDeathScreen() {
         style="background:transparent;border:2px solid #44aaff;color:#aee8ff;
                font-family:monospace;font-size:14px;padding:8px 18px;cursor:pointer;border-radius:4px;
                letter-spacing:2px;white-space:nowrap">SUBMIT</button>
+    </div>
+    <div style="display:flex;justify-content:center;margin-bottom:4px">
+      <button id="refreshBtn"
+        style="background:transparent;border:1px solid #44aaff44;color:#aee8ff99;
+               font-family:monospace;font-size:12px;padding:4px 14px;cursor:pointer;border-radius:4px;
+               letter-spacing:1px">↻ REFRESH</button>
     </div>
     <div id="scoreboardEl" style="min-height:60px"><div style="opacity:0.4;font-size:13px">Loading scores...</div></div>
     <button id="retryBtn"
@@ -1081,6 +1275,13 @@ function showDeathScreen() {
   submit.addEventListener('click', doSubmit);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSubmit(); } });
   document.getElementById('retryBtn').addEventListener('click', () => location.reload());
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    const el = document.getElementById('scoreboardEl');
+    if (el) el.innerHTML = '<div style="opacity:0.4;font-size:13px">Refreshing...</div>';
+    fetchLeaderboard().then(scores => {
+      if (el) el.innerHTML = renderScoreboard(scores);
+    });
+  });
   setTimeout(() => input.focus(), 100);
 }
 
@@ -1090,7 +1291,7 @@ window.addEventListener('keydown', e => {
 });
 
 function killPlayer() {
-  if (playerState.dead) return;
+  if (playerState.dead || playerState.iframes > 0) return;
   // Evasion — chance to completely dodge
   if (playerStats.evasion > 0 && Math.random() < playerStats.evasion) {
     playerState.iframes = 0.8;
@@ -1103,9 +1304,14 @@ function killPlayer() {
     updateHUD();
     return;
   }
-  playerState.dead = true;
-  playerState.hp = 0;
+  // Lose 1 HP — survive if still above 0
+  playerState.hp--;
   updateHUD();
+  if (playerState.hp > 0) {
+    playerState.iframes = 1.0; // 1s invulnerability + blink
+    return;
+  }
+  playerState.dead = true;
   penguinMesh.visible = false;
   showDeathScreen();
 }
@@ -1124,16 +1330,19 @@ let prevTomeConfirm     = false;
 // Tome choice UI
 const tomeScreen = document.createElement('div');
 tomeScreen.style.cssText = `
-  display:none; position:fixed; inset:0; z-index:200;
+  display:none; position:fixed; inset:0; z-index:210;
   background:rgba(0,8,24,0.92);
   flex-direction:column; align-items:center; justify-content:center;
   font-family:monospace; color:#aee8ff;
+  pointer-events:none;
 `;
 tomeScreen.innerHTML = `
-  <div style="font-size:30px;font-weight:bold;letter-spacing:4px;text-shadow:0 0 20px #44aaff;margin-bottom:8px">CHOOSE AN UPGRADE</div>
-  <div style="font-size:13px;opacity:0.5;margin-bottom:32px">Pick one tome to carry forward</div>
-  <div id="tomeCards" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center;max-width:800px"></div>
-  <div style="margin-top:28px;font-size:12px;opacity:0.4;letter-spacing:2px">A / D to navigate &nbsp;|&nbsp; L / P to confirm</div>
+  <div style="pointer-events:auto;display:flex;flex-direction:column;align-items:center">
+    <div style="font-size:30px;font-weight:bold;letter-spacing:4px;text-shadow:0 0 20px #44aaff;margin-bottom:8px">CHOOSE AN UPGRADE</div>
+    <div style="font-size:13px;opacity:0.5;margin-bottom:32px">Pick one tome to carry forward</div>
+    <div id="tomeCards" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center;max-width:800px"></div>
+    <div style="margin-top:28px;font-size:12px;opacity:0.4;letter-spacing:2px">A / D to navigate &nbsp;|&nbsp; L / P to confirm</div>
+  </div>
 `;
 document.body.appendChild(tomeScreen);
 
@@ -1157,6 +1366,37 @@ function updateTomeHighlight() {
     card.style.boxShadow     = selected ? `0 0 32px ${tome.color}88` : `0 0 12px ${tome.color}11`;
     card.style.background    = selected ? 'rgba(0,28,56,0.95)' : 'rgba(0,16,36,0.9)';
   });
+}
+
+let pendingTomes = 0;
+
+function updateLevelBtn() {
+  if (pendingTomes > 0) {
+    levelBtn.style.opacity      = '1';
+    levelBtn.style.pointerEvents = 'auto';
+    levelBtn.style.borderColor  = '#ffee44cc';
+    levelBtn.style.background   = 'rgba(40,30,0,0.6)';
+    levelBtn.textContent        = pendingTomes > 1 ? `LEVEL\n×${pendingTomes}` : 'LEVEL';
+  } else {
+    levelBtn.style.opacity      = '0.25';
+    levelBtn.style.pointerEvents = 'none';
+    levelBtn.style.borderColor  = '#ffee4433';
+    levelBtn.style.background   = 'rgba(0,15,40,0.4)';
+    levelBtn.textContent        = 'LEVEL';
+  }
+}
+
+function queueTome() {
+  pendingTomes++;
+  updateLevelBtn();
+}
+
+function openPendingTome() {
+  if (pendingTomes > 0 && !choosingTome && !playerState.dead) {
+    pendingTomes--;
+    updateLevelBtn();
+    showTomeChoice();
+  }
 }
 
 function showTomeChoice() {
@@ -1213,6 +1453,39 @@ function showChaosReveal(tome) {
   }, 1800);
 }
 
+// ── Post-tome resume gate ─────────────────────────────────────────────────────
+
+let waitingToResume = false;
+
+const resumeHint = document.createElement('div');
+resumeHint.style.cssText = `
+  display:none; position:fixed; bottom:220px; left:50%; transform:translateX(-50%);
+  font-family:monospace; font-size:13px; color:#aee8ff; opacity:0.7;
+  letter-spacing:2px; pointer-events:none; z-index:210;
+  text-shadow:0 0 8px #44aaff;
+`;
+resumeHint.textContent = 'TAP ANYWHERE / PRESS ANY KEY TO CONTINUE';
+document.body.appendChild(resumeHint);
+
+function enterResumeState() {
+  waitingToResume     = true;
+  playerState.iframes = 999; // fully invulnerable until resumed
+  touchInput.dx = 0; touchInput.dz = 0; touchInput.jump = false;
+  resumeHint.style.display = 'block';
+}
+
+function resumeGame() {
+  if (!waitingToResume) return;
+  waitingToResume             = false;
+  resumeHint.style.display    = 'none';
+  playerState.iframes         = 1.5; // brief safe window after resuming
+  movementLockout             = 0.3;
+  touchInput.dx = 0; touchInput.dz = 0; touchInput.jump = false;
+}
+
+// Any tap or key resumes
+document.addEventListener('touchstart', () => resumeGame(), { passive: true });
+
 function applyTome(id) {
   if (id === 'chaos') {
     const others = TOME_DEFS.filter(t => t.id !== 'chaos');
@@ -1227,8 +1500,7 @@ function applyTome(id) {
   }
   tomeScreen.style.display = 'none';
   choosingTome = false;
-  touchInput.dx = 0; touchInput.dz = 0; touchInput.jump = false;
-  movementLockout = 0.3;
+  enterResumeState();
 }
 
 function updateTomeInput(dt) {
@@ -1279,7 +1551,7 @@ function updateItems(dt) {
     if (Math.sqrt(dx*dx + dz*dz) < playerStats.pickupRadius) {
       scene.remove(item.group);
       mapItems.splice(i, 1);
-      showTomeChoice();
+      queueTome();
       break;
     }
   }
@@ -1292,8 +1564,8 @@ let playerXP    = 0;
 let killCount   = 0;
 
 function xpToNext(level) {
-  // 3, 5, 8, 12, 17, 23 ... using triangular growth
-  return 2 + Math.round(level * (level + 1) / 2);
+  const table = [2, 4, 6, 9, 12, 15, 19, 24, 29, 35, 42, 50];
+  return table[Math.min(level - 1, table.length - 1)];
 }
 
 const xpOrbs = [];
@@ -1319,7 +1591,7 @@ function gainXP(amount) {
     playerXP -= needed;
     playerLevel++;
     updateXPBar();
-    showTomeChoice();
+    queueTome();
   }
   updateXPBar();
 }
@@ -1342,6 +1614,415 @@ function updateXpOrbs(dt) {
   }
 }
 
+// ── Fish Pickups ──────────────────────────────────────────────────────────────
+
+const fish = [];
+
+function buildFishModel() {
+  const g = new THREE.Group();
+  const fishMat = new THREE.MeshStandardMaterial({ color: 0xff9900, roughness: 0.6, emissive: 0xff6600, emissiveIntensity: 0.3 });
+
+  // Body — flat oval
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 7), fishMat);
+  body.scale.set(1.8, 0.7, 1.0);
+  g.add(body);
+
+  // Tail fin
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.28, 4), fishMat);
+  tail.rotation.z = Math.PI / 2;
+  tail.position.x = -0.36;
+  g.add(tail);
+
+  return g;
+}
+
+function randomFishPos() {
+  let x, z, tries = 0;
+  do {
+    x = (Math.random() - 0.5) * 160;
+    z = (Math.random() - 0.5) * 160;
+    tries++;
+  } while (tries < 60 && (
+    Math.hypot(x, z) < 10 ||
+    Math.hypot(x + 20, z + 20) < 22 ||
+    Math.hypot(x - WATER_CX, z - WATER_CZ) < WATER_R + 4 ||
+    Math.abs(x) > 88 || Math.abs(z) > 88
+  ));
+  return { x, z };
+}
+
+// HP flash notification
+const fishFlash = document.createElement('div');
+fishFlash.style.cssText = 'display:none;position:fixed;top:32%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:20px;color:#44ffaa;font-weight:bold;text-shadow:0 0 12px #00ff88;pointer-events:none;z-index:400;opacity:0;transition:opacity 0.3s';
+document.body.appendChild(fishFlash);
+
+function showFishFlash(text, color) {
+  fishFlash.textContent = text;
+  fishFlash.style.color = color;
+  fishFlash.style.textShadow = `0 0 12px ${color}`;
+  fishFlash.style.display = 'block';
+  fishFlash.style.opacity = '1';
+  setTimeout(() => {
+    fishFlash.style.opacity = '0';
+    setTimeout(() => { fishFlash.style.display = 'none'; }, 320);
+  }, 900);
+}
+
+(function spawnFish() {
+  for (let i = 0; i < 8; i++) {
+    const { x, z } = randomFishPos();
+    const mesh = buildFishModel();
+    mesh.position.set(x, 0.25, z);
+    mesh.rotation.y = Math.random() * Math.PI * 2;
+    scene.add(mesh);
+    fish.push({ mesh, bobOffset: Math.random() * Math.PI * 2 });
+  }
+})();
+
+function updateFish(dt) {
+  const t = Date.now() / 1000;
+  for (let i = fish.length - 1; i >= 0; i--) {
+    const f = fish[i];
+    f.mesh.position.y = 0.25 + Math.sin(t * 2 + f.bobOffset) * 0.08;
+    f.mesh.rotation.y += dt * 0.8;
+    const dx = player.position.x - f.mesh.position.x;
+    const dz = player.position.z - f.mesh.position.z;
+    if (Math.hypot(dx, dz) < 1.2) {
+      scene.remove(f.mesh);
+      fish.splice(i, 1);
+      if (playerState.hp < playerState.maxHp) {
+        playerState.hp++;
+        updateHUD();
+        showFishFlash('+1 HP 🐟', '#44ffaa');
+      } else {
+        showFishFlash('wasted 🐟', '#ffaa44');
+      }
+    }
+  }
+}
+
+// ── Orcas ─────────────────────────────────────────────────────────────────────
+
+const orcas = [];
+let playerWaterTimer = 0; // seconds player has been in water
+let orcasChasing     = false;
+
+function buildOrca() {
+  const g     = new THREE.Group();
+  const black = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.6 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.8 });
+
+  // Main body along +X (head forward)
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.85, 14, 10), black);
+  body.scale.set(2.6, 0.9, 1.0); body.castShadow = true; g.add(body);
+
+  // White belly
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.6, 10, 8), white);
+  belly.scale.set(1.7, 0.45, 0.65); belly.position.set(0.1, -0.28, 0.42); g.add(belly);
+
+  // White eye patches
+  [-1, 1].forEach(side => {
+    const patch = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), white);
+    patch.scale.set(0.7, 0.55, 0.22);
+    patch.position.set(1.3, 0.28, side * 0.72); g.add(patch);
+  });
+
+  // Dorsal fin
+  const fin = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.0, 6), black);
+  fin.position.set(-0.1, 0.9, 0); g.add(fin);
+
+  // Pectoral flippers
+  [-1, 1].forEach(side => {
+    const f = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), black);
+    f.scale.set(1.1, 0.16, 0.75); f.position.set(0.6, -0.32, side * 0.95);
+    f.rotation.z = side * 0.28; g.add(f);
+  });
+
+  // Tail flukes
+  [-1, 1].forEach(side => {
+    const fluke = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), black);
+    fluke.scale.set(0.65, 0.13, 1.05); fluke.position.set(-2.1, -0.1, side * 0.5);
+    fluke.rotation.y = side * 0.38; g.add(fluke);
+  });
+
+  return g;
+}
+
+function spawnOrcas() {
+  for (let i = 0; i < 2; i++) {
+    const angle = (i / 2) * Math.PI * 2;
+    const r     = WATER_R * 0.45;
+    const mesh  = buildOrca();
+    mesh.position.set(WATER_CX + Math.cos(angle) * r, 0.2, WATER_CZ + Math.sin(angle) * r);
+    scene.add(mesh);
+    orcas.push({ mesh, idleAngle: angle, idleSpeed: 0.28 + Math.random() * 0.15 });
+  }
+}
+
+function updateOrcas(dt) {
+  const playerOnSurface = playerY < 0.4;
+  const inWater = playerOnSurface && isInWater(player.position.x, player.position.z);
+
+  if (inWater) {
+    playerWaterTimer += dt;
+    if (playerWaterTimer >= 1.0) orcasChasing = true;
+  } else {
+    playerWaterTimer = 0;
+    orcasChasing     = false;
+  }
+
+  for (const o of orcas) {
+    const bob = Math.sin(Date.now() / 700 + o.idleAngle) * 0.08;
+
+    if (orcasChasing) {
+      const dx   = player.position.x - o.mesh.position.x;
+      const dz   = player.position.z - o.mesh.position.z;
+      const dist = Math.hypot(dx, dz);
+
+      // Pause orca movement while player is airborne (juking mechanic)
+      if (playerY <= 0.5 && dist > 0.5) {
+        // 125% of water speed (7.8 * 1.2 * 1.25 = 11.7)
+        let nx = o.mesh.position.x + (dx / dist) * 11.7 * dt;
+        let nz = o.mesh.position.z + (dz / dist) * 11.7 * dt;
+        // Clamp inside water pool
+        const fc = Math.hypot(nx - WATER_CX, nz - WATER_CZ);
+        if (fc > WATER_R - 1.0) {
+          const a = Math.atan2(nz - WATER_CZ, nx - WATER_CX);
+          nx = WATER_CX + Math.cos(a) * (WATER_R - 1.0);
+          nz = WATER_CZ + Math.sin(a) * (WATER_R - 1.0);
+        }
+        o.mesh.position.x = nx;
+        o.mesh.position.z = nz;
+        o.mesh.rotation.y = Math.atan2(-dz, dx); // head (+X) faces player
+      }
+
+      if (dist < 1.4 && inWater && playerY < 0.3 && playerState.iframes <= 0) killPlayer();
+    } else {
+      // Idle — circle the pool
+      o.idleAngle += o.idleSpeed * dt;
+      const r = WATER_R * 0.48;
+      o.mesh.position.x = WATER_CX + Math.cos(o.idleAngle) * r;
+      o.mesh.position.z = WATER_CZ + Math.sin(o.idleAngle) * r;
+      // Face direction of travel (tangent)
+      o.mesh.rotation.y = Math.atan2(-Math.cos(o.idleAngle), Math.sin(o.idleAngle));
+    }
+
+    o.mesh.position.y = 0.2 + bob;
+  }
+}
+
+spawnOrcas();
+
+// ── Ice Spots Near Water ──────────────────────────────────────────────────────
+
+(function placeWaterIceSpots() {
+  const iceSpotMat = new THREE.MeshStandardMaterial({ color: 0xd0f0ff, roughness: 0.2, metalness: 0.3 });
+  const angles = [0, Math.PI/3, 2*Math.PI/3, Math.PI, 4*Math.PI/3, 5*Math.PI/3];
+  angles.forEach(a => {
+    const r = WATER_R + 1.5;
+    const x = WATER_CX + Math.cos(a) * r;
+    const z = WATER_CZ + Math.sin(a) * r;
+    const radius = 1.5 + Math.random() * 1.0; // 1.5–2.5
+    const spot = new THREE.Mesh(new THREE.CircleGeometry(radius, 12), iceSpotMat);
+    spot.rotation.x = -Math.PI / 2;
+    spot.position.set(x, 0.05, z);
+    scene.add(spot);
+  });
+})();
+
+// ── Humans (Observers) ───────────────────────────────────────────────────────
+
+const HUMAN_VISION_RANGE = 12; // doubled from 6
+const HUMAN_VISION_COS   = Math.cos(Math.PI / 4); // 45° half-angle = 90° total cone
+const HUMAN_PHOTO_CHARGE = 1.0;  // seconds to take photo
+const HUMAN_PHOTO_COOLDOWN = 12; // seconds before they can aim again
+
+const humans = [];
+let playerPhotoStun = 0; // seconds remaining of post-photo slow
+
+function makeVisionConeMesh() {
+  const halfAngle = Math.acos(HUMAN_VISION_COS);
+  const segments  = 24;
+  const shape     = new THREE.Shape();
+  shape.moveTo(0, 0);
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const a = -halfAngle + t * 2 * halfAngle;
+    // +cos maps shape +Y → human-local -Z (true forward) after rotation.x=-PI/2
+    shape.lineTo(Math.sin(a) * HUMAN_VISION_RANGE, Math.cos(a) * HUMAN_VISION_RANGE);
+  }
+  shape.lineTo(0, 0);
+  const geo  = new THREE.ShapeGeometry(shape);
+  const mat  = new THREE.MeshBasicMaterial({
+    color: 0xffee44, transparent: true, opacity: 0.12,
+    side: THREE.DoubleSide, depthWrite: false
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = 0.03;
+  return mesh;
+}
+
+function buildHuman() {
+  const g = new THREE.Group();
+  const skin    = new THREE.MeshStandardMaterial({ color: 0xffcc99, roughness: 0.8 });
+  const jacket  = new THREE.MeshStandardMaterial({ color: 0x2244aa, roughness: 0.8 });
+  const pants   = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 });
+  const camMat  = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3, metalness: 0.7 });
+  const lensMat = new THREE.MeshStandardMaterial({ color: 0x88aacc, roughness: 0.0, metalness: 0.9, transparent: true, opacity: 0.85 });
+
+  // Legs
+  [-0.15, 0.15].forEach(x => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 0.28), pants);
+    leg.position.set(x, 0.55, 0); g.add(leg);
+  });
+
+  // Torso
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.75, 0.38), jacket);
+  torso.position.y = 1.1; torso.castShadow = true; g.add(torso);
+
+  // Head
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.38), skin);
+  head.position.y = 1.72; g.add(head);
+
+  // Left arm — relaxed
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 0.24), jacket);
+  armL.position.set(-0.42, 1.08, 0); g.add(armL);
+
+  // Right arm — raised, holding camera
+  const armR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.48, 0.24), jacket);
+  armR.position.set(0.42, 1.38, 0.14);
+  armR.rotation.x = -0.65; g.add(armR);
+
+  // Camera body
+  const camBody = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.18), camMat);
+  camBody.position.set(0.25, 1.7, 0.34); g.add(camBody);
+
+  // Lens
+  const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.16, 8), lensMat);
+  lens.rotation.x = Math.PI / 2;
+  lens.position.set(0.25, 1.7, 0.46); g.add(lens);
+
+  // Charge ring — shown above head while aiming
+  const chargeRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.32, 0.045, 6, 24),
+    new THREE.MeshBasicMaterial({ color: 0xffee44, transparent: true, opacity: 0 })
+  );
+  chargeRing.rotation.x = Math.PI / 2;
+  chargeRing.position.y = 2.25;
+  g.add(chargeRing);
+  g.userData.chargeRing = chargeRing;
+
+  // Vision cone indicator on the ground
+  const visionCone = makeVisionConeMesh();
+  g.add(visionCone);
+  g.userData.visionCone = visionCone;
+
+  return g;
+}
+
+// Screen flash for photo
+const photoFlash = document.createElement('div');
+photoFlash.style.cssText = 'display:none;position:fixed;inset:0;background:white;pointer-events:none;z-index:500;opacity:0;transition:opacity 0.35s';
+document.body.appendChild(photoFlash);
+
+const photoNotif = document.createElement('div');
+photoNotif.style.cssText = 'display:none;position:fixed;top:32%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:22px;color:#fff;font-weight:bold;text-shadow:0 0 12px #000;pointer-events:none;z-index:501;letter-spacing:2px;opacity:0;transition:opacity 0.35s';
+document.body.appendChild(photoNotif);
+
+function triggerPhoto(h) {
+  h.charge   = 0;
+  h.cooldown = HUMAN_PHOTO_COOLDOWN;
+  h.mesh.userData.chargeRing.material.opacity = 0;
+  playerPhotoStun = 0.5;
+
+  // Flash on, then fade
+  photoFlash.style.display = 'block';
+  photoFlash.style.opacity = '0.92';
+  setTimeout(() => {
+    photoFlash.style.opacity = '0';
+    setTimeout(() => { photoFlash.style.display = 'none'; }, 360);
+  }, 60);
+
+  photoNotif.textContent = '📸 PHOTO TAKEN!';
+  photoNotif.style.display = 'block';
+  photoNotif.style.opacity = '1';
+  setTimeout(() => {
+    photoNotif.style.opacity = '0';
+    setTimeout(() => { photoNotif.style.display = 'none'; }, 360);
+  }, 1400);
+}
+
+function spawnHumans() {
+  for (let i = 0; i < 5; i++) {
+    let x, z, tries = 0;
+    do {
+      x = (Math.random() - 0.5) * 160;
+      z = (Math.random() - 0.5) * 160;
+      tries++;
+    } while (tries < 60 && (
+      Math.hypot(x, z) < 12 ||                    // avoid spawn area
+      Math.hypot(x + 20, z + 20) < 20 ||          // avoid mountain
+      Math.hypot(x - WATER_CX, z - WATER_CZ) < 36 || // avoid water
+      Math.abs(x) > 88 || Math.abs(z) > 88
+    ));
+
+    const mesh = buildHuman();
+    const facing = Math.random() * Math.PI * 2;
+    mesh.rotation.y = facing;
+    mesh.position.set(x, 0, z);
+    scene.add(mesh);
+    humans.push({ mesh, facing, charge: 0, cooldown: 0 });
+  }
+}
+
+function updateHumans(dt) {
+  if (playerState.dead) return;
+  if (playerPhotoStun > 0) playerPhotoStun = Math.max(0, playerPhotoStun - dt);
+
+  for (const h of humans) {
+    const ring = h.mesh.userData.chargeRing;
+    const cone = h.mesh.userData.visionCone;
+
+    if (h.cooldown > 0) {
+      h.cooldown -= dt;
+      ring.material.opacity = 0;
+      cone.material.opacity = 0.12;
+      cone.material.color.setHex(0xffee44);
+      continue;
+    }
+
+    const dx   = player.position.x - h.mesh.position.x;
+    const dz   = player.position.z - h.mesh.position.z;
+    const dist = Math.hypot(dx, dz);
+
+    if (dist < HUMAN_VISION_RANGE) {
+      const fwdX = -Math.sin(h.facing);
+      const fwdZ = -Math.cos(h.facing);
+      const dot  = (dx / dist) * fwdX + (dz / dist) * fwdZ;
+
+      if (dot > HUMAN_VISION_COS) {
+        h.charge += dt / HUMAN_PHOTO_CHARGE;
+        ring.material.opacity = 0.45 + h.charge * 0.55;
+        ring.material.color.setHex(h.charge < 0.6 ? 0xffee44 : 0xff8800);
+        // Cone brightens and shifts orange as charge builds
+        cone.material.opacity = 0.18 + h.charge * 0.35;
+        cone.material.color.setHex(h.charge < 0.6 ? 0xffee44 : 0xff8800);
+        if (h.charge >= 1.0) triggerPhoto(h);
+        continue;
+      }
+    }
+
+    // Out of sight — drain charge, cone stays dim yellow
+    h.charge = Math.max(0, h.charge - dt * 0.6);
+    ring.material.opacity = h.charge * 0.45;
+    cone.material.opacity = 0.12;
+    cone.material.color.setHex(0xffee44);
+  }
+}
+
+spawnHumans();
+
 // ── Touch Controls ───────────────────────────────────────────────────────────
 
 const touchInput = { dx: 0, dz: 0, jump: false };
@@ -1352,7 +2033,7 @@ const JOY_RADIUS = 55; // max handle travel in px
 
 const leftPad = document.createElement('div');
 leftPad.style.cssText = `
-  position:fixed; bottom:40px; left:40px;
+  position:fixed; bottom:40px; left:40px; z-index:250;
   width:140px; height:140px; border-radius:50%;
   border:2px solid rgba(170,220,255,0.2);
   background:rgba(0,15,40,0.35);
@@ -1376,7 +2057,7 @@ leftPad.appendChild(joyHandle);
 
 const rightPad = document.createElement('div');
 rightPad.style.cssText = `
-  position:fixed; bottom:40px; right:40px;
+  position:fixed; bottom:40px; right:40px; z-index:250;
   display:flex; flex-direction:column; align-items:center; gap:14px;
   touch-action:none; user-select:none; -webkit-user-select:none;
 `;
@@ -1399,7 +2080,21 @@ function makeActionBtn(label, color) {
 }
 
 const jumpBtn = makeActionBtn('JUMP', '#aee8ff');
-// Future buttons go here: makeActionBtn('DASH', '#ffaa44'), etc.
+
+// LEVEL button — dimmed until tomes are pending
+const levelBtn = document.createElement('div');
+levelBtn.style.cssText = `
+  width:80px; height:80px; border-radius:50%;
+  border:2px solid #ffee4433;
+  background:rgba(0,15,40,0.4);
+  font-family:monospace; font-size:11px; font-weight:bold;
+  color:#ffee44; letter-spacing:1px;
+  display:flex; align-items:center; justify-content:center;
+  touch-action:none; opacity:0.25; pointer-events:none;
+  transition:opacity 0.2s, border-color 0.2s, background 0.2s;
+`;
+levelBtn.textContent = 'LEVEL';
+rightPad.insertBefore(levelBtn, jumpBtn); // north of jump button
 
 // ── Joystick logic ────────────────────────────────────────────────────────────
 
@@ -1458,11 +2153,21 @@ jumpBtn.addEventListener('touchend', () => {
   jumpBtn.style.background = 'rgba(0,15,40,0.4)';
 }, { passive: true });
 
+levelBtn.addEventListener('touchstart', e => {
+  e.preventDefault();
+  openPendingTome();
+}, { passive: false });
+
 // ── Input ─────────────────────────────────────────────────────────────────────
 
 const keys = {};
-window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
-window.addEventListener('keyup',   e => { keys[e.key.toLowerCase()] = false; });
+window.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if (e.key.toLowerCase() === 'o') openPendingTome();
+  const typing = document.activeElement?.id === 'nameInput';
+  if (!typing) resumeGame();
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
 // ── Game Loop ─────────────────────────────────────────────────────────────────
 
@@ -1475,7 +2180,7 @@ let movementLockout = 0;
 
 function update(dt) {
   updateTomeInput(dt);
-  if (playerState.dead || choosingTome) return;
+  if (playerState.dead || choosingTome || waitingToResume) return;
   playerState.iframes   = Math.max(0, playerState.iframes - dt);
   movementLockout       = Math.max(0, movementLockout - dt);
 
@@ -1494,7 +2199,8 @@ function update(dt) {
     dx /= len; dz /= len;
     const onSnow  = playerY < 0.3 && isOnSnowPatch(player.position.x, player.position.z);
     const onWater = playerY < 0.3 && isInWater(player.position.x, player.position.z);
-    const effSpeed = SPEED * stormSlow * playerStats.moveSpeed * (onSnow ? 0.8 : onWater ? 1.2 : 1.0);
+    const stunMult = playerPhotoStun > 0 ? 0.35 : 1.0;
+    const effSpeed = SPEED * stormSlow * playerStats.moveSpeed * stunMult * (onSnow ? 0.7 : onWater ? 1.2 : 1.0);
     document.getElementById('ui').style.color = onWater ? '#44ffcc' : '#aee8ff';
     player.position.x = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.x + dx * effSpeed * dt));
     player.position.z = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.z + dz * effSpeed * dt));
@@ -1522,10 +2228,36 @@ function update(dt) {
   }
   jumpPressed = wantsJump;
 
+  const wasAirborne = playerY > 0;
   playerVY += GRAVITY * dt;
   playerY  += playerVY * dt;
   if (playerY < 0) { playerY = 0; playerVY = 0; }
   player.position.y = playerY;
+
+  // While airborne — check if crossing a crack (generous 3-unit radius)
+  if (playerY > 0) {
+    const px = player.position.x, pz = player.position.z;
+    for (const c of cracks) {
+      if (!c.clearedThisJump && c.cooldownTimer <= 0 && pointToSegDist(px, pz, c.ax, c.az, c.bx, c.bz) < 3.0) {
+        c.clearedThisJump = true;
+        c.cooldownTimer = 20; // 20-sec per-crack cooldown
+      }
+    }
+  }
+
+  // Landing — tally cleared cracks
+  if (wasAirborne && playerY === 0) {
+    let cleared = 0;
+    for (const c of cracks) {
+      if (c.clearedThisJump) { cleared++; c.clearedThisJump = false; }
+    }
+    if (cleared > 0) {
+      const before = Math.floor(crackJumps / 10);
+      crackJumps += cleared;
+      updateJumpHUD();
+      if (Math.floor(crackJumps / 10) > before) queueTome();
+    }
+  }
 
   // Ice crack collision — only lethal when on the ground
   if (playerY < 0.4) {
@@ -1537,6 +2269,9 @@ function update(dt) {
       }
     }
   }
+
+  // Decrement per-crack cooldown timers
+  for (const c of cracks) { if (c.cooldownTimer > 0) c.cooldownTimer -= dt; }
 
   // Flash penguin red during iframes
   penguinMesh.visible = !(playerState.iframes > 0 && Math.floor(playerState.iframes * 10) % 2 === 0);
@@ -1569,8 +2304,12 @@ function update(dt) {
   }
 
   updateBurst(dt);
+  updateOrcas(dt);
+  updateHumans(dt);
   updateItems(dt);
   updateXpOrbs(dt);
+  updateFish(dt);
+  updateThinIce(dt);
   updateStorm(dt);
   updateEnemies(dt);
   updateSnowballs(dt);
