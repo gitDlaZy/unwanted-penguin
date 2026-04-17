@@ -1396,7 +1396,7 @@ let pendingTomes = 0;
 // Right-side level-up indicator (mid-screen)
 const levelIndicator = document.createElement('div');
 levelIndicator.style.cssText = `
-  display:none; position:fixed; left:calc(50% + 10%); top:37%; transform:translate(-50%, -50%);
+  display:none; position:fixed; left:calc(50% + 20%); top:37%; transform:translate(-50%, -50%);
   font-family:monospace; font-size:13px; font-weight:bold; color:#ffee44;
   text-shadow:0 0 10px #ffaa00; letter-spacing:2px; pointer-events:none;
   z-index:100; text-align:center; line-height:1.6;
