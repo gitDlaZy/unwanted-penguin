@@ -452,6 +452,15 @@ const WEAPON_DEFS = [
     isWeapon: true,
     cooldown: 2.0,
   },
+  {
+    id:       'toxic_friend',
+    name:     'Toxic Friend',
+    emoji:    '☠️',
+    color:    '#88ff44',
+    desc:     'Slows enemies within radius 2 by 20%. Pick again for +5% slow.',
+    isWeapon: true,
+    cooldown: 0,
+  },
 ];
 
 const equippedWeapons = new Set();   // supports multiple weapons at once
@@ -577,15 +586,28 @@ function tickWeapons(dt) {
   });
 }
 
+// Toxic Friend persistent ring (follows player when equipped)
+const toxicRingGeo = new THREE.RingGeometry(1.85, 2.0, 40);
+const toxicRingMat = new THREE.MeshBasicMaterial({ color: 0x88ff44, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
+const toxicRing    = new THREE.Mesh(toxicRingGeo, toxicRingMat);
+toxicRing.rotation.x = -Math.PI / 2;
+toxicRing.visible = false;
+// scene.add deferred until scene exists — added after scene init below
+
 function applyWeapon(id) {
   if (equippedWeapons.has(id)) {
-    // Already equipped — add an extra shock instead
     weaponStacks[id] = (weaponStacks[id] || 1) + 1;
   } else {
     equippedWeapons.add(id);
     weaponStacks[id] = 1;
     weaponTimers[id] = 0;
+    if (id === 'toxic_friend') { toxicRing.visible = true; scene.add(toxicRing); }
   }
+}
+
+function getToxicSlow() {
+  const stacks = weaponStacks['toxic_friend'] || 1;
+  return 1 - Math.min(0.8, 0.15 + 0.05 * stacks); // 20% at 1 stack, +5% each
 }
 
 // ── HUD ───────────────────────────────────────────────────────────────────────
@@ -845,8 +867,9 @@ function updateEnemies(dt) {
         e.mesh.position.x += sepX * 0.3;
         e.mesh.position.z += sepZ * 0.3;
 
-        e.mesh.position.x += (dx / dist) * 6.3 * dt;
-        e.mesh.position.z += (dz / dist) * 6.3 * dt;
+        const toxicMult = (equippedWeapons.has('toxic_friend') && dist < 2) ? getToxicSlow() : 1;
+        e.mesh.position.x += (dx / dist) * 6.3 * dt * toxicMult;
+        e.mesh.position.z += (dz / dist) * 6.3 * dt * toxicMult;
         // Model faces +X — use atan2(-dz, dx) for correct orientation
         e.mesh.rotation.y = Math.atan2(-dz, dx);
       }
@@ -1623,7 +1646,10 @@ function showTomeChoice() {
       <div style="font-size:15px;font-weight:bold;color:${tome.color};margin-bottom:8px">${tome.name}</div>
       <div style="font-size:12px;opacity:0.75;line-height:1.4">${tome.desc}</div>
       ${!tome.isWeapon && stacks > 0 ? `<div style="font-size:11px;opacity:0.45;margin-top:8px">Stack: ${stacks}</div>` : ''}
-      ${tome.isWeapon && equippedWeapons.has(tome.id) ? `<div style="font-size:11px;opacity:0.55;margin-top:8px;color:${tome.color}">✓ ${tome.id === 'gandalf_staff' ? `${weaponStacks['gandalf_staff'] || 1} shocks` : 'Equipped'}</div>` : ''}
+      ${tome.isWeapon && equippedWeapons.has(tome.id) ? `<div style="font-size:11px;opacity:0.55;margin-top:8px;color:${tome.color}">✓ ${
+        tome.id === 'gandalf_staff' ? `${weaponStacks['gandalf_staff'] || 1} shocks`
+        : tome.id === 'toxic_friend' ? `${Math.round((0.15 + 0.05*(weaponStacks['toxic_friend']||1))*100)}% slow`
+        : 'Equipped'}</div>` : ''}
     `;
     card.onclick = () => { selectedTomeIdx = i; applyTome(tome.id); };
     container.appendChild(card);
@@ -2546,6 +2572,11 @@ function update(dt) {
   }
 
   tickWeapons(dt);
+  if (equippedWeapons.has('toxic_friend')) {
+    toxicRing.position.x = player.position.x;
+    toxicRing.position.z = player.position.z;
+    toxicRingMat.opacity = 0.45 + Math.sin(Date.now() / 400) * 0.1;
+  }
   updateBurst(dt);
   updateOrcas(dt);
   updateHumans(dt);
