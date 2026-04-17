@@ -28,10 +28,11 @@ function adaptFOV() {
 }
 adaptFOV();
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.BasicShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.2;
 document.body.appendChild(renderer.domElement);
@@ -215,7 +216,7 @@ function isInWater(x, z) {
 
 // ── Falling Snow ──────────────────────────────────────────────────────────────
 
-const SNOW_COUNT = 600;
+const SNOW_COUNT = 200;
 const snowGeo = new THREE.BufferGeometry();
 const snowPos = new Float32Array(SNOW_COUNT * 3);
 const snowVel = new Float32Array(SNOW_COUNT);
@@ -237,16 +238,16 @@ function buildPenguin() {
   const white  = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.9 });
   const orange = new THREE.MeshStandardMaterial({ color: 0xff8800, roughness: 0.7 });
 
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), black);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), black);
   body.scale.set(1, 1.3, 1); body.position.y = 0.65; body.castShadow = true;
   g.add(body);
 
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), white);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), white);
   belly.scale.set(1, 1.2, 0.55); belly.position.set(0, 0.63, 0.3);
   g.add(belly);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), black);
-  head.position.y = 1.38; head.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), black);
+  head.position.y = 1.38; 
   g.add(head);
 
   [-0.12, 0.12].forEach(x => {
@@ -282,12 +283,12 @@ function buildSeal() {
   const spotMat = new THREE.MeshStandardMaterial({ color: 0x223344, roughness: 0.9 });
 
   // Main body — long and low
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 12), darkGray);
-  body.scale.set(2.2, 0.7, 0.9); body.position.y = 0.42; body.castShadow = true;
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 6), darkGray);
+  body.scale.set(2.2, 0.7, 0.9); body.position.y = 0.42;
   g.add(body);
 
   // Belly
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 10), lightGray);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.45, 7, 5), lightGray);
   belly.scale.set(1.8, 0.5, 0.6); belly.position.set(0, 0.38, 0.3);
   g.add(belly);
 
@@ -299,12 +300,12 @@ function buildSeal() {
   });
 
   // Head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 12), darkGray);
-  head.scale.set(1.1, 0.9, 1.0); head.position.set(1.4, 0.58, 0); head.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 7, 6), darkGray);
+  head.scale.set(1.1, 0.9, 1.0); head.position.set(1.4, 0.58, 0); 
   g.add(head);
 
   // Snout
-  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), lightGray);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 5), lightGray);
   snout.scale.set(1.0, 0.7, 0.8); snout.position.set(1.78, 0.52, 0);
   g.add(snout);
 
@@ -340,12 +341,12 @@ function buildSkua() {
   const yellow = new THREE.MeshStandardMaterial({ color: 0xccaa00, roughness: 0.7 });
 
   // Body
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 10), brown);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 7, 5), brown);
   body.scale.set(1.4, 0.8, 1.0); body.position.y = 0; body.castShadow = true;
   g.add(body);
 
   // Head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), darkBrown);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 5), darkBrown);
   head.position.set(0.5, 0.15, 0); g.add(head);
 
   // Beak — hooked
@@ -859,17 +860,17 @@ function buildPolarBear() {
   const black  = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
 
   // Body — large round barrel
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.75, 14, 10), white);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.75, 7, 6), white);
   body.scale.set(1.6, 1.0, 1.1); body.position.set(0, 0.75, 0); body.castShadow = true;
   g.add(body);
 
   // Head — round, forward (+X)
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.52, 14, 10), white);
-  head.position.set(1.1, 0.95, 0); head.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.52, 7, 6), white);
+  head.position.set(1.1, 0.95, 0); 
   g.add(head);
 
   // Snout — pushed forward
-  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), cream);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 5), cream);
   snout.scale.set(0.9, 0.7, 0.8); snout.position.set(1.55, 0.82, 0);
   g.add(snout);
 
@@ -904,9 +905,7 @@ function buildPolarBear() {
   const tail = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), white);
   tail.position.set(-1.1, 0.85, 0); g.add(tail);
 
-  // Elite aura
-  const aura = new THREE.PointLight(0xff8800, 2.5, 10);
-  aura.position.y = 1.5; g.add(aura);
+  // Elite aura — emissive-only, no PointLight
 
   return g;
 }
@@ -931,7 +930,7 @@ function buildKrill() {
   });
 
   // Head / eyes
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 8), pink);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 7, 5), pink);
   head.position.set(-0.55, 0.6, 0); g.add(head);
   [-0.18, 0.18].forEach(z => {
     const e = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 6), eye);
@@ -1032,8 +1031,6 @@ function updateBoss(dt) {
       const nx = dx / dist, nz = dz / dist;
       const mesh = new THREE.Mesh(bossProjectileGeo, bossProjectileMat);
       mesh.position.set(boss.mesh.position.x + nx * 2, 0.6, boss.mesh.position.z + nz * 2);
-      const light = new THREE.PointLight(0xff2255, 2, 4);
-      mesh.add(light);
       scene.add(mesh);
       bossProjectiles.push({ mesh, vx: nx * speed, vz: nz * speed });
     }
@@ -1092,6 +1089,7 @@ function spawnSkua(hpScale = 1) {
 
 let sealSpawnTimer = 2;
 let skuaSpawnTimer = 2;
+let sepFrame = 0; // alternating frame flag for seal separation
 let gameTime = 0; // seconds elapsed
 let swarmTimer = 90; // seconds until first belgica swarm
 
@@ -1156,29 +1154,32 @@ function updateEnemies(dt) {
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
   const hpScale = (gameTime >= 3600 ? Math.pow(1.018, gameTime - 3600) : 1) * Math.pow(1.3, playerStats.cursed);
-  if (sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
-  if (skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (3.5 + Math.random() * 2) * pressure; }
+  if (sealSpawnTimer <= 0) { if (enemies.length < 40) spawnSeal(hpScale); sealSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
+  if (skuaSpawnTimer <= 0) { if (enemies.length < 40) spawnSkua(hpScale); skuaSpawnTimer = (3.5 + Math.random() * 2) * pressure; }
 
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
     const dx = player.position.x - e.mesh.position.x;
     const dz = player.position.z - e.mesh.position.z;
     const dist = Math.sqrt(dx * dx + dz * dz);
+    if (dist > 80) continue; // skip AI for off-screen distant enemies
 
     if (e.type === 'seal') {
       if (dist > 0.1) {
-        // Seal-seal separation — push apart without slowing
-        let sepX = 0, sepZ = 0;
-        for (let k = 0; k < enemies.length; k++) {
-          if (k === i || enemies[k].type !== 'seal') continue;
-          const ox = e.mesh.position.x - enemies[k].mesh.position.x;
-          const oz = e.mesh.position.z - enemies[k].mesh.position.z;
-          const od = Math.hypot(ox, oz);
-          const minDist = e.elite ? 2.5 : 1.6;
-          if (od < minDist && od > 0.01) { sepX += (ox / od) * (minDist - od); sepZ += (oz / od) * (minDist - od); }
+        // Seal-seal separation — run every other frame to halve O(n²) cost
+        if ((i + sepFrame) % 2 === 0) {
+          let sepX = 0, sepZ = 0;
+          for (let k = 0; k < enemies.length; k++) {
+            if (k === i || enemies[k].type !== 'seal') continue;
+            const ox = e.mesh.position.x - enemies[k].mesh.position.x;
+            const oz = e.mesh.position.z - enemies[k].mesh.position.z;
+            const od = Math.hypot(ox, oz);
+            const minDist = e.elite ? 2.5 : 1.6;
+            if (od < minDist && od > 0.01) { sepX += (ox / od) * (minDist - od); sepZ += (oz / od) * (minDist - od); }
+          }
+          e.mesh.position.x += sepX * 0.3;
+          e.mesh.position.z += sepZ * 0.3;
         }
-        e.mesh.position.x += sepX * 0.3;
-        e.mesh.position.z += sepZ * 0.3;
 
         const inPool = toxicPools.some(p => Math.sqrt((e.mesh.position.x-p.x)**2+(e.mesh.position.z-p.z)**2) < p.r);
         if (e.nomSlowTimer > 0) e.nomSlowTimer -= dt;
@@ -2238,9 +2239,6 @@ function spawnMapItem(x, z) {
     new THREE.MeshStandardMaterial({ color: 0xcc88ff, emissive: 0x8833ff, emissiveIntensity: 1.4, roughness: 0 })
   );
   group.add(orb);
-  const glow = new THREE.PointLight(0x8833ff, 1.5, 6);
-  glow.position.y = 0.5;
-  group.add(glow);
   group.position.set(x, 1.0, z);
   scene.add(group);
   mapItems.push({ group, orb, glow, bobOffset: Math.random() * Math.PI * 2 });
@@ -2297,11 +2295,9 @@ function spawnXpOrb(x, z, amount = 1) {
     new THREE.MeshStandardMaterial({ color: 0xffee44, emissive: 0xffaa00, emissiveIntensity: 1.6, roughness: 0 })
   );
   group.add(orb);
-  const glow = new THREE.PointLight(0xffcc00, 1.2, 5);
-  group.add(glow);
   group.position.set(x, 0.5, z);
   scene.add(group);
-  xpOrbs.push({ group, orb, glow, amount, bobOffset: Math.random() * Math.PI * 2 });
+  xpOrbs.push({ group, orb, amount, bobOffset: Math.random() * Math.PI * 2 });
 }
 
 function gainXP(amount) {
@@ -3098,6 +3094,7 @@ function update(dt) {
   updateFish(dt);
   updateThinIce(dt);
   updateStorm(dt);
+  sepFrame ^= 1;
   updateEnemies(dt);
   updateBoss(dt);
   updateSnowballs(dt);
