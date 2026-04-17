@@ -403,9 +403,10 @@ const playerStats = {
   lifesteal:    0,     // 0–1 chance to restore shield on hit
   moveSpeed:    1.0,
   pickupRadius: 0.7,
-  knockback:    0,
-  cursed:       0,
-  boomerang:    false,
+  knockback:      0,
+  cursed:         0,
+  boomerang:      false,
+  iframeDuration: 1.0, // seconds of invulnerability after taking damage
 };
 
 const tomeStacks = {};
@@ -431,6 +432,7 @@ const TOME_DEFS = [
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'Enemies tougher, more drops',apply:s => { s.cursed += 1; } },
   { id:'chaos',      name:'Chaos Tome',            emoji:'🎲',  color:'#ff44ff', desc:'Random tome effect!',        apply: (s, chaos) => chaos() },
   { id:'hasper',     name:'Hasper Keijnen',        emoji:'🪃',  color:'#ffaa88', desc:'Your snowball boomerangs back — deals damage both ways. Next shot waits for return.', apply: s => { s.boomerang = true; } },
+  { id:'shaggy',    name:'Shaggy',                emoji:'🧍', color:'#cc9966', desc:'After taking damage, become invulnerable for 2 seconds.', apply: s => { s.iframeDuration = 2.0; } },
 ];
 
 // ── Weapons ───────────────────────────────────────────────────────────────────
@@ -468,9 +470,9 @@ const WEAPON_DEFS = [
     name:     'Homhomnomnom',
     emoji:    '🍡',
     color:    '#ffffff',
-    desc:     'Every 3s fires a piercing orb through all enemies in its path (range 12).',
+    desc:     'Every 10s fires a piercing orb through all enemies in its path (range 12).',
     isWeapon: true,
-    cooldown: 3.0,
+    cooldown: 10.0,
   },
 ];
 
@@ -1637,7 +1639,7 @@ function killPlayer() {
   playerState.hp--;
   updateHUD();
   if (playerState.hp > 0) {
-    playerState.iframes = 1.0; // 1s invulnerability + blink
+    playerState.iframes = playerStats.iframeDuration;
     return;
   }
   playerState.dead = true;
