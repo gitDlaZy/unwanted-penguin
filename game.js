@@ -43,7 +43,7 @@ scene.add(new THREE.AmbientLight(0x2255aa, 0.6));
 const sun = new THREE.DirectionalLight(0xaaddff, 1.4);
 sun.position.set(15, 30, 10);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(1024, 1024);
 ['left','right','top','bottom'].forEach((s,i) => sun.shadow.camera[s] = [-60,60,60,-60][i]);
 sun.shadow.camera.far = 120;
 scene.add(sun);
@@ -447,11 +447,11 @@ const TOME_DEFS = [
   { id:'bloody',     name:'Bloody Tome',           emoji:'🩸',  color:'#ff4466', desc:'+20% lifesteal on hit',     apply: s => { s.lifesteal  = Math.min(1, s.lifesteal+0.2); } },
   { id:'hp',         name:'HP Tome',               emoji:'💙',  color:'#2266ff', desc:'+1 max HP',                 apply: s => { s.maxShield += 1; s.shield = s.maxShield; playerState.maxHp+=1; playerState.hp+=1; updateHUD(); } },
   { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+4% movement speed. "You obtained ADHD!"', apply: s => { s.moveSpeed *= 1.04; showAdhdMsg(); } },
-  { id:'attraction', name:'Attraction Tome',       emoji:'🧲',  color:'#ffaa44', desc:'+0.4 pickup radius',        apply: s => { s.pickupRadius += 0.4; } },
+  { id:'attraction', name:'Attraction Tome',       emoji:'🧲',  color:'#ffaa44', desc:'+1 pickup radius',          apply: s => { s.pickupRadius += 1; } },
   { id:'knockback',  name:'Knockback Tome',        emoji:'💥',  color:'#ff8844', desc:'+1.5 knockback on hit',     apply: s => { s.knockback  += 1.5; } },
-  { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'Enemies tougher, more drops',apply:s => { s.cursed += 1; } },
+  { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'+25% spawn rate, +30% enemy HP', apply:s => { s.cursed += 1; } },
   { id:'chaos',      name:'Chaos Tome',            emoji:'🎲',  color:'#ff44ff', desc:'Random tome effect!',        apply: (s, chaos) => chaos() },
-  { id:'hasper',     name:'Hasper Keijnen',        emoji:'🪃',  color:'#ffaa88', desc:'Boomerang snowball — deals damage both ways, +0.5 damage. Next shot waits for return.', apply: s => { s.boomerang = true; s.damage += 0.5; } },
+  { id:'hasper',     name:'Deveh',        emoji:'🪃',  color:'#ffaa88', desc:'Boomerang snowball — deals damage both ways, +0.5 damage. Next shot waits for return.', apply: s => { s.boomerang = true; s.damage += 0.5; } },
   { id:'shaggy',    name:'Shaggy',                emoji:'🦬', color:'#cc9966', desc:'Absorb hits with charges (2s iframes + counter dmg). Refresh after 15s no damage. Quantity adds charges.', apply: s => {
     s.iframeDuration = 2.0;
     s.shaggyStacks = Math.max(1, s.shaggyStacks + 1);
@@ -660,7 +660,7 @@ function tickWeapons(dt) {
 // Toxic Friend persistent ring (follows player when equipped)
 // Toxic Friend — stationary dropped pools
 const toxicPools = [];
-const TOXIC_POOL_DURATION = 1;
+const TOXIC_POOL_DURATION = 0.5;
 const TOXIC_POOL_INTERVAL = 5;
 
 function getToxicRadius() { return playerStats.projSize * (0.8 + (weaponStacks['toxic_friend'] || 1) * 0.2); }
@@ -712,8 +712,8 @@ function updateToxicPools(dt) {
             if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
             if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 3 : 1);
             if (e.type === 'belgica') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, 1);
-            killCount++; document.getElementById('killHUD').textContent = `☠ ${killCount}`;
-            scene.remove(e.mesh); enemies.splice(j, 1);
+            killCount++; killHUDEl.textContent = `☠ ${killCount}`;
+            disposeMesh(e.mesh); scene.remove(e.mesh); enemies.splice(j, 1);
           }
         }
       }
@@ -761,7 +761,7 @@ document.body.appendChild(hud);
 
 const hpLabel = document.createElement('div');
 hpLabel.style.cssText = 'color:#aee8ff;font-family:monospace;font-size:13px;text-shadow:0 0 6px #44aaff';
-hpLabel.textContent = 'HP';
+hpLabel.textContent = `HP  ${playerState.hp} / ${playerState.maxHp}`;
 hud.appendChild(hpLabel);
 
 const hpBarOuter = document.createElement('div');
@@ -840,9 +840,11 @@ function updateHUD() {
   const pct = Math.max(0, playerState.hp / playerState.maxHp) * 100;
   hpBarInner.style.width = pct + '%';
   hpBarInner.style.background = pct > 50 ? '#22ccff' : pct > 25 ? '#ffaa00' : '#ff3300';
+  hpLabel.textContent = `HP  ${playerState.hp} / ${playerState.maxHp}`;
   if (playerStats.maxShield > 0) {
     shieldRow.style.display = 'flex';
     shieldBarInner.style.width = (playerStats.shield / playerStats.maxShield * 100) + '%';
+    shieldLabel.textContent = `SHIELD  ${playerStats.shield} / ${playerStats.maxShield}`;
   }
 }
 
@@ -929,8 +931,8 @@ function spawnSkua(hpScale = 1) {
   enemies.push({ mesh, type: 'skua', hp: Math.round((elite ? 40 : 20) * hpScale), dropTimer: 3 + Math.random() * 3, state: 'approaching', elite });
 }
 
-let sealSpawnTimer = 4;
-let skuaSpawnTimer = 4;
+let sealSpawnTimer = 2;
+let skuaSpawnTimer = 2;
 let gameTime = 0; // seconds elapsed
 let swarmTimer = 90; // seconds until first belgica swarm
 
@@ -982,13 +984,18 @@ function spawnSwarmWave() {
 
 function updateEnemies(dt) {
   gameTime += dt;
-  // Every 20s the spawn interval shrinks by ~15%, floored at 0.8s / 2s
-  const pressure = Math.max(0.17, 1 - (gameTime + 24) / 74); // ~50% faster scaling total, lower floor
+  if (gameTime >= 300 && !playerState.dead) { playerState.dead = true; penguinMesh.visible = false; showDeathScreen(); return; }
+  const remaining = Math.max(0, 300 - gameTime);
+  const mins = Math.floor(remaining / 60), secs = Math.floor(remaining % 60);
+  if (timerHUDEl) timerHUDEl.textContent = `⏱ ${mins}:${String(secs).padStart(2,'0')}`;
+
+  // Pressure hits floor at ~3.5 min (k=111); cursed stacks each add 25% spawn rate
+  const pressure = Math.max(0.15, Math.exp(-gameTime / 111)) * Math.pow(0.75, playerStats.cursed);
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
-  const hpScale = 1 + gameTime / 150; // enemies get tankier, slower ramp
-  if (sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (3.5 + Math.random() * 2) * pressure; }
-  if (skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (7 + Math.random() * 4) * pressure; }
+  const hpScale = (gameTime >= 3600 ? Math.pow(1.018, gameTime - 3600) : 1) * Math.pow(1.3, playerStats.cursed);
+  if (sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
+  if (skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (3.5 + Math.random() * 2) * pressure; }
 
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
@@ -1139,8 +1146,8 @@ function updateNomOrbs(dt) {
           if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
           if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 3 : 1);
           if (e.type === 'belgica') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, 1);
-          killCount++; document.getElementById('killHUD').textContent = `☠ ${killCount}`;
-          scene.remove(e.mesh); enemies.splice(j, 1);
+          killCount++; killHUDEl.textContent = `☠ ${killCount}`;
+          disposeMesh(e.mesh); scene.remove(e.mesh); enemies.splice(j, 1);
         }
       }
     }
@@ -1226,8 +1233,8 @@ function hitEnemy(j, impactX, impactY, impactZ) {
     if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 3 : 1);
     if (e.type === 'belgica') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, 1);
     killCount++;
-    document.getElementById('killHUD').textContent = `☠ ${killCount}`;
-    scene.remove(e.mesh);
+    killHUDEl.textContent = `☠ ${killCount}`;
+    disposeMesh(e.mesh); scene.remove(e.mesh);
     enemies.splice(j, 1);
     return true; // killed
   }
@@ -1285,13 +1292,13 @@ function updateSnowballs(dt) {
     // Boomerang: only removed when it returns to player (handled above) or times out
     if (s.boomerang) {
       s.age = (s.age || 0) + dt;
-      if (s.age > 6) { boomerangInFlight = false; scene.remove(s.mesh); snowballs.splice(i, 1); }
+      if (s.age > 6) { boomerangInFlight = false; disposeMesh(s.mesh); scene.remove(s.mesh); snowballs.splice(i, 1); }
       continue; // skip normal removal
     }
 
     // Normal snowball: remove on hit or out of range
     if (hit || s.mesh.position.distanceTo(player.position) > 12) {
-      scene.remove(s.mesh);
+      disposeMesh(s.mesh); scene.remove(s.mesh);
       snowballs.splice(i, 1);
     }
   }
@@ -1382,6 +1389,7 @@ function updateExplosions(dt) {
     e.mesh.material.opacity = 0.85 * (1 - t);
     if (e.flash) e.flash.intensity = 3 * (1 - t);
     if (e.timer <= 0) {
+      e.mesh.geometry.dispose(); e.mesh.material.dispose();
       scene.remove(e.mesh);
       if (e.flash) scene.remove(e.flash);
       explosionFX.splice(i, 1);
@@ -1480,7 +1488,7 @@ const thinIceBrokenMat  = new THREE.MeshStandardMaterial({ color: 0x050d14, roug
       if (Math.hypot(jx - THIN_ICE_CX, jz - THIN_ICE_CZ) > THIN_ICE_R) continue;
       if (Math.hypot(jx, jz) < 10) continue; // avoid spawn
       const tileR = 1.8 + Math.random() * 0.4;
-      const mesh = new THREE.Mesh(new THREE.CircleGeometry(tileR, 10), thinIceNormalMat.clone());
+      const mesh = new THREE.Mesh(new THREE.CircleGeometry(tileR, 10), thinIceNormalMat);
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.set(jx, 0.03, jz);
       scene.add(mesh);
@@ -1516,7 +1524,7 @@ function updateThinIce(dt) {
         // Start cracking
         tile.state = 'cracking';
         tile.crackTimer = 0.5;
-        tile.mesh.material = thinIceCrackedMat.clone();
+        tile.mesh.material = thinIceCrackedMat;
         movementLockout = Math.max(movementLockout, 0); // slight warning
       }
     } else if (tile.state === 'cracking') {
@@ -1524,7 +1532,7 @@ function updateThinIce(dt) {
       if (tile.crackTimer <= 0) {
         tile.state = 'broken';
         tile.recoverTimer = 20;
-        tile.mesh.material = thinIceBrokenMat.clone();
+        tile.mesh.material = thinIceBrokenMat;
         if (playerOnTile) movementLockout = Math.max(movementLockout, 1.0);
       }
     } else if (tile.state === 'broken') {
@@ -1535,7 +1543,7 @@ function updateThinIce(dt) {
       }
       if (tile.recoverTimer <= 0) {
         tile.state = 'normal';
-        tile.mesh.material = thinIceNormalMat.clone();
+        tile.mesh.material = thinIceNormalMat;
       }
     }
   }
@@ -1702,7 +1710,7 @@ function showDeathScreen() {
       style="margin-top:8px;background:transparent;border:2px solid #44aaff55;color:#aee8ff;
              font-family:monospace;font-size:18px;padding:10px 36px;cursor:pointer;letter-spacing:3px">RETRY</button>
     <div style="position:fixed;top:16px;right:20px;text-align:right;font-family:monospace;font-size:11px;color:#aee8ff66;line-height:1.8;pointer-events:none">
-      Special thanks to<br>Hommienommie<br>Hasper Keijnen<br>Shaggy<br>EhdMusic
+      Special thanks to<br>Hommienommie<br>Deveh<br>Shaggy<br>EhdMusic
     </div>
   `;
   deathScreen.style.display = 'flex';
@@ -1976,7 +1984,7 @@ function resumeGame() {
   if (!waitingToResume) return;
   waitingToResume             = false;
   resumeHint.style.display    = 'none';
-  playerState.iframes         = 0.2; // brief safe window after resuming
+  playerState.iframes         = 0.3; // brief safe window after resuming
   movementLockout             = 0.3;
   touchInput.dx = 0; touchInput.dz = 0; touchInput.jump = false;
 }
@@ -2086,6 +2094,17 @@ let playerLevel = 1;
 let playerXP    = 0;
 let killCount   = 0;
 
+// Cached DOM refs — avoid getElementById every frame/kill
+const killHUDEl  = document.getElementById('killHUD');
+const coordHUDEl = document.getElementById('coordHUD');
+const timerHUDEl = document.getElementById('timerHUD');
+
+function disposeMesh(obj) {
+  obj.traverse(child => {
+    if (child.isMesh) { child.geometry.dispose(); child.material.dispose(); }
+  });
+}
+
 function xpToNext(level) {
   const table = [2, 4, 6, 9, 12, 15, 19, 24, 29, 35, 42, 50];
   return table[Math.min(level - 1, table.length - 1)];
@@ -2130,7 +2149,7 @@ function updateXpOrbs(dt) {
     const dx = player.position.x - orb.group.position.x;
     const dz = player.position.z - orb.group.position.z;
     if (Math.sqrt(dx*dx + dz*dz) < playerStats.pickupRadius + 0.8) {
-      scene.remove(orb.group);
+      disposeMesh(orb.group); scene.remove(orb.group);
       xpOrbs.splice(i, 1);
       gainXP(orb.amount);
     }
@@ -2846,7 +2865,7 @@ function update(dt) {
 
   camera.position.copy(player.position).add(CAM_OFFSET);
   camera.lookAt(player.position);
-  document.getElementById('coordHUD').textContent = `${Math.round(player.position.x)}, ${Math.round(player.position.z)}`;
+  coordHUDEl.textContent = `${Math.round(player.position.x)}, ${Math.round(player.position.z)}`;
   rimLight.position.set(player.position.x, 1, player.position.z);
 
   // Snow

@@ -1,5 +1,8 @@
 # Project: [Your Idea Name Here]
 
+## ⚙️ Model Preference
+- **Always use Sonnet** (claude-sonnet-4-6), not Opus.
+
 ## 🧠 ADHD Collaboration Style
 - **Be Succinct**: Give me short, punchy answers. Avoid long preambles.
 - **Visual Progress**: Always show me a "before and after" diff of code changes.
