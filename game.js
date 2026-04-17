@@ -406,7 +406,8 @@ const playerStats = {
   knockback:      0,
   cursed:         0,
   boomerang:      false,
-  iframeDuration: 1.0, // seconds of invulnerability after taking damage
+  iframeDuration:  1.0, // seconds of invulnerability after taking damage
+  shaggyStacks:    0,   // damage dealt to nearest enemy when Shaggy triggers
 };
 
 const tomeStacks = {};
@@ -417,8 +418,9 @@ const TOME_DEFS = [
   { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-6% attack cooldown',       apply: s => { s.attackRate *= 0.94; } },
   { id:'quantity',   name:'Quantity Tome',         emoji:'❄️',  color:'#aaddff', desc:'+1 snowball (50% less each stack)', apply: (s) => {
     const stacks = tomeStacks['quantity'] || 0;
-    if (stacks === 0) { s.projCount += 1; }           // 1st: guaranteed +1 (1→2, +100%)
-    else { s.projExtraChance = Math.min(1, (s.projExtraChance||0) + 0.5); } // 2nd+: +50% chance
+    if (stacks === 0) { s.projCount += 1; }
+    else { s.projExtraChance = Math.min(1, (s.projExtraChance||0) + 0.5); }
+    if (s.shaggyStacks > 0) s.shaggyStacks++; // Quantity stacks Shaggy if equipped
   }},
   { id:'size',       name:'Size Tome',             emoji:'🔮',  color:'#cc88ff', desc:'+20% projectile size',      apply: s => { s.projSize   *= 1.2; } },
   { id:'projspeed',  name:'Speed Tome',            emoji:'💨',  color:'#88ffcc', desc:'+15% projectile speed',     apply: s => { s.projSpeed  *= 1.15; } },
@@ -432,7 +434,7 @@ const TOME_DEFS = [
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'Enemies tougher, more drops',apply:s => { s.cursed += 1; } },
   { id:'chaos',      name:'Chaos Tome',            emoji:'🎲',  color:'#ff44ff', desc:'Random tome effect!',        apply: (s, chaos) => chaos() },
   { id:'hasper',     name:'Hasper Keijnen',        emoji:'🪃',  color:'#ffaa88', desc:'Boomerang snowball — deals damage both ways, +0.5 damage. Next shot waits for return.', apply: s => { s.boomerang = true; s.damage += 0.5; } },
-  { id:'shaggy',    name:'Shaggy',                emoji:'🧍', color:'#cc9966', desc:'After taking damage, become invulnerable for 2 seconds.', apply: s => { s.iframeDuration = 2.0; } },
+  { id:'shaggy',    name:'Shaggy',                emoji:'🦬', color:'#cc9966', desc:'2s invulnerability after damage + deal 1 dmg to nearest enemy. Quantity adds stacks.', apply: s => { s.iframeDuration = 2.0; s.shaggyStacks = Math.max(1, s.shaggyStacks + 1); } },
 ];
 
 // ── Weapons ───────────────────────────────────────────────────────────────────
@@ -1668,6 +1670,10 @@ function killPlayer() {
   updateHUD();
   if (playerState.hp > 0) {
     playerState.iframes = playerStats.iframeDuration;
+    if (playerStats.shaggyStacks > 0) {
+      const nearest = findNearestEnemy();
+      if (nearest) { nearest.hp -= playerStats.shaggyStacks; }
+    }
     return;
   }
   playerState.dead = true;
