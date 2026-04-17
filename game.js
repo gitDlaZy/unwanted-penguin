@@ -390,33 +390,47 @@ const playerState = { hp: 2, maxHp: 2, iframes: 0, dead: false,
 // ── Player Stats (tome upgrades) ──────────────────────────────────────────────
 
 const playerStats = {
-  damage:       1.0,   // multiplier
-  critChance:   0,     // 0–1
-  attackRate:   1.0,   // multiplier on cooldown (lower = faster)
-  projCount:    1,     // snowballs per shot
-  projExtraChance: 0, // fractional extra projectile chance
-  projSize:     1.0,
-  projSpeed:    1.0,
-  maxShield:    0,
-  shield:       0,
-  shieldRecharge: 0,
-  evasion:      0,     // 0–1 dodge chance
-  lifesteal:    0,     // 0–1 chance to restore shield on hit
-  moveSpeed:    1.0,
-  pickupRadius: 0.7,
-  knockback:      0,
-  cursed:         0,
-  boomerang:      false,
-  iframeDuration:  1.0, // seconds of invulnerability after taking damage
-  shaggyStacks:    0,   // damage dealt to nearest enemy when Shaggy triggers
+  damage:          1.0,
+  critChance:      0,
+  attackRate:      1.0,  // snowball fire rate multiplier
+  weaponCooldown:  1.0,  // weapon fire rate multiplier (Cooldown Tome)
+  projCount:       1,
+  projExtraChance: 0,
+  projSize:        1.0,
+  projSpeed:       1.0,
+  maxShield:       0,
+  shield:          0,
+  shieldRecharge:  0,
+  shieldDmgTimer:  0,    // seconds since last shield damage (regen blocked for 30s)
+  evasion:         0,
+  lifesteal:       0,
+  moveSpeed:       1.0,
+  pickupRadius:    0.7,
+  knockback:       0,
+  cursed:          0,
+  boomerang:       false,
+  iframeDuration:  1.0,
+  shaggyStacks:    0,
 };
 
 const tomeStacks = {};
 
+// "You obtained ADHD" message for Phrico Rico
+const adhdMsg = document.createElement('div');
+adhdMsg.style.cssText = 'display:none;position:fixed;top:30%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:20px;font-weight:bold;color:#aaff44;text-shadow:0 0 16px #88ff00;pointer-events:none;z-index:400;letter-spacing:2px;opacity:0;transition:opacity 0.4s';
+adhdMsg.textContent = 'You obtained ADHD!';
+document.body.appendChild(adhdMsg);
+function showAdhdMsg() {
+  adhdMsg.style.display = 'block'; adhdMsg.style.opacity = '1';
+  clearTimeout(adhdMsg._t);
+  adhdMsg._t = setTimeout(() => { adhdMsg.style.opacity = '0'; setTimeout(() => { adhdMsg.style.display = 'none'; }, 400); }, 4000);
+}
+
 const TOME_DEFS = [
   { id:'damage',     name:'Damage Tome',           emoji:'⚔️',  color:'#ff6644', desc:'+10% snowball damage',      apply: s => { s.damage     *= 1.1; } },
   { id:'precision',  name:'Precision Tome',        emoji:'🎯',  color:'#ffaa22', desc:'+5% critical hit chance',   apply: s => { s.critChance  = Math.min(0.9, s.critChance+0.05); } },
-  { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-6% attack cooldown',       apply: s => { s.attackRate *= 0.94; } },
+  { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-8% weapon cooldown',       apply: s => { s.weaponCooldown *= 0.92; } },
+  { id:'atkspeed',   name:'Attack Speed Tome',     emoji:'🏹',  color:'#ffcc44', desc:'+8% snowball attack speed',  apply: s => { s.attackRate *= 0.92; } },
   { id:'quantity',   name:'Quantity Tome',         emoji:'❄️',  color:'#aaddff', desc:'+1 snowball (50% less each stack)', apply: (s) => {
     const stacks = tomeStacks['quantity'] || 0;
     if (stacks === 0) { s.projCount += 1; }
@@ -432,7 +446,7 @@ const TOME_DEFS = [
   { id:'evasion',    name:'Evasion Tome',          emoji:'🌀',  color:'#44ffaa', desc:'+10% dodge chance',         apply: s => { s.evasion    = Math.min(0.7, s.evasion+0.1); } },
   { id:'bloody',     name:'Bloody Tome',           emoji:'🩸',  color:'#ff4466', desc:'+20% lifesteal on hit',     apply: s => { s.lifesteal  = Math.min(1, s.lifesteal+0.2); } },
   { id:'hp',         name:'HP Tome',               emoji:'💙',  color:'#2266ff', desc:'+1 max HP',                 apply: s => { s.maxShield += 1; s.shield = s.maxShield; playerState.maxHp+=1; playerState.hp+=1; updateHUD(); } },
-  { id:'agility',    name:'Agility Tome',          emoji:'🏃',  color:'#aaff44', desc:'+7% movement speed',        apply: s => { s.moveSpeed  *= 1.07; } },
+  { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+4% movement speed. "You obtained ADHD!"', apply: s => { s.moveSpeed *= 1.04; showAdhdMsg(); } },
   { id:'attraction', name:'Attraction Tome',       emoji:'🧲',  color:'#ffaa44', desc:'+0.4 pickup radius',        apply: s => { s.pickupRadius += 0.4; } },
   { id:'knockback',  name:'Knockback Tome',        emoji:'💥',  color:'#ff8844', desc:'+1.5 knockback on hit',     apply: s => { s.knockback  += 1.5; } },
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'Enemies tougher, more drops',apply:s => { s.cursed += 1; } },
@@ -444,6 +458,7 @@ const TOME_DEFS = [
     playerState.shaggyMaxCharges++;
     playerState.shaggyCharges = playerState.shaggyMaxCharges;
     playerState.shaggyRechargeTimer = 0;
+    ensureShaggyRing();
   }},
 ];
 
@@ -463,7 +478,7 @@ const WEAPON_DEFS = [
     id:       'aura_farmer',
     name:     'Aura Farmer',
     emoji:    '🌀',
-    color:    '#44ffaa',
+    color:    '#ff4444',
     desc:     'Every 2s, damages ALL enemies in radius 3 (scales with Size Tome).',
     isWeapon: true,
     cooldown: 2.0,
@@ -520,17 +535,24 @@ function showLightningStrike(x, z) {
   }, 50);
 }
 
+const gandalfRecentlyHit = new Set(); // enemies hit this cycle — cleared when all in range used
 function fireGandalfStaff() {
   const px = player.position.x, pz = player.position.z;
+  const stacks = weaponStacks['gandalf_staff'] || 1;
+  const range  = 10 * playerStats.projSize * (1 + (stacks - 1) * 0.15);
   const pool = enemies.filter(e => !e.dead && e.mesh &&
-    Math.sqrt((e.mesh.position.x - px) ** 2 + (e.mesh.position.z - pz) ** 2) <= 10);
+    Math.sqrt((e.mesh.position.x - px) ** 2 + (e.mesh.position.z - pz) ** 2) <= range);
   if (!pool.length) return;
-  const shocks = weaponStacks['gandalf_staff'] || 1;
+  // Avoid repeating targets — reset cycle when all in range have been hit
+  const fresh = pool.filter(e => !gandalfRecentlyHit.has(e));
+  if (!fresh.length) gandalfRecentlyHit.clear();
+  const available = (fresh.length ? fresh : pool).slice();
   const targets = [];
-  const available = pool.slice();
-  for (let i = 0; i < shocks && available.length; i++) {
+  for (let i = 0; i < stacks && available.length; i++) {
     const idx = Math.floor(Math.random() * available.length);
-    targets.push(available.splice(idx, 1)[0]);
+    const t = available.splice(idx, 1)[0];
+    targets.push(t);
+    gandalfRecentlyHit.add(t);
   }
   targets.forEach(target => {
     const isCrit = Math.random() < playerStats.critChance;
@@ -543,14 +565,14 @@ function fireGandalfStaff() {
     }
     showLightningStrike(target.mesh.position.x, target.mesh.position.z);
   });
-  if (playerStats.lifesteal > 0 && Math.random() < playerStats.lifesteal && playerStats.shield < playerStats.maxShield) {
+  if (playerStats.lifesteal > 0 && playerStats.shieldDmgTimer <= 0 && Math.random() < playerStats.lifesteal && playerStats.shield < playerStats.maxShield) {
     playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
     updateHUD();
   }
 }
 
 // Aura Farmer persistent ring — outer edge indicator, scales with projSize
-const auraRingMat = new THREE.MeshBasicMaterial({ color: 0x44ffaa, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+const auraRingMat = new THREE.MeshBasicMaterial({ color: 0xff4444, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
 let   auraRingMesh = null;
 let   auraRingLastSize = -1;
 
@@ -574,13 +596,13 @@ function updateAuraRing() {
 function showAuraDamageFlash(px, pz) {
   const r   = getAuraRadius();
   const geo  = new THREE.CircleGeometry(r, 48);
-  const mat  = new THREE.MeshBasicMaterial({ color: 0x44ffaa, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+  const mat  = new THREE.MeshBasicMaterial({ color: 0xff4444, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
   const fill = new THREE.Mesh(geo, mat);
   fill.rotation.x = -Math.PI / 2;
   fill.position.set(px, 0.08, pz);
   scene.add(fill);
 
-  const light = new THREE.PointLight(0x44ffaa, 8, r * 3);
+  const light = new THREE.PointLight(0xff4444, 8, r * 3);
   light.position.set(px, 1, pz);
   scene.add(light);
 
@@ -615,7 +637,7 @@ function fireAuraFarmer() {
       e.mesh.position.z += (dz / dist) * playerStats.knockback;
     }
   });
-  if (playerStats.lifesteal > 0 && Math.random() < playerStats.lifesteal && playerStats.shield < playerStats.maxShield) {
+  if (playerStats.lifesteal > 0 && playerStats.shieldDmgTimer <= 0 && Math.random() < playerStats.lifesteal && playerStats.shield < playerStats.maxShield) {
     playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
     updateHUD();
   }
@@ -627,7 +649,7 @@ function tickWeapons(dt) {
     const def = WEAPON_DEFS.find(w => w.id === id);
     weaponTimers[id] = (weaponTimers[id] || 0) - dt;
     if (weaponTimers[id] <= 0) {
-      weaponTimers[id] = def.cooldown * playerStats.attackRate;
+      weaponTimers[id] = def.cooldown * playerStats.weaponCooldown;
       if (id === 'gandalf_staff') fireGandalfStaff();
       if (id === 'aura_farmer')    fireAuraFarmer();
       if (id === 'homhomnomnom')   fireNomOrb();
@@ -638,10 +660,10 @@ function tickWeapons(dt) {
 // Toxic Friend persistent ring (follows player when equipped)
 // Toxic Friend — stationary dropped pools
 const toxicPools = [];
-const TOXIC_POOL_DURATION = 2;
+const TOXIC_POOL_DURATION = 1;
 const TOXIC_POOL_INTERVAL = 5;
 
-function getToxicRadius() { return 1 * playerStats.projSize; }
+function getToxicRadius() { return playerStats.projSize * (0.8 + (weaponStacks['toxic_friend'] || 1) * 0.2); }
 
 function dropToxicPool() {
   const x = player.position.x, z = player.position.z;
@@ -700,6 +722,19 @@ function updateToxicPools(dt) {
       toxicPools.splice(i, 1);
     }
   }
+}
+
+// Shaggy gold ring (created lazily when first needed)
+let shaggyRing = null, shaggyRingMat = null;
+function ensureShaggyRing() {
+  if (shaggyRing) return;
+  shaggyRingMat = new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: 0.65, side: THREE.DoubleSide });
+  const geo = new THREE.RingGeometry(0.85, 1.0, 40);
+  shaggyRing = new THREE.Mesh(geo, shaggyRingMat);
+  shaggyRing.rotation.x = -Math.PI / 2;
+  shaggyRing.position.y = 0.1;
+  shaggyRing.visible = false;
+  scene.add(shaggyRing);
 }
 
 function applyWeapon(id) {
@@ -878,6 +913,7 @@ function spawnSeal(hpScale = 1) {
   const angle = Math.random() * Math.PI * 2;
   const elite = Math.random() < 0.05;
   const mesh = elite ? buildPolarBear() : buildSeal();
+  if (!elite) mesh.scale.setScalar(0.8);
   mesh.position.set(Math.cos(angle) * 88, 0, Math.sin(angle) * 88);
   scene.add(mesh);
   enemies.push({ mesh, type: 'seal', hp: Math.round((elite ? 120 : 30) * hpScale), elite });
@@ -947,7 +983,7 @@ function spawnSwarmWave() {
 function updateEnemies(dt) {
   gameTime += dt;
   // Every 20s the spawn interval shrinks by ~15%, floored at 0.8s / 2s
-  const pressure = Math.max(0.3, 1 - (gameTime + 24) / 120);
+  const pressure = Math.max(0.24, 1 - (gameTime + 24) / 96); // 20% faster scaling, lower floor
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
   const hpScale = 1 + gameTime / 150; // enemies get tankier, slower ramp
@@ -1063,14 +1099,17 @@ function fireNomOrb() {
   const len = Math.sqrt(tx*tx + tz*tz) || 1;
   const dir = new THREE.Vector3(tx / len, 0, tz / len);
   const speed = SNOWBALL_SPEED * 1.4;
-  const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(0.12, 7, 7),
-    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.2, roughness: 0.1 })
-  );
+  const w = 0.10 * playerStats.projSize; // narrow width scales with Size Tome
+  // Elongated capsule oriented in travel direction
+  const geo = new THREE.CapsuleGeometry(w, 0.55, 4, 8);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x9933ff, emissive: 0x6600cc, emissiveIntensity: 1.0, roughness: 0.1 });
+  const mesh = new THREE.Mesh(geo, mat);
+  // Rotate capsule to align with travel direction (capsule default is Y-axis)
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir);
   mesh.position.copy(player.position);
   mesh.position.y = 1.0;
   scene.add(mesh);
-  nomOrbs.push({ mesh, vel: dir.clone().multiplyScalar(speed), spawnPos: player.position.clone(), hitSet: new Set() });
+  nomOrbs.push({ mesh, vel: dir.clone().multiplyScalar(speed), spawnPos: player.position.clone(), hitSet: new Set(), w });
 }
 
 function updateNomOrbs(dt) {
@@ -1081,7 +1120,7 @@ function updateNomOrbs(dt) {
       if (e.dead || !e.mesh || orb.hitSet.has(e)) continue;
       const dx = orb.mesh.position.x - e.mesh.position.x;
       const dz = orb.mesh.position.z - e.mesh.position.z;
-      if (Math.sqrt(dx*dx + dz*dz) < 1.0) {
+      if (Math.sqrt(dx*dx + dz*dz) < (orb.w || 0.15) * 6) {
         orb.hitSet.add(e);
         const isCrit = Math.random() < playerStats.critChance;
         e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
@@ -1171,7 +1210,7 @@ function hitEnemy(j, impactX, impactY, impactZ) {
     e.mesh.position.x -= (kx / kd) * playerStats.knockback;
     e.mesh.position.z -= (kz / kd) * playerStats.knockback;
   }
-  if (playerStats.lifesteal > 0 && Math.random() < playerStats.lifesteal && playerStats.shield < playerStats.maxShield) {
+  if (playerStats.lifesteal > 0 && playerStats.shieldDmgTimer <= 0 && Math.random() < playerStats.lifesteal && playerStats.shield < playerStats.maxShield) {
     playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
     updateHUD();
   }
@@ -1655,6 +1694,9 @@ function showDeathScreen() {
     <button id="retryBtn"
       style="margin-top:8px;background:transparent;border:2px solid #44aaff55;color:#aee8ff;
              font-family:monospace;font-size:18px;padding:10px 36px;cursor:pointer;letter-spacing:3px">RETRY</button>
+    <div style="position:fixed;top:16px;right:20px;text-align:right;font-family:monospace;font-size:11px;color:#aee8ff66;line-height:1.8;pointer-events:none">
+      Special thanks to<br>Hommienommie<br>Hasper Keijnen<br>Shaggy<br>EhdMusic
+    </div>
   `;
   deathScreen.style.display = 'flex';
 
@@ -1723,9 +1765,10 @@ function killPlayer() {
     triggerShaggy();
     return;
   }
-  // Shield absorbs hit
+  // Shield absorbs hit (regen blocked for 30s after shield damage)
   if (playerStats.shield > 0) {
     playerStats.shield--;
+    playerStats.shieldDmgTimer = 30;
     playerState.iframes = 1.2;
     updateHUD();
     return;
@@ -1955,6 +1998,14 @@ function applyTome(id) {
     def.apply(playerStats, () => applyTome(TOME_DEFS.filter(t => t.id !== 'chaos')[Math.floor(Math.random() * 14)].id));
     tomeStacks[id] = (tomeStacks[id] || 0) + 1;
   }
+  // Knock nearby enemies back on level-up
+  const lx = player.position.x, lz = player.position.z;
+  enemies.forEach(e => {
+    if (!e.mesh) return;
+    const ex = e.mesh.position.x - lx, ez = e.mesh.position.z - lz;
+    const ed = Math.sqrt(ex*ex + ez*ez);
+    if (ed < 5 && ed > 0) { e.mesh.position.x += (ex/ed)*2; e.mesh.position.z += (ez/ed)*2; }
+  });
   tomeScreen.style.display = 'none';
   choosingTome = false;
   touchInput.dx = 0; touchInput.dz = 0; touchInput.jump = false;
@@ -2422,7 +2473,7 @@ function triggerPhoto(h) {
   h.charge   = 0;
   h.cooldown = HUMAN_PHOTO_COOLDOWN;
   h.mesh.userData.chargeRing.material.opacity = 0;
-  playerPhotoStun = 0.5;
+  playerPhotoStun = 1.5;
 
   // Flash on, then fade
   photoFlash.style.display = 'block';
@@ -2442,7 +2493,7 @@ function triggerPhoto(h) {
 }
 
 function spawnHumans() {
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 9; i++) {
     let x, z, tries = 0;
     do {
       x = (Math.random() - 0.5) * 160;
@@ -2679,6 +2730,17 @@ function update(dt) {
     if (playerState.shaggyRechargeTimer >= 15) {
       playerState.shaggyCharges = playerState.shaggyMaxCharges;
       playerState.shaggyRechargeTimer = 0;
+    }
+  }
+  // Shield lifesteal blocked for 30s after taking shield damage
+  if (playerStats.shieldDmgTimer > 0) playerStats.shieldDmgTimer = Math.max(0, playerStats.shieldDmgTimer - dt);
+  // Shaggy gold ring follows player
+  if (shaggyRing) {
+    shaggyRing.visible = playerState.shaggyCharges > 0;
+    if (shaggyRing.visible) {
+      shaggyRing.position.x = player.position.x;
+      shaggyRing.position.z = player.position.z;
+      shaggyRingMat.opacity = 0.55 + Math.sin(Date.now() / 300) * 0.15;
     }
   }
   movementLockout       = Math.max(0, movementLockout - dt);
