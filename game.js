@@ -55,6 +55,8 @@ for (let i = 0; i < 120; i++) {
   const r  = Math.random() * 3.5 + 0.5;
   const px = (Math.random() - 0.5) * 200;
   const pz = (Math.random() - 0.5) * 200;
+  // Skip patches inside the water zone (68, 68, r=32)
+  if (Math.hypot(px - 68, pz - 68) < 34) continue;
   const p  = new THREE.Mesh(new THREE.CircleGeometry(r, 10), snowPatchMat);
   p.rotation.x = -Math.PI / 2;
   p.position.set(px, 0.012, pz);
@@ -666,8 +668,8 @@ function updateEnemies(dt) {
         e.mesh.position.x += sepX * 0.3;
         e.mesh.position.z += sepZ * 0.3;
 
-        e.mesh.position.x += (dx / dist) * 6.4 * dt;
-        e.mesh.position.z += (dz / dist) * 6.4 * dt;
+        e.mesh.position.x += (dx / dist) * 6.3 * dt;
+        e.mesh.position.z += (dz / dist) * 6.3 * dt;
         // Model faces +X — use atan2(-dz, dx) for correct orientation
         e.mesh.rotation.y = Math.atan2(-dz, dx);
       }
@@ -981,8 +983,8 @@ function spawnCrack(x, z, length, angle) {
   // Collision segment in world space
   const half = length / 2;
   cracks.push({
-    ax: x + Math.cos(angle)*half, az: z + Math.sin(angle)*half,
-    bx: x - Math.cos(angle)*half, bz: z - Math.sin(angle)*half,
+    ax: x + Math.cos(angle)*half, az: z - Math.sin(angle)*half,
+    bx: x - Math.cos(angle)*half, bz: z + Math.sin(angle)*half,
     halfWidth: 0.32,
     cooldownTimer: 0, // 20-sec cooldown after jump-clear
   });
@@ -995,7 +997,8 @@ function spawnCrack(x, z, length, angle) {
     for (let gz = -85; gz <= 85; gz += step) {
       const x = gx + (Math.random() - 0.5) * 12;
       const z = gz + (Math.random() - 0.5) * 12;
-      if (Math.hypot(x, z) < 9) continue;                      // spawn area
+      if (Math.hypot(x, z) < 9) continue;                      // old origin area
+      if (Math.hypot(x - 35, z - 25) < 10) continue;          // player spawn
       if (Math.hypot(x + 20, z + 20) < 22) continue;           // mountain
       if (Math.hypot(x - WATER_CX, z - WATER_CZ) < 36) continue; // water
       if (Math.abs(x) > 90 || Math.abs(z) > 90) continue;
@@ -1370,19 +1373,36 @@ function updateTomeHighlight() {
 
 let pendingTomes = 0;
 
+// Right-side level-up indicator (mid-screen)
+const levelIndicator = document.createElement('div');
+levelIndicator.style.cssText = `
+  display:none; position:fixed; left:calc(50% + 20%); top:50%; transform:translate(-50%, -50%);
+  font-family:monospace; font-size:13px; font-weight:bold; color:#ffee44;
+  text-shadow:0 0 10px #ffaa00; letter-spacing:2px; pointer-events:none;
+  z-index:100; text-align:center; line-height:1.6;
+  animation: levelPulse 1s ease-in-out infinite alternate;
+`;
+document.head.insertAdjacentHTML('beforeend', `<style>
+  @keyframes levelPulse { from { opacity:0.6; } to { opacity:1; } }
+</style>`);
+document.body.appendChild(levelIndicator);
+
 function updateLevelBtn() {
   if (pendingTomes > 0) {
-    levelBtn.style.opacity      = '1';
+    levelBtn.style.opacity       = '1';
     levelBtn.style.pointerEvents = 'auto';
-    levelBtn.style.borderColor  = '#ffee44cc';
-    levelBtn.style.background   = 'rgba(40,30,0,0.6)';
-    levelBtn.textContent        = pendingTomes > 1 ? `LEVEL\n×${pendingTomes}` : 'LEVEL';
+    levelBtn.style.borderColor   = '#ffee44cc';
+    levelBtn.style.background    = 'rgba(40,30,0,0.6)';
+    levelBtn.textContent         = pendingTomes > 1 ? `LEVEL\n×${pendingTomes}` : 'LEVEL';
+    levelIndicator.style.display = 'block';
+    levelIndicator.innerHTML     = `⬆ LEVEL UP<br>${pendingTomes > 1 ? `×${pendingTomes}` : ''}<br><span style="font-size:10px;opacity:0.6">[ O ]</span>`;
   } else {
-    levelBtn.style.opacity      = '0.25';
+    levelBtn.style.opacity       = '0.25';
     levelBtn.style.pointerEvents = 'none';
-    levelBtn.style.borderColor  = '#ffee4433';
-    levelBtn.style.background   = 'rgba(0,15,40,0.4)';
-    levelBtn.textContent        = 'LEVEL';
+    levelBtn.style.borderColor   = '#ffee4433';
+    levelBtn.style.background    = 'rgba(0,15,40,0.4)';
+    levelBtn.textContent         = 'LEVEL';
+    levelIndicator.style.display = 'none';
   }
 }
 
@@ -1760,16 +1780,19 @@ function spawnOrcas() {
 }
 
 function updateOrcas(dt) {
-  const playerOnSurface = playerY < 0.4;
-  const inWater = playerOnSurface && isInWater(player.position.x, player.position.z);
+  const playerGrounded  = playerY < 0.4;
+  const playerInWaterZone = isInWater(player.position.x, player.position.z);
+  const inWater = playerGrounded && playerInWaterZone;
 
   if (inWater) {
     playerWaterTimer += dt;
     if (playerWaterTimer >= 1.0) orcasChasing = true;
-  } else {
+  } else if (playerGrounded) {
+    // Only reset when player is physically on ground outside water
     playerWaterTimer = 0;
     orcasChasing     = false;
   }
+  // While airborne: preserve chasing state — no position reset
 
   for (const o of orcas) {
     const bob = Math.sin(Date.now() / 700 + o.idleAngle) * 0.08;
@@ -1779,8 +1802,19 @@ function updateOrcas(dt) {
       const dz   = player.position.z - o.mesh.position.z;
       const dist = Math.hypot(dx, dz);
 
-      // Pause orca movement while player is airborne (juking mechanic)
-      if (playerY <= 0.5 && dist > 0.5) {
+      if (playerOnWaterIceSpot()) {
+        // Player on safe spot — retreat toward idle circle position
+        const targetX = WATER_CX + Math.cos(o.idleAngle) * WATER_R * 0.48;
+        const targetZ = WATER_CZ + Math.sin(o.idleAngle) * WATER_R * 0.48;
+        const rdx = targetX - o.mesh.position.x;
+        const rdz = targetZ - o.mesh.position.z;
+        const rdist = Math.hypot(rdx, rdz);
+        if (rdist > 0.5) {
+          o.mesh.position.x += (rdx / rdist) * 4.0 * dt;
+          o.mesh.position.z += (rdz / rdist) * 4.0 * dt;
+          o.idleAngle += o.idleSpeed * dt; // keep idle angle drifting
+        }
+      } else if (dist > 0.5) {
         // 125% of water speed (7.8 * 1.2 * 1.25 = 11.7)
         let nx = o.mesh.position.x + (dx / dist) * 11.7 * dt;
         let nz = o.mesh.position.z + (dz / dist) * 11.7 * dt;
@@ -1793,10 +1827,10 @@ function updateOrcas(dt) {
         }
         o.mesh.position.x = nx;
         o.mesh.position.z = nz;
-        o.mesh.rotation.y = Math.atan2(-dz, dx); // head (+X) faces player
+        o.mesh.rotation.y = Math.atan2(-dz, dx);
       }
 
-      if (dist < 1.4 && inWater && playerY < 0.3 && playerState.iframes <= 0) killPlayer();
+      if (dist < 1.4 && inWater && playerY < 0.3 && !playerOnWaterIceSpot() && playerState.iframes <= 0) killPlayer();
     } else {
       // Idle — circle the pool
       o.idleAngle += o.idleSpeed * dt;
@@ -1813,22 +1847,31 @@ function updateOrcas(dt) {
 
 spawnOrcas();
 
-// ── Ice Spots Near Water ──────────────────────────────────────────────────────
+// ── Ice Safe Spots (inside water pool) ───────────────────────────────────────
+
+const waterIceSpots = []; // { x, z, r } — orca-safe platforms inside the pool
 
 (function placeWaterIceSpots() {
-  const iceSpotMat = new THREE.MeshStandardMaterial({ color: 0xd0f0ff, roughness: 0.2, metalness: 0.3 });
-  const angles = [0, Math.PI/3, 2*Math.PI/3, Math.PI, 4*Math.PI/3, 5*Math.PI/3];
+  const mat = new THREE.MeshStandardMaterial({ color: 0x4a7c45, roughness: 0.9 });
+  // Place 4 platforms at ~55% of pool radius so they're reachable by jumping
+  const angles = [Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.75];
   angles.forEach(a => {
-    const r = WATER_R + 1.5;
-    const x = WATER_CX + Math.cos(a) * r;
-    const z = WATER_CZ + Math.sin(a) * r;
-    const radius = 1.5 + Math.random() * 1.0; // 1.5–2.5
-    const spot = new THREE.Mesh(new THREE.CircleGeometry(radius, 12), iceSpotMat);
-    spot.rotation.x = -Math.PI / 2;
-    spot.position.set(x, 0.05, z);
-    scene.add(spot);
+    const r   = WATER_R * 0.55;
+    const x   = WATER_CX + Math.cos(a) * r;
+    const z   = WATER_CZ + Math.sin(a) * r;
+    const rad = 2.2;
+    const mesh = new THREE.Mesh(new THREE.CircleGeometry(rad, 12), mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(x, 0.06, z);
+    scene.add(mesh);
+    waterIceSpots.push({ x, z, r: rad });
   });
 })();
+
+function playerOnWaterIceSpot() {
+  const px = player.position.x, pz = player.position.z;
+  return waterIceSpots.some(s => Math.hypot(px - s.x, pz - s.z) < s.r);
+}
 
 // ── Humans (Observers) ───────────────────────────────────────────────────────
 
@@ -1848,8 +1891,8 @@ function makeVisionConeMesh() {
   for (let i = 0; i <= segments; i++) {
     const t = i / segments;
     const a = -halfAngle + t * 2 * halfAngle;
-    // +cos maps shape +Y → human-local -Z (true forward) after rotation.x=-PI/2
-    shape.lineTo(Math.sin(a) * HUMAN_VISION_RANGE, Math.cos(a) * HUMAN_VISION_RANGE);
+    // -cos maps shape -Y → human-local +Z (camera direction) after rotation.x=-PI/2
+    shape.lineTo(Math.sin(a) * HUMAN_VISION_RANGE, -Math.cos(a) * HUMAN_VISION_RANGE);
   }
   shape.lineTo(0, 0);
   const geo  = new THREE.ShapeGeometry(shape);
@@ -1997,8 +2040,8 @@ function updateHumans(dt) {
     const dist = Math.hypot(dx, dz);
 
     if (dist < HUMAN_VISION_RANGE) {
-      const fwdX = -Math.sin(h.facing);
-      const fwdZ = -Math.cos(h.facing);
+      const fwdX = Math.sin(h.facing);   // human camera faces local +Z
+      const fwdZ = Math.cos(h.facing);
       const dot  = (dx / dist) * fwdX + (dz / dist) * fwdZ;
 
       if (dot > HUMAN_VISION_COS) {
@@ -2171,7 +2214,7 @@ window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
 // ── Game Loop ─────────────────────────────────────────────────────────────────
 
-const SPEED      = 7.8;
+const SPEED      = 7.9;
 const CAM_OFFSET = new THREE.Vector3(0, 14, 13);
 
 let lastTime = performance.now();
