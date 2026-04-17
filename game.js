@@ -1097,8 +1097,8 @@ function fireSingleSnowball(target) {
   const isBoomerang = playerStats.boomerang;
   if (isBoomerang) boomerangInFlight = true;
   snowballs.push({ mesh, vel: dir.clone().multiplyScalar(speed), target,
-    boomerang: isBoomerang, returning: false, spawnPos: player.position.clone(),
-    hitThisWay: isBoomerang ? new Set() : null });
+    boomerang: isBoomerang, returning: false, hitOut: false, hitReturn: false,
+    spawnPos: isBoomerang ? player.position.clone() : null });
 }
 
 function updateBurst(dt) {
@@ -1147,7 +1147,7 @@ function updateSnowballs(dt) {
     if (s.boomerang) {
       if (!s.returning && s.spawnPos.distanceTo(s.mesh.position) > 9) {
         s.returning = true;
-        s.hitThisWay = new Set(); // reset hit tracking for return trip
+        s.hitReturn = false; // allowed one hit on return leg
       }
       if (s.returning) {
         const toPlayer = new THREE.Vector3(
@@ -1173,16 +1173,20 @@ function updateSnowballs(dt) {
       const dx = s.mesh.position.x - e.mesh.position.x;
       const dz = s.mesh.position.z - e.mesh.position.z;
       if (Math.sqrt(dx*dx + dz*dz) < 1.2 * playerStats.projSize) {
-        // Boomerang: skip enemies already hit on this leg
-        if (s.boomerang && s.hitThisWay && s.hitThisWay.has(e)) continue;
-        if (s.boomerang && s.hitThisWay) s.hitThisWay.add(e);
-        hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z);
-        hit = true;
+        if (s.boomerang) {
+          // Outgoing: one hit only, then fly through until return
+          if (!s.returning && !s.hitOut) { s.hitOut = true; hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z); }
+          // Returning: one hit only
+          else if (s.returning && !s.hitReturn) { s.hitReturn = true; hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z); }
+        } else {
+          hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z);
+          hit = true;
+        }
         break;
       }
     }
 
-    // Boomerang: don't remove on hit — only remove when out of range or returned
+    // Boomerang: don't remove on hit — only remove when returned
     if (s.boomerang) { hit = false; }
 
     // Remove if hit or out of range
