@@ -1099,7 +1099,7 @@ function fireNomOrb() {
   const len = Math.sqrt(tx*tx + tz*tz) || 1;
   const dir = new THREE.Vector3(tx / len, 0, tz / len);
   const speed = 8; // slow independent speed
-  const w = 0.50 * playerStats.projSize; // width scales with Size Tome
+  const w = 1.0 * playerStats.projSize; // width scales with Size Tome
   // Elongated capsule oriented in travel direction
   const geo = new THREE.CapsuleGeometry(w, 0.55, 4, 8);
   const mat = new THREE.MeshStandardMaterial({ color: 0x9933ff, emissive: 0x6600cc, emissiveIntensity: 1.0, roughness: 0.1 });
