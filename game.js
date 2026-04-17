@@ -465,7 +465,7 @@ hud.insertBefore(shieldRow, hpLabel);
 
 // XP bar — right side
 const xpRow = document.createElement('div');
-xpRow.style.cssText = 'position:fixed;bottom:8px;right:20%;display:flex;flex-direction:column;align-items:flex-end;gap:4px;pointer-events:none';
+xpRow.style.cssText = 'position:fixed;bottom:8px;right:10%;display:flex;flex-direction:column;align-items:flex-end;gap:4px;pointer-events:none';
 const xpLabelEl = document.createElement('div');
 xpLabelEl.style.cssText = 'color:#ffee44;font-family:monospace;font-size:11px;text-shadow:0 0 6px #ffaa00';
 xpLabelEl.textContent = 'LVL 1 — XP 0 / 3';
@@ -482,7 +482,7 @@ let crackJumps = 0;
 
 // Crack jump progress HUD
 const crackHUD = document.createElement('div');
-crackHUD.style.cssText = 'position:fixed;bottom:24px;left:20%;pointer-events:none;display:flex;flex-direction:column;align-items:flex-start;gap:3px';
+crackHUD.style.cssText = 'position:fixed;bottom:24px;left:10%;pointer-events:none;display:flex;flex-direction:column;align-items:flex-start;gap:3px';
 const crackHUDLabel = document.createElement('div');
 crackHUDLabel.style.cssText = 'color:#aee8ff;font-family:monospace;font-size:12px;text-shadow:0 0 6px #44aaff';
 crackHUDLabel.textContent = '🧊 0 / 10';
