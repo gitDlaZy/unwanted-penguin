@@ -434,7 +434,7 @@ const TOME_DEFS = [
 // ── HUD ───────────────────────────────────────────────────────────────────────
 
 const hud = document.createElement('div');
-hud.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none';
+hud.style.cssText = 'position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none';
 document.body.appendChild(hud);
 
 const hpLabel = document.createElement('div');
@@ -463,9 +463,9 @@ shieldRow.appendChild(shieldLabel);
 shieldRow.appendChild(shieldBarOuter);
 hud.insertBefore(shieldRow, hpLabel);
 
-// XP bar
+// XP bar — right side
 const xpRow = document.createElement('div');
-xpRow.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:4px';
+xpRow.style.cssText = 'position:fixed;bottom:8px;right:16px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;pointer-events:none';
 const xpLabelEl = document.createElement('div');
 xpLabelEl.style.cssText = 'color:#ffee44;font-family:monospace;font-size:11px;text-shadow:0 0 6px #ffaa00';
 xpLabelEl.textContent = 'LVL 1 — XP 0 / 3';
@@ -476,7 +476,7 @@ xpBarInner.style.cssText = 'width:0%;height:100%;background:#ffcc00;border-radiu
 xpBarOuter.appendChild(xpBarInner);
 xpRow.appendChild(xpLabelEl);
 xpRow.appendChild(xpBarOuter);
-hud.appendChild(xpRow);
+document.body.appendChild(xpRow);
 
 let crackJumps = 0;
 
