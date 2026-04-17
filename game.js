@@ -1100,7 +1100,7 @@ function fireNomOrb() {
   const tz = target.mesh.position.z - player.position.z;
   const len = Math.sqrt(tx*tx + tz*tz) || 1;
   const dir = new THREE.Vector3(tx / len, 0, tz / len);
-  const speed = 4; // slow independent speed
+  const speed = 5.2; // 4 * 1.3
   const stacks = weaponStacks['homhomnomnom'] || 1;
   const w = 0.8 * playerStats.projSize * (1 + (stacks - 1) * 0.25); // -20%, stacks wider
   // Elongated capsule oriented in travel direction
