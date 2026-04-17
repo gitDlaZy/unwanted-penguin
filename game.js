@@ -431,6 +431,69 @@ const TOME_DEFS = [
   { id:'chaos',      name:'Chaos Tome',            emoji:'🎲',  color:'#ff44ff', desc:'Random tome effect!',        apply: (s, chaos) => chaos() },
 ];
 
+// ── Weapons ───────────────────────────────────────────────────────────────────
+
+const WEAPON_DEFS = [
+  {
+    id:      'gandalf_staff',
+    name:    'Staff of Gandalf',
+    emoji:   '🪄',
+    color:   '#ffffff',
+    desc:    'Every 2.5s, strikes a random enemy within range 10. Uses all tome multipliers.',
+    isWeapon: true,
+  },
+];
+
+let equippedWeapon = null;
+let weaponCooldown = 0;
+
+const gandalfFlash = document.createElement('div');
+gandalfFlash.style.cssText = 'display:none;position:fixed;top:40%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:22px;color:#fff;font-weight:bold;text-shadow:0 0 18px #fff,0 0 40px #aaaaff;pointer-events:none;z-index:400;letter-spacing:2px;opacity:0;transition:opacity 0.2s';
+document.body.appendChild(gandalfFlash);
+
+function fireGandalfStaff() {
+  const px = player.position.x, pz = player.position.z;
+  const inRange = enemies.filter(e => !e.dead && e.mesh &&
+    Math.sqrt((e.mesh.position.x - px) ** 2 + (e.mesh.position.z - pz) ** 2) <= 10);
+  if (!inRange.length) return;
+  const target = inRange[Math.floor(Math.random() * inRange.length)];
+  const isCrit = Math.random() < playerStats.critChance;
+  target.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1) * (1 + playerStats.projSize * 0.5 - 0.5);
+  if (playerStats.knockback > 0 && target.mesh) {
+    const dx = target.mesh.position.x - px, dz = target.mesh.position.z - pz;
+    const dist = Math.sqrt(dx * dx + dz * dz) || 1;
+    target.mesh.position.x += (dx / dist) * playerStats.knockback;
+    target.mesh.position.z += (dz / dist) * playerStats.knockback;
+  }
+  if (playerStats.lifesteal > 0 && Math.random() < playerStats.lifesteal && playerStats.shield < playerStats.maxShield) {
+    playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
+    updateHUD();
+  }
+  // flash
+  gandalfFlash.textContent = isCrit ? '⚡ CRIT!' : '⚡';
+  gandalfFlash.style.display = 'block';
+  gandalfFlash.style.opacity = '1';
+  clearTimeout(gandalfFlash._t);
+  gandalfFlash._t = setTimeout(() => {
+    gandalfFlash.style.opacity = '0';
+    setTimeout(() => { gandalfFlash.style.display = 'none'; }, 200);
+  }, 400);
+}
+
+function tickWeapons(dt) {
+  if (!equippedWeapon || choosingTome || playerState.dead) return;
+  weaponCooldown -= dt;
+  if (weaponCooldown <= 0) {
+    weaponCooldown = 2.5 * playerStats.attackRate;
+    if (equippedWeapon === 'gandalf_staff') fireGandalfStaff();
+  }
+}
+
+function applyWeapon(id) {
+  equippedWeapon = id;
+  weaponCooldown = 0; // fire immediately on next tick
+}
+
 // ── HUD ───────────────────────────────────────────────────────────────────────
 
 const hud = document.createElement('div');
@@ -1370,7 +1433,7 @@ tomeScreen.innerHTML = `
 document.body.appendChild(tomeScreen);
 
 function pickRandomTomes(count) {
-  const pool = TOME_DEFS.slice();
+  const pool = [...TOME_DEFS, ...WEAPON_DEFS];
   const result = [];
   while (result.length < count && pool.length) {
     const idx = Math.floor(Math.random() * pool.length);
@@ -1461,10 +1524,12 @@ function showTomeChoice() {
       box-shadow:0 0 12px ${tome.color}11;
     `;
     card.innerHTML = `
+      ${tome.isWeapon ? `<div style="font-size:10px;letter-spacing:2px;color:${tome.color};opacity:0.7;margin-bottom:6px">⚔ WEAPON</div>` : ''}
       <div style="font-size:34px;margin-bottom:10px">${tome.emoji}</div>
       <div style="font-size:15px;font-weight:bold;color:${tome.color};margin-bottom:8px">${tome.name}</div>
       <div style="font-size:12px;opacity:0.75;line-height:1.4">${tome.desc}</div>
-      ${stacks > 0 ? `<div style="font-size:11px;opacity:0.45;margin-top:8px">Stack: ${stacks}</div>` : ''}
+      ${!tome.isWeapon && stacks > 0 ? `<div style="font-size:11px;opacity:0.45;margin-top:8px">Stack: ${stacks}</div>` : ''}
+      ${tome.isWeapon && equippedWeapon === tome.id ? `<div style="font-size:11px;opacity:0.55;margin-top:8px;color:${tome.color}">✓ Equipped</div>` : ''}
     `;
     card.onclick = () => { selectedTomeIdx = i; applyTome(tome.id); };
     container.appendChild(card);
@@ -1527,6 +1592,15 @@ function resumeGame() {
 document.addEventListener('touchstart', () => resumeGame(), { passive: true });
 
 function applyTome(id) {
+  if (WEAPON_DEFS.find(w => w.id === id)) {
+    applyWeapon(id);
+    tomeScreen.style.display = 'none';
+    choosingTome = false;
+    touchInput.dx = 0; touchInput.dz = 0; touchInput.jump = false;
+    if (pendingTomes > 0) { pendingTomes--; updateLevelBtn(); showTomeChoice(); }
+    else enterResumeState();
+    return;
+  }
   if (id === 'chaos') {
     const others = TOME_DEFS.filter(t => t.id !== 'chaos');
     const random = others[Math.floor(Math.random() * others.length)];
@@ -2377,6 +2451,7 @@ function update(dt) {
     }
   }
 
+  tickWeapons(dt);
   updateBurst(dt);
   updateOrcas(dt);
   updateHumans(dt);
