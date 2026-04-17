@@ -637,19 +637,41 @@ function tickWeapons(dt) {
 
 // Toxic Friend persistent ring (follows player when equipped)
 // Toxic Friend — stationary dropped pools
-const toxicPools = []; // { mesh, x, z, life }
-const TOXIC_POOL_DURATION = 8;
+const toxicPools = [];
+const TOXIC_POOL_DURATION = 2;
 const TOXIC_POOL_INTERVAL = 5;
+
+function getToxicRadius() { return 1 * playerStats.projSize; }
 
 function dropToxicPool() {
   const x = player.position.x, z = player.position.z;
-  const geo = new THREE.RingGeometry(1.85, 2.0, 40);
+  const r = getToxicRadius();
+  const geo = new THREE.RingGeometry(r - 0.12, r, 40);
   const mat = new THREE.MeshBasicMaterial({ color: 0x88ff44, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;
   mesh.position.set(x, 0.08, z);
   scene.add(mesh);
-  toxicPools.push({ mesh, mat, x, z, life: TOXIC_POOL_DURATION });
+  toxicPools.push({ mesh, mat, x, z, r, life: TOXIC_POOL_DURATION });
+}
+
+function toxicExplosion(x, z, r) {
+  const geo = new THREE.CircleGeometry(r, 40);
+  const mat = new THREE.MeshBasicMaterial({ color: 0x88ff44, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+  const fill = new THREE.Mesh(geo, mat);
+  fill.rotation.x = -Math.PI / 2;
+  fill.position.set(x, 0.1, z);
+  scene.add(fill);
+  const light = new THREE.PointLight(0x88ff44, 8, r * 4);
+  light.position.set(x, 1, z);
+  scene.add(light);
+  let age = 0;
+  const tick = setInterval(() => {
+    age += 0.05;
+    mat.opacity = Math.max(0, 0.7 - age * 3.5);
+    light.intensity = Math.max(0, 8 - age * 40);
+    if (age >= 0.4) { clearInterval(tick); scene.remove(fill); scene.remove(light); geo.dispose(); mat.dispose(); }
+  }, 50);
 }
 
 function updateToxicPools(dt) {
@@ -658,8 +680,23 @@ function updateToxicPools(dt) {
     p.life -= dt;
     p.mat.opacity = Math.max(0, 0.6 * (p.life / TOXIC_POOL_DURATION));
     if (p.life <= 0) {
-      scene.remove(p.mesh);
-      p.mat.dispose(); p.mesh.geometry.dispose();
+      // Explode — damage all enemies in radius
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        const e = enemies[j];
+        if (!e.dead && e.mesh && Math.sqrt((e.mesh.position.x-p.x)**2+(e.mesh.position.z-p.z)**2) < p.r) {
+          const isCrit = Math.random() < playerStats.critChance;
+          e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+          if (e.hp <= 0) {
+            if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
+            if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 3 : 1);
+            if (e.type === 'belgica') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, 1);
+            killCount++; document.getElementById('killHUD').textContent = `☠ ${killCount}`;
+            scene.remove(e.mesh); enemies.splice(j, 1);
+          }
+        }
+      }
+      toxicExplosion(p.x, p.z, p.r);
+      scene.remove(p.mesh); p.mat.dispose(); p.mesh.geometry.dispose();
       toxicPools.splice(i, 1);
     }
   }
@@ -938,7 +975,7 @@ function updateEnemies(dt) {
         e.mesh.position.x += sepX * 0.3;
         e.mesh.position.z += sepZ * 0.3;
 
-        const inPool = toxicPools.some(p => Math.sqrt((e.mesh.position.x-p.x)**2+(e.mesh.position.z-p.z)**2) < 2);
+        const inPool = toxicPools.some(p => Math.sqrt((e.mesh.position.x-p.x)**2+(e.mesh.position.z-p.z)**2) < p.r);
         const toxicMult = inPool ? getToxicSlow() : 1;
         e.mesh.position.x += (dx / dist) * 6.3 * dt * toxicMult;
         e.mesh.position.z += (dz / dist) * 6.3 * dt * toxicMult;
@@ -1166,7 +1203,7 @@ function updateSnowballs(dt) {
           player.position.x - s.mesh.position.x, 0,
           player.position.z - s.mesh.position.z
         ).normalize().multiplyScalar(SNOWBALL_SPEED * playerStats.projSpeed);
-        s.vel.lerp(toPlayer, 0.15);
+        s.vel.lerp(toPlayer, 0.35);
         if (s.mesh.position.distanceTo(player.position) < 1.2) {
           boomerangInFlight = false;
           scene.remove(s.mesh);
@@ -1199,12 +1236,15 @@ function updateSnowballs(dt) {
       }
     }
 
-    // Boomerang: don't remove on hit — only remove when returned
-    if (s.boomerang) { hit = false; }
+    // Boomerang: only removed when it returns to player (handled above) or times out
+    if (s.boomerang) {
+      s.age = (s.age || 0) + dt;
+      if (s.age > 6) { boomerangInFlight = false; scene.remove(s.mesh); snowballs.splice(i, 1); }
+      continue; // skip normal removal
+    }
 
-    // Remove if hit or out of range
+    // Normal snowball: remove on hit or out of range
     if (hit || s.mesh.position.distanceTo(player.position) > 12) {
-      if (s.boomerang) boomerangInFlight = false;
       scene.remove(s.mesh);
       snowballs.splice(i, 1);
     }
