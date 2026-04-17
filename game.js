@@ -983,7 +983,7 @@ function spawnSwarmWave() {
 function updateEnemies(dt) {
   gameTime += dt;
   // Every 20s the spawn interval shrinks by ~15%, floored at 0.8s / 2s
-  const pressure = Math.max(0.24, 1 - (gameTime + 24) / 96); // 20% faster scaling, lower floor
+  const pressure = Math.max(0.17, 1 - (gameTime + 24) / 74); // ~50% faster scaling total, lower floor
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
   const hpScale = 1 + gameTime / 150; // enemies get tankier, slower ramp
@@ -1099,7 +1099,8 @@ function fireNomOrb() {
   const len = Math.sqrt(tx*tx + tz*tz) || 1;
   const dir = new THREE.Vector3(tx / len, 0, tz / len);
   const speed = 4; // slow independent speed
-  const w = 1.0 * playerStats.projSize; // width scales with Size Tome
+  const stacks = weaponStacks['homhomnomnom'] || 1;
+  const w = 0.8 * playerStats.projSize * (1 + (stacks - 1) * 0.25); // -20%, stacks wider
   // Elongated capsule oriented in travel direction
   const geo = new THREE.CapsuleGeometry(w, 0.55, 4, 8);
   const mat = new THREE.MeshStandardMaterial({ color: 0x9933ff, emissive: 0x6600cc, emissiveIntensity: 1.0, roughness: 0.1 });
@@ -1109,36 +1110,39 @@ function fireNomOrb() {
   mesh.position.copy(player.position);
   mesh.position.y = 1.0;
   scene.add(mesh);
-  nomOrbs.push({ mesh, vel: dir.clone().multiplyScalar(speed), spawnPos: player.position.clone(), hitSet: new Set(), w });
+  nomOrbs.push({ mesh, vel: dir.clone().multiplyScalar(speed), spawnPos: player.position.clone(), hitCooldowns: new Map(), w });
 }
 
 function updateNomOrbs(dt) {
   for (let i = nomOrbs.length - 1; i >= 0; i--) {
     const orb = nomOrbs[i];
     orb.mesh.position.addScaledVector(orb.vel, dt);
-    for (const e of enemies) {
-      if (e.dead || !e.mesh || orb.hitSet.has(e)) continue;
+    // Tick per-enemy hit cooldowns (0.4s between hits on same enemy)
+    for (const [e, t] of orb.hitCooldowns) orb.hitCooldowns.set(e, t - dt);
+    const hitR = (orb.w || 0.8) * 1.5;
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const e = enemies[j];
+      if (!e.mesh) continue;
       const dx = orb.mesh.position.x - e.mesh.position.x;
       const dz = orb.mesh.position.z - e.mesh.position.z;
-      if (Math.sqrt(dx*dx + dz*dz) < (orb.w || 0.15) * 6) {
-        orb.hitSet.add(e);
+      if (Math.sqrt(dx*dx + dz*dz) < hitR) {
+        const cd = orb.hitCooldowns.get(e) || 0;
+        if (cd > 0) continue;
+        orb.hitCooldowns.set(e, 0.4);
         const isCrit = Math.random() < playerStats.critChance;
-        e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+        e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1) * 3;
         spawnImpact(orb.mesh.position.x, orb.mesh.position.y, orb.mesh.position.z, isCrit);
         if (e.hp <= 0) {
           if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
           if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 3 : 1);
           if (e.type === 'belgica') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, 1);
-          killCount++;
-          document.getElementById('killHUD').textContent = `☠ ${killCount}`;
-          scene.remove(e.mesh);
-          enemies.splice(enemies.indexOf(e), 1);
+          killCount++; document.getElementById('killHUD').textContent = `☠ ${killCount}`;
+          scene.remove(e.mesh); enemies.splice(j, 1);
         }
       }
     }
     if (orb.mesh.position.distanceTo(orb.spawnPos) > 12) {
-      scene.remove(orb.mesh);
-      nomOrbs.splice(i, 1);
+      scene.remove(orb.mesh); nomOrbs.splice(i, 1);
     }
   }
 }
