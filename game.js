@@ -2241,7 +2241,7 @@ function spawnMapItem(x, z) {
   group.add(orb);
   group.position.set(x, 1.0, z);
   scene.add(group);
-  mapItems.push({ group, orb, glow, bobOffset: Math.random() * Math.PI * 2 });
+  mapItems.push({ group, orb, bobOffset: Math.random() * Math.PI * 2 });
 }
 
 function updateItems(dt) {
@@ -2252,7 +2252,6 @@ function updateItems(dt) {
     const item = mapItems[i];
     item.group.position.y = 1.0 + Math.sin(t * 2 + item.bobOffset) * 0.25;
     item.orb.rotation.y += dt * 1.5;
-    item.glow.intensity = 1.2 + Math.sin(t * 3 + item.bobOffset) * 0.4;
     const dx = player.position.x - item.group.position.x;
     const dz = player.position.z - item.group.position.z;
     if (Math.sqrt(dx*dx + dz*dz) < playerStats.pickupRadius) {
@@ -2319,7 +2318,6 @@ function updateXpOrbs(dt) {
     const orb = xpOrbs[i];
     orb.group.position.y = 0.5 + Math.sin(t * 3 + orb.bobOffset) * 0.15;
     orb.orb.rotation.y += dt * 2;
-    orb.glow.intensity = 1.0 + Math.sin(t * 4 + orb.bobOffset) * 0.3;
     const dx = player.position.x - orb.group.position.x;
     const dz = player.position.z - orb.group.position.z;
     const pr = playerStats.pickupRadius + 0.8;
