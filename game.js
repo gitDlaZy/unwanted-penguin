@@ -447,9 +447,33 @@ const WEAPON_DEFS = [
 let equippedWeapon = null;
 let weaponCooldown = 0;
 
-const gandalfFlash = document.createElement('div');
-gandalfFlash.style.cssText = 'display:none;position:fixed;top:40%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:22px;color:#fff;font-weight:bold;text-shadow:0 0 18px #fff,0 0 40px #aaaaff;pointer-events:none;z-index:400;letter-spacing:2px;opacity:0;transition:opacity 0.2s';
-document.body.appendChild(gandalfFlash);
+function showLightningStrike(x, z) {
+  const boltH = 18;
+  const geo  = new THREE.CylinderGeometry(0.04, 0.18, boltH, 6);
+  const mat  = new THREE.MeshBasicMaterial({ color: 0xccddff, transparent: true, opacity: 1.0 });
+  const bolt = new THREE.Mesh(geo, mat);
+  bolt.position.set(x, boltH / 2, z);
+  scene.add(bolt);
+
+  // Point light flash at ground level
+  const light = new THREE.PointLight(0x8888ff, 10, 14);
+  light.position.set(x, 0.5, z);
+  scene.add(light);
+
+  let age = 0;
+  const tick = setInterval(() => {
+    age += 0.05;
+    mat.opacity    = Math.max(0, 1.0 - age * 4);
+    light.intensity = Math.max(0, 10 - age * 40);
+    if (age >= 0.35) {
+      clearInterval(tick);
+      scene.remove(bolt);
+      scene.remove(light);
+      geo.dispose();
+      mat.dispose();
+    }
+  }, 50);
+}
 
 function fireGandalfStaff() {
   const px = player.position.x, pz = player.position.z;
@@ -469,15 +493,7 @@ function fireGandalfStaff() {
     playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
     updateHUD();
   }
-  // flash
-  gandalfFlash.textContent = isCrit ? '⚡ CRIT!' : '⚡';
-  gandalfFlash.style.display = 'block';
-  gandalfFlash.style.opacity = '1';
-  clearTimeout(gandalfFlash._t);
-  gandalfFlash._t = setTimeout(() => {
-    gandalfFlash.style.opacity = '0';
-    setTimeout(() => { gandalfFlash.style.display = 'none'; }, 200);
-  }, 400);
+  showLightningStrike(target.mesh.position.x, target.mesh.position.z);
 }
 
 function tickWeapons(dt) {
