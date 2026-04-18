@@ -400,6 +400,116 @@ function buildEvilPenguin() {
   return g;
 }
 
+function buildWizardCat() {
+  const g = new THREE.Group();
+  const purple     = new THREE.MeshStandardMaterial({ color: 0x7b3fa0, roughness: 0.8 });
+  const dpurple    = new THREE.MeshStandardMaterial({ color: 0x4a1a6a, roughness: 0.8 });
+  const lpurple    = new THREE.MeshStandardMaterial({ color: 0xaa66cc, roughness: 0.8 });
+  const white      = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.9 });
+  const black      = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
+  const gold       = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0x886600, roughness: 0.4 });
+  const eyeGreen   = new THREE.MeshStandardMaterial({ color: 0x22ee88, emissive: 0x005522, roughness: 0.3 });
+
+  // Body — round chubby
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.45, 10, 8), purple);
+  body.scale.set(1.1, 1.15, 1.0); body.position.y = 0.55; body.castShadow = true;
+  g.add(body);
+
+  // Chest fluff
+  const fluff = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), lpurple);
+  fluff.scale.set(1.0, 1.1, 0.5); fluff.position.set(0, 0.55, 0.36);
+  g.add(fluff);
+
+  // Head — oval (wider than tall)
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 12, 10), purple);
+  head.scale.set(1.2, 1.0, 1.05); head.position.y = 1.32;
+  g.add(head);
+
+  // Big eyes
+  [-0.16, 0.16].forEach(x => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 10), white);
+    eye.position.set(x, 1.36, 0.33); eye.scale.set(1, 1.2, 0.9);
+    g.add(eye);
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), eyeGreen);
+    iris.position.set(x, 1.36, 0.39);
+    g.add(iris);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.032, 6, 6), black);
+    pupil.position.set(x, 1.36, 0.425);
+    g.add(pupil);
+  });
+
+  // Tiny nose
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), new THREE.MeshStandardMaterial({ color: 0xff99bb }));
+  nose.position.set(0, 1.28, 0.41);
+  g.add(nose);
+
+  // Whiskers
+  [-1, 1].forEach(side => {
+    [0.04, -0.04].forEach(oy => {
+      const w = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.012, 0.012), lpurple);
+      w.position.set(side * 0.28, 1.27 + oy, 0.36);
+      w.rotation.z = side * 0.08;
+      g.add(w);
+    });
+  });
+
+  // Cat ears — pointed triangles
+  [-0.22, 0.22].forEach(x => {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 6), dpurple);
+    ear.position.set(x, 1.67, 0.05);
+    ear.rotation.z = x > 0 ? -0.2 : 0.2;
+    g.add(ear);
+    // Inner ear
+    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.13, 6), lpurple);
+    innerEar.position.set(x, 1.67, 0.08);
+    innerEar.rotation.z = x > 0 ? -0.2 : 0.2;
+    g.add(innerEar);
+  });
+
+  // Hat brim — flat disc
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.06, 16), dpurple);
+  brim.position.set(0, 1.74, 0);
+  g.add(brim);
+
+  // Hat cone — tall pointed
+  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.1, 16), dpurple);
+  hat.position.set(0, 2.35, 0);
+  g.add(hat);
+
+  // Gold star on hat
+  const star = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), gold);
+  star.position.set(0, 2.93, 0);
+  g.add(star);
+
+  // Hat band
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.325, 0.325, 0.08, 16), gold);
+  band.position.set(0, 1.84, 0);
+  g.add(band);
+
+  // Arms
+  [-1, 1].forEach(side => {
+    const arm = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), purple);
+    arm.scale.set(0.4, 0.9, 0.35); arm.position.set(side * 0.55, 0.6, 0.05);
+    arm.rotation.z = side * 0.5;
+    g.add(arm);
+  });
+
+  // Tail — curved back
+  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.04, 0.9, 8), purple);
+  tail.position.set(0.2, 0.45, -0.55);
+  tail.rotation.x = -0.7; tail.rotation.z = 0.3;
+  g.add(tail);
+
+  // Feet
+  [-0.18, 0.18].forEach(x => {
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), dpurple);
+    foot.scale.set(1.2, 0.6, 1.4); foot.position.set(x, 0.08, 0.1);
+    g.add(foot);
+  });
+
+  return g;
+}
+
 function buildSeal() {
   const dark  = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
   const light = new THREE.MeshStandardMaterial({ color: 0x778899, roughness: 0.9 });
@@ -485,7 +595,7 @@ const penguinMesh = new THREE.Group();
 penguinMesh.rotation.y = Math.PI;
 player.add(penguinMesh);
 
-const builtModel = selectedSkin === 'evil' ? buildEvilPenguin() : buildPenguin();
+const builtModel = selectedSkin === 'evil' ? buildEvilPenguin() : selectedSkin === 'wizard' ? buildWizardCat() : buildPenguin();
 penguinMesh.add(builtModel);
 player.position.set(35, 0, 25);
 scene.add(player);
@@ -2227,15 +2337,19 @@ function showDeathScreen() {
                letter-spacing:1px">↻ REFRESH</button>
     </div>
     <div id="scoreboardEl" style="min-height:60px"><div style="opacity:0.4;font-size:13px">Loading scores...</div></div>
-    <div style="margin-top:12px;display:flex;gap:10px;justify-content:center">
+    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
       <button id="skinNormal"
-        style="background:${localStorage.getItem('playerSkin')==='evil'?'transparent':'#1a3a5a'};border:2px solid #44aaff;color:#aee8ff;
+        style="background:${localStorage.getItem('playerSkin')==='evil'||localStorage.getItem('playerSkin')==='wizard'?'transparent':'#1a3a5a'};border:2px solid #44aaff;color:#aee8ff;
                font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
         🐧 CLASSIC</button>
       <button id="skinEvil"
         style="background:${localStorage.getItem('playerSkin')==='evil'?'#3a1a1a':'transparent'};border:2px solid #ff4444;color:#ffaaaa;
                font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
         😈 EVIL</button>
+      <button id="skinWizard"
+        style="background:${localStorage.getItem('playerSkin')==='wizard'?'#2a1a4a':'transparent'};border:2px solid #aa66ff;color:#ddaaff;
+               font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
+        🧙 WIZARD CAT</button>
     </div>
     <button id="retryBtn"
       style="margin-top:8px;background:transparent;border:2px solid #44aaff55;color:#aee8ff;
@@ -2276,8 +2390,13 @@ function showDeathScreen() {
 
   submit.addEventListener('click', doSubmit);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSubmit(); } });
-  document.getElementById('skinNormal').addEventListener('click', () => { localStorage.setItem('playerSkin','normal'); document.getElementById('skinNormal').style.background='#1a3a5a'; document.getElementById('skinEvil').style.background='transparent'; });
-  document.getElementById('skinEvil').addEventListener('click', () => { localStorage.setItem('playerSkin','evil'); document.getElementById('skinEvil').style.background='#3a1a1a'; document.getElementById('skinNormal').style.background='transparent'; });
+  const _skins = { normal:['skinNormal','#1a3a5a'], evil:['skinEvil','#3a1a1a'], wizard:['skinWizard','#2a1a4a'] };
+  Object.entries(_skins).forEach(([key,[id,bg]]) => {
+    document.getElementById(id).addEventListener('click', () => {
+      localStorage.setItem('playerSkin', key);
+      Object.entries(_skins).forEach(([k,[i,b]]) => document.getElementById(i).style.background = k===key ? b : 'transparent');
+    });
+  });
   document.getElementById('retryBtn').addEventListener('click', () => { location.href = location.pathname + '?v=' + Date.now(); });
   document.getElementById('refreshBtn').addEventListener('click', () => {
     const el = document.getElementById('scoreboardEl');
