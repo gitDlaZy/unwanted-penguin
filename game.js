@@ -1231,6 +1231,7 @@ function buildKrill() {
 }
 
 let boss = null;
+let bossDefeated = false;
 let bossProjectiles = [];
 const bossHUDEl    = document.getElementById('bossHUD');
 const bossBarInner = document.getElementById('bossBarInner');
@@ -1250,7 +1251,7 @@ function spawnBoss(x, z) {
   mesh.position.set(x, 0, z);
   mesh.scale.setScalar(2.5);
   scene.add(mesh);
-  boss = { mesh, hp: 500, maxHp: 500, shootTimer: 2.0, age: 0 };
+  boss = { mesh, hp: 500, maxHp: 500, shootTimer: 2.0, age: 0, teleportThresholds: [0.75, 0.50, 0.25] };
   bossHUDEl.style.display = 'block';
 }
 
@@ -1331,11 +1332,12 @@ function updateBoss(dt) {
 
   if (boss.hp <= 0) {
     disposeMesh(boss.mesh); scene.remove(boss.mesh);
-    boss = null;
-    bossHUDEl.style.display = 'none';
-    bossArrowEl.style.display = 'none';
     bossProjectiles.forEach(p => scene.remove(p.mesh));
     bossProjectiles = [];
+    boss = null;
+    bossDefeated = true;
+    bossHUDEl.style.display = 'none';
+    bossArrowEl.style.display = 'none';
   }
 }
 
@@ -1407,7 +1409,7 @@ function spawnSwarmWave() {
 
 function updateEnemies(dt) {
   gameTime += dt;
-  if (gameTime >= 10 && !boss && !playerState.dead) { spawnBoss(); }
+  if (gameTime >= 10 && !boss && !bossDefeated && !playerState.dead) { spawnBoss(); }
   const remaining = Math.max(0, 10 - gameTime);
   const secs = Math.floor(remaining % 60);
   if (timerHUDEl && secs !== _lastTimerSec) {
@@ -1761,6 +1763,18 @@ function updateSnowballs(dt) {
         const isCrit = Math.random() < playerStats.critChance;
         boss.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
         spawnImpact(s.mesh.position.x, s.mesh.position.y, s.mesh.position.z, isCrit);
+        // Teleport at 75/50/25% thresholds
+        const hpPct = boss.hp / boss.maxHp;
+        for (let ti = boss.teleportThresholds.length - 1; ti >= 0; ti--) {
+          if (hpPct <= boss.teleportThresholds[ti]) {
+            boss.teleportThresholds.splice(ti, 1);
+            const angle = Math.random() * Math.PI * 2;
+            const r = 10 + Math.random() * 15;
+            boss.mesh.position.set(player.position.x + Math.cos(angle) * r, 0, player.position.z + Math.sin(angle) * r);
+            spawnGust(boss.mesh.position.x, boss.mesh.position.z);
+            break;
+          }
+        }
         if (!s.boomerang) hit = true;
       }
     }
