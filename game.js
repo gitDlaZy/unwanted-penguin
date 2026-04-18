@@ -1453,6 +1453,17 @@ function triggerLevel1End() {
   const defeated = document.getElementById('krillyDefeated');
   const dialogue = document.getElementById('spooksDialogue');
 
+  // Remove all hostile entities immediately
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    disposeMesh(enemies[i].mesh); scene.remove(enemies[i].mesh);
+  }
+  enemies.length = 0;
+
+  for (let i = bombs.length - 1; i >= 0; i--) {
+    scene.remove(bombs[i].mesh);
+  }
+  bombs.length = 0;
+
   // Show "Krilly Defeated" for 3 seconds
   defeated.style.display = 'block';
   setTimeout(() => {
