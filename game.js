@@ -3502,16 +3502,9 @@ window.addEventListener('keydown', e => {
     e.preventDefault();
   }
   if (e.key.toLowerCase() === 't' && !playerState.dead) queueTome(); // debug: instant level-up
-  if ((e.key === '3' || e.key === '4') && keys['3'] && keys['4'] && boss && !playerState.dead) { boss.hp = 0; }
   if ((e.key === '6' || e.key === '7') && keys['6'] && keys['7'] && !playerState.dead) {
     penguinMesh.clear();
     penguinMesh.add(buildWizardCat());
-  }
-  if ((e.key === '9' || e.key === '0') && keys['9'] && keys['0'] && !playerState.dead) {
-    const before = Math.floor(crackJumps / CRACK_MILESTONE);
-    crackJumps = Math.ceil((crackJumps + 1) / CRACK_MILESTONE) * CRACK_MILESTONE;
-    updateJumpHUD();
-    if (Math.floor(crackJumps / CRACK_MILESTONE) > before) { pendingPowerUps++; updatePowerUpBtn(); }
   }
   const typing = document.activeElement?.id === 'nameInput';
   if (!typing) resumeGame();
