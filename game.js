@@ -950,7 +950,6 @@ powerUpScreen.innerHTML = `
     <div style="font-size:30px;font-weight:bold;letter-spacing:4px;text-shadow:0 0 20px #44aaff;margin-bottom:8px">🧊 CRACK POWER-UP</div>
     <div style="font-size:13px;opacity:0.5;margin-bottom:32px">Pick one — activate whenever you're ready</div>
     <div id="powerUpCards" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center;max-width:800px"></div>
-    <div style="margin-top:28px;font-size:12px;opacity:0.4;letter-spacing:2px">A / D to navigate &nbsp;|&nbsp; P / L to confirm</div>
   </div>
 `;
 document.body.appendChild(powerUpScreen);
@@ -2200,7 +2199,6 @@ tomeScreen.innerHTML = `
     <div style="font-size:30px;font-weight:bold;letter-spacing:4px;text-shadow:0 0 20px #44aaff;margin-bottom:8px">CHOOSE AN UPGRADE</div>
     <div style="font-size:13px;opacity:0.5;margin-bottom:32px">Pick one tome to carry forward</div>
     <div id="tomeCards" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center;max-width:800px"></div>
-    <div style="margin-top:28px;font-size:12px;opacity:0.4;letter-spacing:2px">A / D to navigate &nbsp;|&nbsp; L / P to confirm</div>
   </div>
 `;
 document.body.appendChild(tomeScreen);
