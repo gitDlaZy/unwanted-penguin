@@ -2979,8 +2979,8 @@ powerUpBtn.style.cssText = `
   width:80px; height:80px; border-radius:50%;
   border:2px solid #88ddff33;
   background:rgba(0,15,40,0.4);
-  font-family:monospace; font-size:10px; font-weight:bold;
-  color:#88ddff; letter-spacing:1px; text-align:center;
+  font-family:monospace; font-size:11px; font-weight:bold;
+  color:#88ddff; letter-spacing:1px;
   display:flex; align-items:center; justify-content:center;
   touch-action:none; opacity:0.25; pointer-events:none;
   transition:opacity 0.2s, border-color 0.2s, background 0.2s;
@@ -3011,6 +3011,14 @@ powerUpBtn.addEventListener('pointerdown', () => {
     showPowerUpChoice();
   }
 });
+powerUpBtn.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (pendingPowerUps > 0 && !choosingPowerUp && !playerState.dead) {
+    pendingPowerUps--;
+    updatePowerUpBtn();
+    showPowerUpChoice();
+  }
+}, { passive: false });
 
 // LEVEL button — dimmed until tomes are pending
 const levelBtn = document.createElement('div');
