@@ -3414,8 +3414,10 @@ function update(dt) {
   if (justPressed) {
     if (playerY === 0) {
       playerVY = JUMP_FORCE; // normal ground jump
+    } else if (_jumpBuffer <= 0) {
+      _jumpBuffer = 0.18;    // first airborne press — start perfect-landing window
     } else {
-      _jumpBuffer = 0.18;    // airborne press — start perfect-landing window
+      _jumpBuffer = -1;      // spammed jump — kill the window, no perfect jump
     }
   }
   if (_jumpBuffer > 0) _jumpBuffer -= dt;
