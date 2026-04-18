@@ -3732,6 +3732,22 @@ function update(dt) {
 const fpsHUD = document.getElementById('fpsHUD');
 let _fpsTimer = 0, _fpsFrames = 0, _fpsDisplay = 0;
 
+const DEAD_ZONE = 0.15;
+function pollGamepad() {
+  const gp = navigator.getGamepads ? navigator.getGamepads()[0] : null;
+  if (!gp) return;
+  const ax = gp.axes[0] ?? 0; // left stick X
+  const ay = gp.axes[1] ?? 0; // left stick Y
+  touchInput.dx = Math.abs(ax) > DEAD_ZONE ? ax : 0;
+  touchInput.dz = Math.abs(ay) > DEAD_ZONE ? ay : 0;
+  // Jump — button 0 (A / Cross)
+  if (gp.buttons[0]?.pressed) keys[' '] = true;
+  else delete keys[' '];
+}
+
+window.addEventListener('gamepadconnected',    e => console.log('Gamepad connected:', e.gamepad.id));
+window.addEventListener('gamepaddisconnected', e => console.log('Gamepad disconnected:', e.gamepad.id));
+
 function loop() {
   requestAnimationFrame(loop);
   const now = performance.now();
@@ -3744,6 +3760,7 @@ function loop() {
     fpsHUD.textContent = _fpsDisplay + ' fps';
     _fpsFrames = 0; _fpsTimer = 0;
   }
+  pollGamepad();
   update(dt);
   if (spooksNPC) spooksNPC.position.y = 0.30 + 0.18 * Math.sin(Date.now() / 500);
   renderer.render(scene, camera);
