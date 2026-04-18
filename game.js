@@ -2374,7 +2374,7 @@ function updateTomeHighlight() {
   });
 }
 
-let pendingTomes = 0;
+let pendingTomes = 19;
 
 // Right-side level-up indicator (mid-screen)
 const levelIndicator = document.createElement('div');
