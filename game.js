@@ -1908,6 +1908,7 @@ let jumpPressed      = false;
 let _airBoost        = false; // active during jump after a perfect landing
 let _jumpBuffer      = 0;     // counts down after P pressed — landing within window = perfect
 let _perfectCooldown = 0;     // prevents chaining perfect jumps by spamming
+let _jumpSpammed     = false; // true if P pressed more than once this airtime
 
 // ── Ice Cracks ────────────────────────────────────────────────────────────────
 
@@ -3413,11 +3414,13 @@ function update(dt) {
   const justPressed = wantsJump && !jumpPressed;
   if (justPressed) {
     if (playerY === 0) {
-      playerVY = JUMP_FORCE; // normal ground jump
-    } else if (_jumpBuffer <= 0) {
-      _jumpBuffer = 0.18;    // first airborne press — start perfect-landing window
+      playerVY    = JUMP_FORCE;
+      _jumpSpammed = false; // reset spam flag on each ground jump
+    } else if (!_jumpSpammed && _jumpBuffer <= 0) {
+      _jumpBuffer = 0.18;   // first airborne press — open window
     } else {
-      _jumpBuffer = -1;      // spammed jump — kill the window, no perfect jump
+      _jumpBuffer  = 0;     // spammed — close window, lock it out
+      _jumpSpammed = true;
     }
   }
   if (_jumpBuffer > 0) _jumpBuffer -= dt;
