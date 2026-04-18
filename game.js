@@ -1770,7 +1770,9 @@ function updateSnowballs(dt) {
             boss.teleportThresholds.splice(ti, 1);
             const angle = Math.random() * Math.PI * 2;
             const r = 10 + Math.random() * 15;
-            boss.mesh.position.set(player.position.x + Math.cos(angle) * r, 0, player.position.z + Math.sin(angle) * r);
+            const tx = Math.max(-88, Math.min(88, player.position.x + Math.cos(angle) * r));
+            const tz = Math.max(-88, Math.min(88, player.position.z + Math.sin(angle) * r));
+            boss.mesh.position.set(tx, 0, tz);
             spawnGust(boss.mesh.position.x, boss.mesh.position.z);
             break;
           }
