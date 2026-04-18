@@ -1453,6 +1453,9 @@ function triggerLevel1End() {
   const defeated = document.getElementById('krillyDefeated');
   const dialogue = document.getElementById('spooksDialogue');
 
+  // Lock player in place permanently for the end sequence
+  movementLockout = Infinity;
+
   // Remove all hostile entities immediately
   for (let i = enemies.length - 1; i >= 0; i--) {
     disposeMesh(enemies[i].mesh); scene.remove(enemies[i].mesh);
@@ -1471,7 +1474,7 @@ function triggerLevel1End() {
 
     // Show dialogue first so an error in mesh building can't block it
     dialogue.style.display = 'block';
-    setTimeout(() => { dialogue.style.display = 'none'; }, 5000);
+    setTimeout(() => { dialogue.style.display = 'none'; }, 6000);
 
     // Spawn Spooks next to the player
     try {
