@@ -1,4 +1,4 @@
-# Project: [Your Idea Name Here]
+# Project: Unwanted Penguin
 
 ## ⚙️ Model Preference
 - **Always use Sonnet** (claude-sonnet-4-6), not Opus.
@@ -16,8 +16,15 @@
 - Test: `npm test`
 
 ## 📋 Current Focus
-- [ ] Setting up the project foundation
-- [ ] Waking up Claude for the first time
+- [x] Setting up the project foundation
+- [x] Player skins (Classic, Evil, FBX penguin 1 & 2)
+- [x] Image → 3D mesh tool (mesh.html)
+- [x] Text → 3D generator (generate.html)
+- [ ] FBX skin testing + polish
+
+## ⏰ Timestamps
+- NEVER hardcode dates or times in HTML/JS — always generate them dynamically at runtime.
+- `index.html` uses a script block to set the timestamp on load. Keep it that way.
 
 ## 📏 Coding Standards
 - Language: Node.js / JavaScript
