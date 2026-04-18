@@ -425,20 +425,16 @@ function buildWizardCat() {
   head.scale.set(1.2, 1.0, 1.05); head.position.y = 1.32;
   g.add(head);
 
-  // Big eyes
+  // Big eyes — white outline, black inner
   [-0.16, 0.16].forEach(x => {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 10), white);
     eye.position.set(x, 1.36, 0.33); eye.scale.set(1, 1.2, 0.9);
     g.add(eye);
-    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), eyeGreen);
-    iris.position.set(x, 1.36, 0.39);
-    g.add(iris);
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.032, 6, 6), black);
-    pupil.position.set(x, 1.36, 0.425);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), black);
+    pupil.position.set(x, 1.36, 0.39);
     g.add(pupil);
   });
 
-  // Tiny nose
   const nose = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), new THREE.MeshStandardMaterial({ color: 0xff99bb }));
   nose.position.set(0, 1.28, 0.41);
   g.add(nose);
