@@ -713,7 +713,7 @@ function updateToxicPools(dt) {
           e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
           if (e.hp <= 0) {
             if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
-            if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 3 : 1);
+            if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 5 : 1);
             if (e.type === 'belgica') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, 1);
             killCount++; killHUDEl.textContent = `☠ ${killCount}`;
             disposeMesh(e.mesh); scene.remove(e.mesh); enemies.splice(j, 1);
@@ -1309,7 +1309,7 @@ function updateNomOrbs(dt) {
         spawnImpact(orb.mesh.position.x, orb.mesh.position.y, orb.mesh.position.z, isCrit);
         if (e.hp <= 0) {
           if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
-          if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 3 : 1);
+          if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 5 : 1);
           if (e.type === 'belgica') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, 1);
           killCount++; killHUDEl.textContent = `☠ ${killCount}`;
           disposeMesh(e.mesh); scene.remove(e.mesh); enemies.splice(j, 1);
@@ -1402,7 +1402,7 @@ function hitEnemy(j, impactX, impactY, impactZ) {
   }
   if (e.hp <= 0) {
     if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
-    if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 3 : 1);
+    if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 5 : 1);
     if (e.type === 'belgica') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, 1);
     killCount++;
     killHUDEl.textContent = `☠ ${killCount}`;
