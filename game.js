@@ -386,7 +386,7 @@ player.position.set(35, 0, 25);
 scene.add(player);
 
 const playerState = { hp: 100, maxHp: 100, iframes: 0, dead: false,
-  shaggyCharges: 0, shaggyMaxCharges: 0, shaggyRechargeTimer: 0 };
+  shaggyCharges: 1, shaggyMaxCharges: 1, shaggyRechargeTimer: 0 };
 
 // ── Player Stats (tome upgrades) ──────────────────────────────────────────────
 
@@ -453,11 +453,13 @@ const TOME_DEFS = [
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'+25% spawn rate, +30% enemy HP', apply:s => { s.cursed += 1; } },
   { id:'chaos',      name:'Chaos Tome',            emoji:'🎲',  color:'#ff44ff', desc:'Random tome effect!',        apply: (s, chaos) => chaos() },
   { id:'hasper',     name:'Deveh',        emoji:'🪃',  color:'#ffaa88', desc:'Boomerang snowball — deals damage both ways, +0.5 damage. Next shot waits for return.', apply: s => { s.boomerang = true; s.damage += 0.5; } },
-  { id:'shaggy',    name:'Shaggy',                emoji:'🦬', color:'#cc9966', desc:'Absorb hits with charges (2s iframes + counter dmg). Refresh after 15s no damage. Quantity adds charges.', apply: s => {
-    s.iframeDuration = 2.0;
+  { id:'shaggy',    name:'Shaggy',                emoji:'🦬', color:'#cc9966', desc:'Absorb 1 hit (0.5s iframes). Refresh after 15s. Each pick: +0.2 damage.', apply: s => {
     s.shaggyStacks = Math.max(1, s.shaggyStacks + 1);
-    playerState.shaggyMaxCharges++;
-    playerState.shaggyCharges = playerState.shaggyMaxCharges;
+    s.damage += 0.2;
+    if (playerState.shaggyMaxCharges === 0) {
+      playerState.shaggyMaxCharges = 1;
+      playerState.shaggyCharges = 1;
+    }
     playerState.shaggyRechargeTimer = 0;
     ensureShaggyRing();
   }},
@@ -1149,11 +1151,11 @@ function updateEnemies(dt) {
     timerHUDEl.textContent = `⏱ ${mins}:${String(secs).padStart(2,'0')}`;
   }
 
-  // Pressure hits floor at ~3.5 min (k=111); cursed stacks each add 25% spawn rate
-  const pressure = Math.max(0.15, Math.exp(-gameTime / 111)) * Math.pow(0.75, playerStats.cursed);
+  // Pressure hits floor at ~2 min (k=60), lower floor = denser spawns; cursed stacks each add 25% spawn rate
+  const pressure = Math.max(0.08, Math.exp(-gameTime / 60)) * Math.pow(0.75, playerStats.cursed);
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
-  const hpScale = (gameTime >= 3600 ? Math.pow(1.018, gameTime - 3600) : 1) * Math.pow(1.3, playerStats.cursed);
+  const hpScale = (gameTime >= 45 ? Math.pow(1.002, gameTime - 45) : 1) * Math.pow(1.3, playerStats.cursed);
   if (sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (0.9 + Math.random() * 0.5) * pressure; }
   if (skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
 
@@ -1282,7 +1284,7 @@ function fireNomOrb() {
   mesh.position.copy(player.position);
   mesh.position.y = 1.0;
   scene.add(mesh);
-  nomOrbs.push({ mesh, vel: dir.clone().multiplyScalar(speed), spawnPos: player.position.clone(), hitCooldowns: new Map(), w });
+  nomOrbs.push({ mesh, vel: dir.clone().multiplyScalar(speed), spawnPos: player.position.clone(), hitCooldowns: new Map(), w, stacks });
 }
 
 function updateNomOrbs(dt) {
@@ -1303,7 +1305,7 @@ function updateNomOrbs(dt) {
         orb.hitCooldowns.set(e, 0.4);
         e.nomSlowTimer = 1.0; // 20% slow for 1 second
         const isCrit = Math.random() < playerStats.critChance;
-        e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1) * 3;
+        e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1) * 3 * Math.pow(1.25, (orb.stacks || 1) - 1);
         spawnImpact(orb.mesh.position.x, orb.mesh.position.y, orb.mesh.position.z, isCrit);
         if (e.hp <= 0) {
           if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
@@ -1945,7 +1947,7 @@ window.addEventListener('keydown', e => {
 function triggerShaggy() {
   playerState.shaggyCharges--;
   playerState.shaggyRechargeTimer = 0;
-  playerState.iframes = playerStats.iframeDuration;
+  playerState.iframes = 0.5;
   if (playerStats.shaggyStacks > 0) {
     const nearest = findNearestEnemy();
     if (nearest) nearest.hp -= playerStats.shaggyStacks;
@@ -2763,6 +2765,7 @@ function updateHumans(dt) {
 }
 
 spawnHumans();
+ensureShaggyRing(); // player starts with 1 shaggy charge
 
 // Test tome pickup at (31, 10)
 spawnMapItem(31, 10);
@@ -2931,7 +2934,7 @@ function update(dt) {
   playerState.iframes   = Math.max(0, playerState.iframes - dt);
   if (playerState.shaggyMaxCharges > 0 && playerState.shaggyCharges < playerState.shaggyMaxCharges) {
     playerState.shaggyRechargeTimer += dt;
-    if (playerState.shaggyRechargeTimer >= 15) {
+    if (playerState.shaggyRechargeTimer >= 30) {
       playerState.shaggyCharges = playerState.shaggyMaxCharges;
       playerState.shaggyRechargeTimer = 0;
     }
