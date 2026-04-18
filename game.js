@@ -1536,7 +1536,7 @@ const _warnBaseMat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent:
 const _impactGeo     = new THREE.SphereGeometry(0.4, 6, 6);
 const _impactCritGeo = new THREE.SphereGeometry(0.6, 6, 6);
 const _explodeGeo    = new THREE.SphereGeometry(3, 10, 10);
-const _gustGeo       = new THREE.RingGeometry(0.025, 0.14, 16);
+const _gustGeo       = new THREE.RingGeometry(0.05, 0.28, 16);
 const _gustMat       = new THREE.MeshBasicMaterial({ color: 0xaaeeff, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
 const _gustFX        = []; // active gust rings
 
@@ -1887,7 +1887,7 @@ function updateGusts(dt) {
     if (g.delay > 0) continue;
     g.timer -= dt;
     const t = 1 - g.timer / g.duration;
-    g.mesh.scale.setScalar(1 + t * 0.625);
+    g.mesh.scale.setScalar(1 + t * 1.25);
     g.mesh.material.opacity = 0.65 * (1 - t);
     if (g.timer <= 0) {
       scene.remove(g.mesh);
