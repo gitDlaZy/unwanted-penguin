@@ -393,7 +393,7 @@ function buildEvilPenguin() {
 
   // Dark feet
   [-0.19, 0.19].forEach(x => {
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.3), dkgray);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.3), darkbeak);
     foot.position.set(x, 0.025, 0.09); g.add(foot);
   });
 
