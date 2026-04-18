@@ -834,12 +834,12 @@ const activePowerUps = {}; // id → timer remaining
 
 const POWER_UP_DEFS = [
   {
-    id: 'aoe_bomb', name: 'AoE Bomb', emoji: '💣', color: '#ff2222',
+    id: 'aoe_bomb', name: 'AoE Bomb', emoji: '💣', color: '#ff6600',
     desc: 'Instantly obliterate all enemies within 10 units.',
     instant: true,
     apply: () => {
       const px = player.position.x, pz = player.position.z;
-      explode(px, pz);
+      explode(px, pz, 0xff0000);
       for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
         if (!e.mesh) continue;
@@ -1682,16 +1682,16 @@ function updateBombs(dt) {
   }
 }
 
-function explode(x, z) {
+function explode(x, z, color = 0xff6600) {
   const mesh = new THREE.Mesh(
     new THREE.SphereGeometry(3, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.85 })
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85 })
   );
   mesh.position.set(x, 1.5, z);
   scene.add(mesh);
 
   // point light flash
-  const flash = new THREE.PointLight(0xff6600, 3, 20);
+  const flash = new THREE.PointLight(color, 3, 20);
   flash.position.set(x, 2, z);
   scene.add(flash);
 
