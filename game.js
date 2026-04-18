@@ -2945,7 +2945,12 @@ rightPad.style.cssText = `
 `;
 document.body.appendChild(rightPad);
 
-function makeActionBtn(label, color) {
+// Top row: POWERUP + LEVEL side by side
+const rightTopRow = document.createElement('div');
+rightTopRow.style.cssText = 'display:flex; gap:14px; align-items:center;';
+rightPad.appendChild(rightTopRow);
+
+function makeActionBtn(label, color, parent) {
   const btn = document.createElement('div');
   btn.style.cssText = `
     width:80px; height:80px; border-radius:50%;
@@ -2957,11 +2962,49 @@ function makeActionBtn(label, color) {
     touch-action:none;
   `;
   btn.textContent = label;
-  rightPad.appendChild(btn);
+  (parent || rightPad).appendChild(btn);
   return btn;
 }
 
-const jumpBtn = makeActionBtn('JUMP', '#aee8ff');
+// POWERUP button — dimmed until power-ups are pending
+let pendingPowerUps = 0;
+const powerUpBtn = document.createElement('div');
+powerUpBtn.style.cssText = `
+  width:80px; height:80px; border-radius:50%;
+  border:2px solid #88ddff33;
+  background:rgba(0,15,40,0.4);
+  font-family:monospace; font-size:10px; font-weight:bold;
+  color:#88ddff; letter-spacing:1px; text-align:center;
+  display:flex; align-items:center; justify-content:center;
+  touch-action:none; opacity:0.25; pointer-events:none;
+  transition:opacity 0.2s, border-color 0.2s, background 0.2s;
+`;
+powerUpBtn.textContent = '💣\nPOWER';
+rightTopRow.appendChild(powerUpBtn);
+
+function updatePowerUpBtn() {
+  if (pendingPowerUps > 0) {
+    powerUpBtn.style.opacity       = '1';
+    powerUpBtn.style.pointerEvents = 'auto';
+    powerUpBtn.style.borderColor   = '#88ddffcc';
+    powerUpBtn.style.background    = 'rgba(0,30,50,0.6)';
+    powerUpBtn.textContent         = pendingPowerUps > 1 ? `💣 ×${pendingPowerUps}` : '💣 POWER';
+  } else {
+    powerUpBtn.style.opacity       = '0.25';
+    powerUpBtn.style.pointerEvents = 'none';
+    powerUpBtn.style.borderColor   = '#88ddff33';
+    powerUpBtn.style.background    = 'rgba(0,15,40,0.4)';
+    powerUpBtn.textContent         = '💣\nPOWER';
+  }
+}
+
+powerUpBtn.addEventListener('pointerdown', () => {
+  if (pendingPowerUps > 0 && !choosingPowerUp && !playerState.dead) {
+    pendingPowerUps--;
+    updatePowerUpBtn();
+    showPowerUpChoice();
+  }
+});
 
 // LEVEL button — dimmed until tomes are pending
 const levelBtn = document.createElement('div');
@@ -2976,7 +3019,10 @@ levelBtn.style.cssText = `
   transition:opacity 0.2s, border-color 0.2s, background 0.2s;
 `;
 levelBtn.textContent = 'LEVEL';
-rightPad.insertBefore(levelBtn, jumpBtn); // north of jump button
+rightTopRow.appendChild(levelBtn);
+
+// JUMP button — bottom row, centered
+const jumpBtn = makeActionBtn('JUMP', '#aee8ff', rightPad);
 
 // ── Joystick logic ────────────────────────────────────────────────────────────
 
@@ -3171,7 +3217,7 @@ function update(dt) {
       const before = Math.floor(crackJumps / CRACK_MILESTONE);
       crackJumps += cleared;
       updateJumpHUD();
-      if (Math.floor(crackJumps / CRACK_MILESTONE) > before) showPowerUpChoice();
+      if (Math.floor(crackJumps / CRACK_MILESTONE) > before) { pendingPowerUps++; updatePowerUpBtn(); }
     }
   }
 
