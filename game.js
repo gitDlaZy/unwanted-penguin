@@ -1290,6 +1290,7 @@ let sealSpawnTimer = 2;
 let skuaSpawnTimer = 2;
 let sepFrame = 0; // alternating frame flag for seal separation
 let gameTime = 0; // seconds elapsed
+let _lastTimerSec = -1;
 let swarmTimer = 90; // seconds until first belgica swarm
 
 function buildBelgica() {
@@ -1335,10 +1336,11 @@ function updateEnemies(dt) {
   gameTime += dt;
   if (gameTime >= 300 && !boss && !playerState.dead) { spawnBoss(); }
   const remaining = Math.max(0, 300 - gameTime);
-  const mins = Math.floor(remaining / 60), secs = Math.floor(remaining % 60);
-  if (timerHUDEl) {
+  const secs = Math.floor(remaining % 60);
+  if (timerHUDEl && secs !== _lastTimerSec) {
+    _lastTimerSec = secs;
     if (gameTime >= 4) timerHUDEl.style.display = 'block';
-    timerHUDEl.textContent = `⏱ ${mins}:${String(secs).padStart(2,'0')}`;
+    timerHUDEl.textContent = `⏱ ${Math.floor(remaining / 60)}:${String(secs).padStart(2,'0')}`;
   }
 
   // Pressure hits floor at ~2 min (k=60), lower floor = denser spawns; cursed stacks each add 25% spawn rate
@@ -1460,8 +1462,17 @@ const _warnGeo = new THREE.RingGeometry(0.1, 3, 12);
 const _warnBaseMat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
 const _impactGeo     = new THREE.SphereGeometry(0.4, 6, 6);
 const _impactCritGeo = new THREE.SphereGeometry(0.6, 6, 6);
-const _impactMat     = new THREE.MeshBasicMaterial({ color: 0xaaddff, transparent: true, opacity: 0.9 });
-const _impactCritMat = new THREE.MeshBasicMaterial({ color: 0xffee44, transparent: true, opacity: 0.9 });
+const _explodeGeo    = new THREE.SphereGeometry(3, 10, 10);
+
+// Pre-allocated pools — reused instead of create/destroy every hit
+function _makeImpactMesh(crit) {
+  return new THREE.Mesh(
+    crit ? _impactCritGeo : _impactGeo,
+    new THREE.MeshBasicMaterial({ color: crit ? 0xffee44 : 0xaaddff, transparent: true, opacity: 0.9 })
+  );
+}
+const _impactPool     = Array.from({ length: 12 }, () => _makeImpactMesh(false));
+const _impactCritPool = Array.from({ length: 6  }, () => _makeImpactMesh(true));
 
 // ── Snowballs ─────────────────────────────────────────────────────────────────
 
@@ -1694,10 +1705,13 @@ function updateSnowballs(dt) {
 }
 
 function spawnImpact(x, y, z, crit = false) {
-  const mesh = new THREE.Mesh(crit ? _impactCritGeo : _impactGeo, (crit ? _impactCritMat : _impactMat).clone());
+  const pool = crit ? _impactCritPool : _impactPool;
+  const mesh = pool.length > 0 ? pool.pop() : _makeImpactMesh(crit);
+  mesh.material.opacity = 0.9;
+  mesh.scale.setScalar(1);
   mesh.position.set(x, y, z);
   scene.add(mesh);
-  explosionFX.push({ mesh, flash: null, duration: crit ? 0.35 : 0.2, timer: crit ? 0.35 : 0.2, ownGeo: false });
+  explosionFX.push({ mesh, flash: null, duration: crit ? 0.35 : 0.2, timer: crit ? 0.35 : 0.2, ownGeo: false, crit });
 }
 
 function dropBomb(tx, tz, fromY) {
@@ -1744,7 +1758,7 @@ function updateBombs(dt) {
 
 function explode(x, z, color = 0xff6600) {
   const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(3, 16, 16),
+    _explodeGeo,
     new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85 })
   );
   mesh.position.set(x, 1.5, z);
@@ -1767,9 +1781,13 @@ function updateExplosions(dt) {
     e.mesh.material.opacity = 0.85 * (1 - t);
     if (e.flash) e.flash.intensity = 3 * (1 - t);
     if (e.timer <= 0) {
-      if (e.ownGeo) e.mesh.geometry.dispose();
-      e.mesh.material.dispose();
       scene.remove(e.mesh);
+      if (e.ownGeo) {
+        e.mesh.geometry.dispose();
+        e.mesh.material.dispose();
+      } else {
+        (e.crit ? _impactCritPool : _impactPool).push(e.mesh); // return to pool
+      }
       if (e.flash) scene.remove(e.flash);
       explosionFX.splice(i, 1);
     }
