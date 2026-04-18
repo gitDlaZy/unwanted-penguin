@@ -2106,7 +2106,7 @@ function showDeathScreen() {
 
 window.addEventListener('keydown', e => {
   const typingName = document.activeElement && document.activeElement.id === 'nameInput';
-  if ((e.code === 'Space' || e.key === 'l' || e.key === 'p' || e.key === 'r') && playerState.dead && !typingName) location.href = location.pathname + '?v=' + Date.now();
+  if ((e.code === 'Space' || e.key === 'p' || e.key === 'r') && playerState.dead && !typingName) location.href = location.pathname + '?v=' + Date.now();
 });
 
 function triggerShaggy() {
@@ -3252,7 +3252,7 @@ function update(dt) {
   }
 
   // Jump (L or P)
-  const wantsJump = keys['l'] || keys['p'] || touchInput.jump;
+  const wantsJump = keys['p'] || touchInput.jump;
   if (wantsJump && !jumpPressed && playerY === 0) {
     playerVY = JUMP_FORCE;
   }
