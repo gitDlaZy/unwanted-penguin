@@ -230,6 +230,63 @@ snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
 const snowPoints = new THREE.Points(snowGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, transparent: true, opacity: 0.8 }));
 scene.add(snowPoints);
 
+// ── Geometry merge helpers ────────────────────────────────────────────────────
+function mergeGeos(geos) {
+  let totalV = 0, totalI = 0;
+  for (const g of geos) { totalV += g.attributes.position.count; if (g.index) totalI += g.index.count; }
+  const posArr = new Float32Array(totalV * 3);
+  const norArr = new Float32Array(totalV * 3);
+  const idxArr = totalI ? new Uint32Array(totalI) : null;
+  let vOff = 0, iOff = 0;
+  for (const g of geos) {
+    const vc = g.attributes.position.count;
+    posArr.set(g.attributes.position.array, vOff * 3);
+    if (g.attributes.normal) norArr.set(g.attributes.normal.array, vOff * 3);
+    if (g.index && idxArr) {
+      const ia = g.index.array;
+      for (let i = 0; i < ia.length; i++) idxArr[iOff + i] = ia[i] + vOff;
+      iOff += ia.length;
+    }
+    vOff += vc;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+  out.setAttribute('normal',   new THREE.BufferAttribute(norArr, 3));
+  if (idxArr) out.setIndex(new THREE.BufferAttribute(idxArr, 1));
+  return out;
+}
+
+// Takes an array of Mesh objects (not in scene), groups by material, merges geometry per group.
+// Disposes source geometries. Returns a Group with one Mesh per unique material.
+function buildMergedGroup(meshes) {
+  const byMat = new Map();
+  for (const mesh of meshes) {
+    mesh.updateMatrix();
+    const geo = mesh.geometry.clone().applyMatrix4(mesh.matrix);
+    mesh.geometry.dispose();
+    if (!byMat.has(mesh.material)) byMat.set(mesh.material, []);
+    byMat.get(mesh.material).push(geo);
+  }
+  const g = new THREE.Group();
+  for (const [mat, geos] of byMat) {
+    const merged = mergeGeos(geos);
+    for (const geo of geos) geo.dispose();
+    g.add(new THREE.Mesh(merged, mat));
+  }
+  return g;
+}
+
+function makeElite(group) {
+  group.traverse(child => {
+    if (!child.isMesh) return;
+    const old = child.material;
+    child.material = old.clone();
+    child.material.emissive = new THREE.Color(0xffaa00);
+    child.material.emissiveIntensity = 0.5;
+    old.dispose();
+  });
+}
+
 // ── Models ────────────────────────────────────────────────────────────────────
 
 function buildPenguin() {
@@ -277,101 +334,76 @@ function buildPenguin() {
 }
 
 function buildSeal() {
-  const g = new THREE.Group();
-  const darkGray = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
-  const lightGray = new THREE.MeshStandardMaterial({ color: 0x778899, roughness: 0.9 });
-  const spotMat = new THREE.MeshStandardMaterial({ color: 0x223344, roughness: 0.9 });
+  const dark  = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
+  const light = new THREE.MeshStandardMaterial({ color: 0x778899, roughness: 0.9 });
+  const spot  = new THREE.MeshStandardMaterial({ color: 0x223344, roughness: 0.9 });
+  const eye   = new THREE.MeshStandardMaterial({ color: 0x111111 });
+  const parts = [];
 
-  // Main body — long and low
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 6), darkGray);
-  body.scale.set(2.2, 0.7, 0.9); body.position.y = 0.42;
-  g.add(body);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 6), dark);
+  body.scale.set(2.2, 0.7, 0.9); body.position.y = 0.42; parts.push(body);
 
-  // Belly
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.45, 7, 5), lightGray);
-  belly.scale.set(1.8, 0.5, 0.6); belly.position.set(0, 0.38, 0.3);
-  g.add(belly);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.45, 7, 5), light);
+  belly.scale.set(1.8, 0.5, 0.6); belly.position.set(0, 0.38, 0.3); parts.push(belly);
 
-  // Spots on body
-  [[-0.3, 0.6, 0.2], [0.2, 0.55, -0.25], [0.6, 0.65, 0.1], [-0.7, 0.6, -0.1]].forEach(([x,y,z]) => {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), spotMat);
-    s.scale.set(1.5, 0.3, 1.5); s.position.set(x, y, z);
-    g.add(s);
+  [[-0.3,0.6,0.2],[0.2,0.55,-0.25],[0.6,0.65,0.1],[-0.7,0.6,-0.1]].forEach(([x,y,z]) => {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), spot);
+    s.scale.set(1.5, 0.3, 1.5); s.position.set(x, y, z); parts.push(s);
   });
 
-  // Head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 7, 6), darkGray);
-  head.scale.set(1.1, 0.9, 1.0); head.position.set(1.4, 0.58, 0); 
-  g.add(head);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 7, 6), dark);
+  head.scale.set(1.1, 0.9, 1.0); head.position.set(1.4, 0.58, 0); parts.push(head);
 
-  // Snout
-  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 5), lightGray);
-  snout.scale.set(1.0, 0.7, 0.8); snout.position.set(1.78, 0.52, 0);
-  g.add(snout);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 5), light);
+  snout.scale.set(1.0, 0.7, 0.8); snout.position.set(1.78, 0.52, 0); parts.push(snout);
 
-  // Eyes
   [-0.18, 0.18].forEach(z => {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshStandardMaterial({ color: 0x111111 }));
-    eye.position.set(1.6, 0.68, z); g.add(eye);
-    const glint = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-    glint.position.set(1.65, 0.7, z + 0.04); g.add(glint);
+    const e = new THREE.Mesh(new THREE.SphereGeometry(0.07, 7, 6), eye);
+    e.position.set(1.6, 0.68, z); parts.push(e);
+    const g2 = new THREE.Mesh(new THREE.SphereGeometry(0.025, 5, 4), light);
+    g2.position.set(1.65, 0.7, z + 0.04); parts.push(g2);
   });
 
-  // Front flippers
   [-1, 1].forEach(side => {
-    const flip = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), darkGray);
-    flip.scale.set(0.8, 0.18, 1.6); flip.position.set(0.8, 0.15, side * 0.75);
-    flip.rotation.y = side * 0.3; g.add(flip);
+    const f1 = new THREE.Mesh(new THREE.SphereGeometry(0.28, 7, 6), dark);
+    f1.scale.set(0.8, 0.18, 1.6); f1.position.set(0.8, 0.15, side * 0.75);
+    f1.rotation.y = side * 0.3; parts.push(f1);
+    const f2 = new THREE.Mesh(new THREE.SphereGeometry(0.22, 7, 6), dark);
+    f2.scale.set(0.6, 0.15, 1.4); f2.position.set(-1.3, 0.18, side * 0.5);
+    f2.rotation.y = side * 0.5; parts.push(f2);
   });
 
-  // Tail flippers
-  [-1, 1].forEach(side => {
-    const flip = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), darkGray);
-    flip.scale.set(0.6, 0.15, 1.4); flip.position.set(-1.3, 0.18, side * 0.5);
-    flip.rotation.y = side * 0.5; g.add(flip);
-  });
-
-  return g;
+  return buildMergedGroup(parts); // 4 draw calls → replaces ~16
 }
 
 function buildSkua() {
-  const g = new THREE.Group();
   const brown = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.9 });
-  const darkBrown = new THREE.MeshStandardMaterial({ color: 0x3d2010, roughness: 0.9 });
-  const yellow = new THREE.MeshStandardMaterial({ color: 0xccaa00, roughness: 0.7 });
+  const dark  = new THREE.MeshStandardMaterial({ color: 0x3d2010, roughness: 0.9 });
+  const yell  = new THREE.MeshStandardMaterial({ color: 0xccaa00, roughness: 0.7 });
+  const parts = [];
 
-  // Body
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 7, 5), brown);
-  body.scale.set(1.4, 0.8, 1.0); body.position.y = 0; body.castShadow = true;
-  g.add(body);
+  body.scale.set(1.4, 0.8, 1.0); parts.push(body);
 
-  // Head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 5), darkBrown);
-  head.position.set(0.5, 0.15, 0); g.add(head);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 5), dark);
+  head.position.set(0.5, 0.15, 0); parts.push(head);
 
-  // Beak — hooked
-  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.3, 6), yellow);
-  beak.rotation.z = -Math.PI / 2; beak.position.set(0.82, 0.1, 0);
-  g.add(beak);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.3, 6), yell);
+  beak.rotation.z = -Math.PI / 2; beak.position.set(0.82, 0.1, 0); parts.push(beak);
 
-  // Wings spread wide
   [-1, 1].forEach(side => {
     const wing = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), brown);
     wing.scale.set(0.3, 0.1, 2.2); wing.position.set(0, 0, side * 1.2);
-    wing.rotation.x = side * 0.15;
-    g.add(wing);
-
-    // Wing tip darker
-    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 6), darkBrown);
-    tip.scale.set(0.25, 0.08, 0.8); tip.position.set(-0.1, -0.05, side * 2.2);
-    g.add(tip);
+    wing.rotation.x = side * 0.15; parts.push(wing);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 6), dark);
+    tip.scale.set(0.25, 0.08, 0.8); tip.position.set(-0.1, -0.05, side * 2.2); parts.push(tip);
   });
 
-  // Tail
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.5, 6), darkBrown);
-  tail.rotation.z = Math.PI / 2; tail.position.set(-0.7, -0.05, 0);
-  g.add(tail);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.5, 6), dark);
+  tail.rotation.z = Math.PI / 2; tail.position.set(-0.7, -0.05, 0); parts.push(tail);
 
+  const g = buildMergedGroup(parts); // 3 draw calls → replaces ~8
+  g.traverse(c => { if (c.isMesh) c.castShadow = true; });
   return g;
 }
 
@@ -1036,59 +1068,44 @@ function updateHUD() {
 const enemies = [];
 
 function buildPolarBear() {
-  const g = new THREE.Group();
-  const white  = new THREE.MeshStandardMaterial({ color: 0xf0f0e8, roughness: 0.9 });
-  const cream  = new THREE.MeshStandardMaterial({ color: 0xd8d0c0, roughness: 0.9 });
-  const black  = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xf0f0e8, roughness: 0.9 });
+  const cream = new THREE.MeshStandardMaterial({ color: 0xd8d0c0, roughness: 0.9 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+  const parts = [];
 
-  // Body — large round barrel
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.75, 7, 6), white);
-  body.scale.set(1.6, 1.0, 1.1); body.position.set(0, 0.75, 0); body.castShadow = true;
-  g.add(body);
+  body.scale.set(1.6, 1.0, 1.1); body.position.set(0, 0.75, 0); parts.push(body);
 
-  // Head — round, forward (+X)
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.52, 7, 6), white);
-  head.position.set(1.1, 0.95, 0); 
-  g.add(head);
+  head.position.set(1.1, 0.95, 0); parts.push(head);
 
-  // Snout — pushed forward
   const snout = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 5), cream);
-  snout.scale.set(0.9, 0.7, 0.8); snout.position.set(1.55, 0.82, 0);
-  g.add(snout);
+  snout.scale.set(0.9, 0.7, 0.8); snout.position.set(1.55, 0.82, 0); parts.push(snout);
 
-  // Nose
   const nose = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), black);
-  nose.position.set(1.82, 0.88, 0);
-  g.add(nose);
+  nose.position.set(1.82, 0.88, 0); parts.push(nose);
 
-  // Eyes
   [-0.22, 0.22].forEach(z => {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), black);
-    eye.position.set(1.38, 1.08, z); g.add(eye);
+    eye.position.set(1.38, 1.08, z); parts.push(eye);
   });
-
-  // Ears — round on top of head
   [-0.3, 0.3].forEach(z => {
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), white);
-    ear.position.set(0.95, 1.44, z); g.add(ear);
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.16, 7, 6), white);
+    ear.position.set(0.95, 1.44, z); parts.push(ear);
   });
 
-  // 4 legs
   [[-0.55, 0.9], [-0.55, -0.5], [0.55, 0.9], [0.55, -0.5]].forEach(([x, offZ]) => {
     const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.7, 8), white);
-    leg.position.set(x, 0.35, offZ * 0.55);
-    leg.castShadow = true; g.add(leg);
-    const paw = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), cream);
-    paw.scale.set(1.1, 0.5, 1.3); paw.position.set(x, 0.06, offZ * 0.6);
-    g.add(paw);
+    leg.position.set(x, 0.35, offZ * 0.55); parts.push(leg);
+    const paw = new THREE.Mesh(new THREE.SphereGeometry(0.2, 7, 6), cream);
+    paw.scale.set(1.1, 0.5, 1.3); paw.position.set(x, 0.06, offZ * 0.6); parts.push(paw);
   });
 
-  // Short tail
   const tail = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), white);
-  tail.position.set(-1.1, 0.85, 0); g.add(tail);
+  tail.position.set(-1.1, 0.85, 0); parts.push(tail);
 
-  // Elite aura — emissive-only, no PointLight
-
+  const g = buildMergedGroup(parts); // 3 draw calls → replaces ~16
+  g.traverse(c => { if (c.isMesh) c.castShadow = true; });
   return g;
 }
 
@@ -1276,31 +1293,24 @@ let gameTime = 0; // seconds elapsed
 let swarmTimer = 90; // seconds until first belgica swarm
 
 function buildBelgica() {
-  const g = new THREE.Group();
-  const blackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+  const mat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+  const parts = [];
 
-  // Elongated body
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), blackMat);
-  body.scale.set(2.2, 1.0, 1.0);
-  body.position.y = 0.09;
-  g.add(body);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.09, 7, 5), mat);
+  body.scale.set(2.2, 1.0, 1.0); body.position.y = 0.09; parts.push(body);
 
-  // Head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.065, 6, 5), blackMat);
-  head.position.set(0.22, 0.09, 0);
-  g.add(head);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.065, 6, 4), mat);
+  head.position.set(0.22, 0.09, 0); parts.push(head);
 
-  // 6 tiny legs (3 per side)
   [-1, 1].forEach(side => {
     for (let i = 0; i < 3; i++) {
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.06, 0.005), blackMat);
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.06, 0.005), mat);
       leg.position.set((i - 1) * 0.08, 0.03, side * 0.09);
-      leg.rotation.z = side * 0.4;
-      g.add(leg);
+      leg.rotation.z = side * 0.4; parts.push(leg);
     }
   });
 
-  return g;
+  return buildMergedGroup(parts); // 1 draw call → replaces ~8
 }
 
 function spawnSwarmWave() {
@@ -2619,44 +2629,34 @@ let playerWaterTimer = 0; // seconds player has been in water
 let orcasChasing     = false;
 
 function buildOrca() {
-  const g     = new THREE.Group();
   const black = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.6 });
   const white = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.8 });
+  const parts = [];
 
-  // Main body along +X (head forward)
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.85, 14, 10), black);
-  body.scale.set(2.6, 0.9, 1.0); body.castShadow = true; g.add(body);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.85, 10, 8), black);
+  body.scale.set(2.6, 0.9, 1.0); parts.push(body);
 
-  // White belly
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.6, 10, 8), white);
-  belly.scale.set(1.7, 0.45, 0.65); belly.position.set(0.1, -0.28, 0.42); g.add(belly);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 6), white);
+  belly.scale.set(1.7, 0.45, 0.65); belly.position.set(0.1, -0.28, 0.42); parts.push(belly);
 
-  // White eye patches
   [-1, 1].forEach(side => {
-    const patch = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), white);
-    patch.scale.set(0.7, 0.55, 0.22);
-    patch.position.set(1.3, 0.28, side * 0.72); g.add(patch);
+    const patch = new THREE.Mesh(new THREE.SphereGeometry(0.2, 7, 5), white);
+    patch.scale.set(0.7, 0.55, 0.22); patch.position.set(1.3, 0.28, side * 0.72); parts.push(patch);
   });
 
-  // Dorsal fin
   const fin = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.0, 6), black);
-  fin.position.set(-0.1, 0.9, 0); g.add(fin);
+  fin.position.set(-0.1, 0.9, 0); parts.push(fin);
 
-  // Pectoral flippers
   [-1, 1].forEach(side => {
-    const f = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), black);
+    const f = new THREE.Mesh(new THREE.SphereGeometry(0.32, 7, 5), black);
     f.scale.set(1.1, 0.16, 0.75); f.position.set(0.6, -0.32, side * 0.95);
-    f.rotation.z = side * 0.28; g.add(f);
-  });
-
-  // Tail flukes
-  [-1, 1].forEach(side => {
-    const fluke = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), black);
+    f.rotation.z = side * 0.28; parts.push(f);
+    const fluke = new THREE.Mesh(new THREE.SphereGeometry(0.28, 7, 5), black);
     fluke.scale.set(0.65, 0.13, 1.05); fluke.position.set(-2.1, -0.1, side * 0.5);
-    fluke.rotation.y = side * 0.38; g.add(fluke);
+    fluke.rotation.y = side * 0.38; parts.push(fluke);
   });
 
-  return g;
+  return buildMergedGroup(parts); // 2 draw calls → replaces ~10
 }
 
 function spawnOrcas() {
