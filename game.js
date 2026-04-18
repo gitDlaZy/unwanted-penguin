@@ -1461,11 +1461,11 @@ function triggerLevel1End() {
     // Spawn Spooks next to the player
     const spooksMesh = buildWizardCat();
     spooksMesh.position.set(
-      player.position.x + 1.5,
+      player.position.x - 2.5,
       player.position.y,
-      player.position.z + 1.5
+      player.position.z - 2.5
     );
-    spooksMesh.rotation.y = Math.PI; // face the player
+    spooksMesh.rotation.y = Math.PI * 0.25; // face southeast toward player
     scene.add(spooksMesh);
 
     // Show dialogue
