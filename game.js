@@ -3098,7 +3098,6 @@ rightTopRow.appendChild(levelBtn);
 // JUMP button — bottom row, centered
 const jumpBtn = makeActionBtn('JUMP', '#aee8ff', rightPad);
 
-pendingPowerUps++; updatePowerUpBtn(); // debug: start with 1 power-up
 
 // ── Joystick logic ────────────────────────────────────────────────────────────
 
