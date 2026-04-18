@@ -927,13 +927,18 @@ let choosingPowerUp = false;
 let storedPowerUp = null; // picked but not yet activated
 const powerUpScreen = document.createElement('div');
 powerUpScreen.style.cssText = `
-  display:none; position:fixed; inset:0; z-index:200;
-  background:rgba(0,8,20,0.82); display:none;
-  flex-direction:column; align-items:center; justify-content:center; gap:24px;
+  display:none; position:fixed; inset:0; z-index:210;
+  background:rgba(0,8,24,0.92);
+  flex-direction:column; align-items:center; justify-content:center;
+  font-family:monospace; color:#aee8ff;
+  pointer-events:none;
 `;
 powerUpScreen.innerHTML = `
-  <div style="font-family:monospace;font-size:14px;letter-spacing:4px;color:#88ddff;opacity:0.7">🧊 CRACK MASTER — CHOOSE A POWER-UP</div>
-  <div id="powerUpCards" style="display:flex;gap:24px"></div>
+  <div style="pointer-events:auto;display:flex;flex-direction:column;align-items:center">
+    <div style="font-size:30px;font-weight:bold;letter-spacing:4px;text-shadow:0 0 20px #44aaff;margin-bottom:8px">🧊 CRACK POWER-UP</div>
+    <div style="font-size:13px;opacity:0.5;margin-bottom:32px">Pick one — activate whenever you're ready</div>
+    <div id="powerUpCards" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center;max-width:800px"></div>
+  </div>
 `;
 document.body.appendChild(powerUpScreen);
 
@@ -947,19 +952,20 @@ function showPowerUpChoice() {
   choices.forEach(def => {
     const card = document.createElement('div');
     card.style.cssText = `
-      cursor:pointer; border:1px solid ${def.color}55; padding:28px 22px;
-      width:180px; background:rgba(0,16,36,0.95); border-radius:8px;
+      cursor:pointer; border:1px solid ${def.color}33; padding:22px 18px;
+      width:170px; background:rgba(0,16,36,0.9); border-radius:8px;
       text-align:center; font-family:monospace;
-      box-shadow:0 0 16px ${def.color}22;
-      transition:border-color 0.12s, box-shadow 0.12s;
+      box-shadow:0 0 12px ${def.color}11;
+      transition:border-color 0.12s, transform 0.12s, box-shadow 0.12s;
+      pointer-events:auto;
     `;
     card.innerHTML = `
-      <div style="font-size:40px;margin-bottom:12px">${def.emoji}</div>
-      <div style="font-size:15px;font-weight:bold;color:${def.color};margin-bottom:10px">${def.name}</div>
+      <div style="font-size:34px;margin-bottom:10px">${def.emoji}</div>
+      <div style="font-size:15px;font-weight:bold;color:${def.color};margin-bottom:8px">${def.name}</div>
       <div style="font-size:12px;opacity:0.75;line-height:1.4">${def.desc}</div>
     `;
-    card.onmouseenter = () => { card.style.borderColor = def.color; card.style.boxShadow = `0 0 24px ${def.color}55`; };
-    card.onmouseleave = () => { card.style.borderColor = `${def.color}55`; card.style.boxShadow = `0 0 16px ${def.color}22`; };
+    card.onmouseenter = () => { card.style.borderColor = def.color; card.style.transform = 'scale(1.04)'; card.style.boxShadow = `0 0 20px ${def.color}44`; };
+    card.onmouseleave = () => { card.style.borderColor = `${def.color}33`; card.style.transform = ''; card.style.boxShadow = `0 0 12px ${def.color}11`; };
     card.onclick = () => {
       storedPowerUp = def;
       powerUpScreen.style.display = 'none';
