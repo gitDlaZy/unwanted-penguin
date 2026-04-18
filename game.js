@@ -479,9 +479,35 @@ function buildSkua() {
 // Wrapper group controls position/rotation; model inside is pre-rotated 180°
 const player = new THREE.Group();
 const selectedSkin = localStorage.getItem('playerSkin') || 'normal';
-const penguinMesh = selectedSkin === 'evil' ? buildEvilPenguin() : buildPenguin();
+
+// Placeholder mesh shown until FBX loads
+const penguinMesh = new THREE.Group();
 penguinMesh.rotation.y = Math.PI;
 player.add(penguinMesh);
+
+// Load FBX skin
+const fbxLoader = new THREE.FBXLoader();
+const skinFile = selectedSkin === 'evil' ? 'penguin2.fbx' : 'penguin.fbx';
+fbxLoader.load(skinFile, (fbx) => {
+  // Auto-scale: normalize to roughly penguin height (~1.7 units)
+  const box = new THREE.Box3().setFromObject(fbx);
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  const scale = 1.7 / Math.max(size.x, size.y, size.z);
+  fbx.scale.setScalar(scale);
+
+  // Center feet at y=0
+  box.setFromObject(fbx);
+  fbx.position.y = -box.min.y;
+
+  fbx.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+  penguinMesh.add(fbx);
+}, undefined, (err) => {
+  // Fallback to built penguin if FBX fails
+  console.warn('FBX load failed, using fallback', err);
+  const fallback = selectedSkin === 'evil' ? buildEvilPenguin() : buildPenguin();
+  penguinMesh.add(fallback);
+});
 player.position.set(35, 0, 25);
 scene.add(player);
 
