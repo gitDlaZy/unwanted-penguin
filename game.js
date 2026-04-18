@@ -543,11 +543,17 @@ function fireGandalfStaff() {
   const px = player.position.x, pz = player.position.z;
   const stacks = weaponStacks['gandalf_staff'] || 1;
   const range  = 10 * playerStats.projSize * (1 + (stacks - 1) * 0.15);
-  const pool = enemies.filter(e => !e.dead && e.mesh &&
-    Math.sqrt((e.mesh.position.x - px) ** 2 + (e.mesh.position.z - pz) ** 2) <= range);
+  const pool = [];
+  for (let i = 0; i < enemies.length; i++) {
+    const e = enemies[i];
+    if (e.dead || !e.mesh) continue;
+    const dx = e.mesh.position.x - px, dz = e.mesh.position.z - pz;
+    if (dx * dx + dz * dz <= range * range) pool.push(e);
+  }
   if (!pool.length) return;
   // Avoid repeating targets — reset cycle when all in range have been hit
-  const fresh = pool.filter(e => !gandalfRecentlyHit.has(e));
+  const fresh = [];
+  for (let i = 0; i < pool.length; i++) { if (!gandalfRecentlyHit.has(pool[i])) fresh.push(pool[i]); }
   if (!fresh.length) gandalfRecentlyHit.clear();
   const available = (fresh.length ? fresh : pool).slice();
   const targets = [];
@@ -620,8 +626,14 @@ function showAuraDamageFlash(px, pz) {
 function fireAuraFarmer() {
   const px = player.position.x, pz = player.position.z;
   const r = getAuraRadius();
-  const inRange = enemies.filter(e => !e.dead && e.mesh &&
-    Math.sqrt((e.mesh.position.x - px) ** 2 + (e.mesh.position.z - pz) ** 2) <= r);
+  const inRange = [];
+  const r2 = r * r;
+  for (let i = 0; i < enemies.length; i++) {
+    const e = enemies[i];
+    if (e.dead || !e.mesh) continue;
+    const dx = e.mesh.position.x - px, dz = e.mesh.position.z - pz;
+    if (dx * dx + dz * dz <= r2) inRange.push(e);
+  }
   // always show flash even if no enemies (so player sees the aura active)
   showAuraDamageFlash(px, pz);
   if (!inRange.length) return;
@@ -1352,7 +1364,14 @@ function updateEnemies(dt) {
           e.mesh.position.z += sepZ * 0.3;
         }
 
-        const inPool = toxicPools.some(p => Math.sqrt((e.mesh.position.x-p.x)**2+(e.mesh.position.z-p.z)**2) < p.r);
+        let inPool = false;
+        if (toxicPools.length > 0) {
+          for (let pi = 0; pi < toxicPools.length; pi++) {
+            const p = toxicPools[pi];
+            const pdx = e.mesh.position.x - p.x, pdz = e.mesh.position.z - p.z;
+            if (pdx * pdx + pdz * pdz < p.r * p.r) { inPool = true; break; }
+          }
+        }
         if (e.nomSlowTimer > 0) e.nomSlowTimer -= dt;
         const toxicMult = inPool ? getToxicSlow() : 1;
         const nomMult   = (e.nomSlowTimer > 0) ? 0.8 : 1;
@@ -1429,6 +1448,10 @@ const _bombGeo = new THREE.SphereGeometry(0.22, 6, 6);
 const _bombBaseMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 });
 const _warnGeo = new THREE.RingGeometry(0.1, 3, 12);
 const _warnBaseMat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+const _impactGeo     = new THREE.SphereGeometry(0.4, 6, 6);
+const _impactCritGeo = new THREE.SphereGeometry(0.6, 6, 6);
+const _impactMat     = new THREE.MeshBasicMaterial({ color: 0xaaddff, transparent: true, opacity: 0.9 });
+const _impactCritMat = new THREE.MeshBasicMaterial({ color: 0xffee44, transparent: true, opacity: 0.9 });
 
 // ── Snowballs ─────────────────────────────────────────────────────────────────
 
@@ -1661,13 +1684,10 @@ function updateSnowballs(dt) {
 }
 
 function spawnImpact(x, y, z, crit = false) {
-  const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(crit ? 0.6 : 0.4, 8, 8),
-    new THREE.MeshBasicMaterial({ color: crit ? 0xffee44 : 0xaaddff, transparent: true, opacity: 0.9 })
-  );
+  const mesh = new THREE.Mesh(crit ? _impactCritGeo : _impactGeo, (crit ? _impactCritMat : _impactMat).clone());
   mesh.position.set(x, y, z);
   scene.add(mesh);
-  explosionFX.push({ mesh, flash: null, duration: crit ? 0.35 : 0.2, timer: crit ? 0.35 : 0.2 });
+  explosionFX.push({ mesh, flash: null, duration: crit ? 0.35 : 0.2, timer: crit ? 0.35 : 0.2, ownGeo: false });
 }
 
 function dropBomb(tx, tz, fromY) {
@@ -1725,7 +1745,7 @@ function explode(x, z, color = 0xff6600) {
   flash.position.set(x, 2, z);
   scene.add(flash);
 
-  explosionFX.push({ mesh, flash, duration: 0.45, timer: 0.45 });
+  explosionFX.push({ mesh, flash, duration: 0.45, timer: 0.45, ownGeo: true });
 }
 
 function updateExplosions(dt) {
@@ -1737,7 +1757,8 @@ function updateExplosions(dt) {
     e.mesh.material.opacity = 0.85 * (1 - t);
     if (e.flash) e.flash.intensity = 3 * (1 - t);
     if (e.timer <= 0) {
-      e.mesh.geometry.dispose(); e.mesh.material.dispose();
+      if (e.ownGeo) e.mesh.geometry.dispose();
+      e.mesh.material.dispose();
       scene.remove(e.mesh);
       if (e.flash) scene.remove(e.flash);
       explosionFX.splice(i, 1);
