@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Text to 3D</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; color: #fff; font-family: monospace; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 24px; }
+    h1 { margin-bottom: 20px; font-size: 1.4rem; color: #aef; }
+    #prompt-wrap { display: flex; gap: 10px; width: 100%; max-width: 640px; margin-bottom: 16px; }
+    #prompt { flex: 1; background: #1e1e2e; border: 1px solid #444; border-radius: 8px; padding: 10px 14px; color: #fff; font-family: monospace; font-size: 1rem; }
+    #prompt:focus { outline: none; border-color: #aef; }
+    button { background: #2a4a6a; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-family: monospace; font-size: 1rem; }
+    button:hover { background: #3a6a9a; }
+    #tags { display: flex; flex-wrap: wrap; gap: 8px; max-width: 640px; margin-bottom: 16px; }
+    .tag { background: #1e2e1e; border: 1px solid #3a3; border-radius: 20px; padding: 4px 12px; font-size: 0.78rem; color: #8f8; cursor: pointer; }
+    .tag:hover { background: #2e4e2e; }
+    #canvas3d { border: 1px solid #333; border-radius: 10px; }
+    #status { color: #6f6; font-size: 0.85rem; margin-top: 12px; min-height: 1.2em; }
+    #export-btn { margin-top: 12px; display: none; }
+    #parsed { color: #888; font-size: 0.78rem; margin-bottom: 8px; max-width: 640px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Text → 3D Model</h1>
+
+  <div id="prompt-wrap">
+    <input id="prompt" type="text" placeholder="e.g. round spiky red creature with horns" />
+    <button id="gen-btn">Generate</button>
+  </div>
+
+  <div id="tags">
+    <span class="tag" data-p="round blue slime creature">round slime</span>
+    <span class="tag" data-p="tall thin spiky purple wizard tower">wizard tower</span>
+    <span class="tag" data-p="wide flat green turtle shell">turtle shell</span>
+    <span class="tag" data-p="small round orange pumpkin with stem">pumpkin</span>
+    <span class="tag" data-p="flying angular silver spaceship">spaceship</span>
+    <span class="tag" data-p="fat round pink pig snout ears">pig</span>
+    <span class="tag" data-p="angular red dragon head horns teeth">dragon head</span>
+    <span class="tag" data-p="tall thin dark ghost wispy">ghost</span>
+  </div>
+
+  <div id="parsed"></div>
+  <canvas id="canvas3d" width="560" height="480"></canvas>
+  <div id="status">Enter a prompt and hit Generate.</div>
+  <button id="export-btn">Download mesh.json</button>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+  // ── Keyword dictionaries ──
+  const SHAPES = {
+    round:    { rx:1.0, ry:1.0, rz:1.0, seg:32, type:'sphere' },
+    sphere:   { rx:1.0, ry:1.0, rz:1.0, seg:32, type:'sphere' },
+    blob:     { rx:1.1, ry:0.9, rz:1.0, seg:24, type:'sphere' },
+    fat:      { rx:1.3, ry:0.85,rz:1.3, seg:20, type:'sphere' },
+    wide:     { rx:1.6, ry:0.7, rz:1.2, seg:20, type:'sphere' },
+    flat:     { rx:1.4, ry:0.4, rz:1.4, seg:20, type:'sphere' },
+    tall:     { rx:0.7, ry:1.8, rz:0.7, seg:20, type:'sphere' },
+    thin:     { rx:0.5, ry:1.6, rz:0.5, seg:16, type:'sphere' },
+    cube:     { type:'box' },
+    box:      { type:'box' },
+    angular:  { type:'box' },
+    tower:    { rx:0.5, ry:2.2, rz:0.5, type:'cylinder' },
+    cylinder: { rx:1.0, ry:1.5, rz:1.0, type:'cylinder' },
+    cone:     { type:'cone' },
+    spiky:    { spiky: true, type:'sphere', seg:8 },
+    small:    { scale: 0.6 },
+    large:    { scale: 1.5 },
+    big:      { scale: 1.4 },
+    tiny:     { scale: 0.4 },
+  };
+
+  const COLORS = {
+    red:     0xe84040, orange:  0xe87830, yellow:  0xe8d840,
+    green:   0x40c840, blue:    0x4080e8, purple:  0x9040e8,
+    pink:    0xe840a0, white:   0xf0f0f0, black:   0x303030,
+    grey:    0x808080, gray:    0x808080, brown:   0x8b5c2a,
+    silver:  0xb0c0d0, gold:    0xd4a820, dark:    0x303050,
+    cyan:    0x40d8e0, teal:    0x30a090,
+  };
+
+  const FEATURES = {
+    horns:   buildHorns,
+    horn:    buildHorns,
+    ears:    buildEars,
+    ear:     buildEars,
+    teeth:   buildTeeth,
+    snout:   buildSnout,
+    stem:    buildStem,
+    wings:   buildWings,
+    wing:    buildWings,
+    eyes:    buildEyes,
+    eye:     buildEyes,
+    tail:    buildTail,
+    legs:    buildLegs,
+    leg:     buildLegs,
+  };
+
+  // ── Parse prompt ──
+  function parsePrompt(text) {
+    const words = text.toLowerCase().split(/\s+/);
+    let shape = { type:'sphere', rx:1, ry:1, rz:1, seg:20, scale:1, spiky:false };
+    let color = 0x70c8f0;
+    const features = [];
+
+    words.forEach(w => {
+      if (SHAPES[w]) Object.assign(shape, SHAPES[w]);
+      if (COLORS[w]) color = COLORS[w];
+      if (FEATURES[w]) features.push(FEATURES[w]);
+    });
+
+    return { shape, color, features, words };
+  }
+
+  // ── Build base geometry ──
+  function buildBase(shape) {
+    const { type, rx=1, ry=1, rz=1, seg=20, spiky } = shape;
+    let geo;
+    if (type === 'box')      geo = new THREE.BoxGeometry(2*rx, 2*ry, 2*rz);
+    else if (type === 'cylinder') geo = new THREE.CylinderGeometry(rx*0.6, rx, 2*ry, seg>16?16:seg);
+    else if (type === 'cone')     geo = new THREE.ConeGeometry(rx, 2*ry, seg>12?12:seg);
+    else                     geo = new THREE.SphereGeometry(1, seg, seg);
+
+    // apply axis scale
+    geo.scale(rx, ry, rz);
+
+    if (spiky) {
+      const pos = geo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const noise = 0.7 + Math.random() * 0.9;
+        pos.setX(i, pos.getX(i) * noise);
+        pos.setY(i, pos.getY(i) * noise);
+        pos.setZ(i, pos.getZ(i) * noise);
+      }
+      pos.needsUpdate = true;
+      geo.computeVertexNormals();
+    }
+    return geo;
+  }
+
+  // ── Feature builders ──
+  function buildHorns(color) {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshLambertMaterial({ color: darken(color, 0.5) });
+    [-0.4, 0.4].forEach(x => {
+      const g = new THREE.ConeGeometry(0.12, 0.7, 8);
+      const m = new THREE.Mesh(g, mat);
+      m.position.set(x, 1.2, 0);
+      m.rotation.z = x > 0 ? -0.25 : 0.25;
+      group.add(m);
+    });
+    return group;
+  }
+
+  function buildEars(color) {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshLambertMaterial({ color: lighten(color, 1.3) });
+    [-0.7, 0.7].forEach(x => {
+      const g = new THREE.SphereGeometry(0.28, 8, 8);
+      const m = new THREE.Mesh(g, mat);
+      m.position.set(x, 0.9, 0);
+      m.scale.set(1, 1.3, 0.7);
+      group.add(m);
+    });
+    return group;
+  }
+
+  function buildTeeth(color) {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshLambertMaterial({ color: 0xf0f0e0 });
+    for (let i = -1; i <= 1; i++) {
+      const g = new THREE.ConeGeometry(0.08, 0.3, 6);
+      const m = new THREE.Mesh(g, mat);
+      m.position.set(i * 0.22, -0.6, 0.85);
+      m.rotation.x = Math.PI;
+      group.add(m);
+    }
+    return group;
+  }
+
+  function buildSnout(color) {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshLambertMaterial({ color: lighten(color, 1.2) });
+    const g = new THREE.SphereGeometry(0.35, 12, 12);
+    const m = new THREE.Mesh(g, mat);
+    m.position.set(0, -0.2, 0.9);
+    m.scale.set(1.1, 0.7, 0.8);
+    group.add(m);
+    return group;
+  }
+
+  function buildStem(color) {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshLambertMaterial({ color: 0x40a040 });
+    const g = new THREE.CylinderGeometry(0.08, 0.12, 0.5, 8);
+    const m = new THREE.Mesh(g, mat);
+    m.position.set(0, 1.15, 0);
+    group.add(m);
+    return group;
+  }
+
+  function buildWings(color) {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshLambertMaterial({ color: darken(color, 0.7), side: THREE.DoubleSide });
+    [-1, 1].forEach(side => {
+      const shape = new THREE.Shape();
+      shape.moveTo(0, 0);
+      shape.bezierCurveTo(side*0.5, 0.8, side*1.5, 0.6, side*1.8, 0);
+      shape.bezierCurveTo(side*1.2, -0.3, side*0.4, -0.2, 0, 0);
+      const g = new THREE.ShapeGeometry(shape);
+      const m = new THREE.Mesh(g, mat);
+      m.position.set(side * 0.9, 0.3, 0);
+      m.rotation.y = side * 0.3;
+      group.add(m);
+    });
+    return group;
+  }
+
+  function buildEyes(color) {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
+    const pupil = new THREE.MeshLambertMaterial({ color: 0x111111 });
+    [-0.3, 0.3].forEach(x => {
+      const g = new THREE.SphereGeometry(0.15, 8, 8);
+      const m = new THREE.Mesh(g, mat);
+      m.position.set(x, 0.2, 0.88);
+      group.add(m);
+      const pg = new THREE.SphereGeometry(0.07, 6, 6);
+      const pm = new THREE.Mesh(pg, pupil);
+      pm.position.set(x, 0.2, 1.0);
+      group.add(pm);
+    });
+    return group;
+  }
+
+  function buildTail(color) {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshLambertMaterial({ color: darken(color, 0.8) });
+    const g = new THREE.ConeGeometry(0.15, 0.8, 8);
+    const m = new THREE.Mesh(g, mat);
+    m.position.set(0, -0.2, -1.1);
+    m.rotation.x = -0.7;
+    group.add(m);
+    return group;
+  }
+
+  function buildLegs(color) {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshLambertMaterial({ color: darken(color, 0.7) });
+    [[-0.4,-0.4], [0.4,-0.4]].forEach(([x,z]) => {
+      const g = new THREE.CylinderGeometry(0.12, 0.1, 0.7, 8);
+      const m = new THREE.Mesh(g, mat);
+      m.position.set(x, -1.2, z);
+      group.add(m);
+    });
+    return group;
+  }
+
+  // ── Color helpers ──
+  function darken(hex, f) {
+    const r = ((hex>>16)&0xff)*f, g = ((hex>>8)&0xff)*f, b = (hex&0xff)*f;
+    return (Math.round(r)<<16)|(Math.round(g)<<8)|Math.round(b);
+  }
+  function lighten(hex, f) { return darken(hex, f); }
+
+  // ── Three.js scene ──
+  let renderer, scene, camera, modelGroup, animId;
+  let lastGeoData = null;
+
+  function initScene() {
+    if (renderer) { renderer.dispose(); cancelAnimationFrame(animId); }
+    const canvas = document.getElementById('canvas3d');
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(560, 480);
+    renderer.setClearColor(0x1a1a2e);
+    renderer.shadowMap.enabled = true;
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(45, 560/480, 0.1, 1000);
+    camera.position.set(0, 1, 5);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+    dir.position.set(3, 5, 3);
+    scene.add(dir);
+    const fill = new THREE.DirectionalLight(0x8090ff, 0.3);
+    fill.position.set(-3, -1, -2);
+    scene.add(fill);
+
+    // Grid
+    const grid = new THREE.GridHelper(10, 10, 0x333355, 0x222233);
+    grid.position.y = -1.8;
+    scene.add(grid);
+  }
+
+  function generate() {
+    const text = document.getElementById('prompt').value.trim();
+    if (!text) return;
+
+    const { shape, color, features, words } = parsePrompt(text);
+    document.getElementById('parsed').textContent =
+      `Parsed: type=${shape.type} scale=${shape.scale||1} color=#${color.toString(16).padStart(6,'0')} features=[${features.map(f=>f.name).join(', ')||'none'}]`;
+
+    initScene();
+
+    modelGroup = new THREE.Group();
+    modelGroup.scale.setScalar(shape.scale || 1);
+
+    // Base mesh
+    const geo = buildBase(shape);
+    const mat = new THREE.MeshLambertMaterial({ color });
+    const mesh = new THREE.Mesh(geo, mat);
+    modelGroup.add(mesh);
+
+    // Features
+    features.forEach(fn => {
+      const fg = fn(color);
+      modelGroup.add(fg);
+    });
+
+    // Auto-add eyes if creature-like words present
+    const creatureWords = ['creature','monster','animal','beast','pig','dragon','ghost','slime','turtle'];
+    if (creatureWords.some(w => words.includes(w)) && !features.includes(buildEyes)) {
+      modelGroup.add(buildEyes(color));
+    }
+
+    scene.add(modelGroup);
+
+    // Store for export
+    lastGeoData = exportGeometry(modelGroup);
+    document.getElementById('export-btn').style.display = 'block';
+    document.getElementById('status').textContent = `Generated! Triangles: ${lastGeoData.indices.length/3}`;
+
+    let t = 0;
+    function animate() {
+      animId = requestAnimationFrame(animate);
+      t += 0.008;
+      modelGroup.rotation.y = t;
+      renderer.render(scene, camera);
+    }
+    animate();
+  }
+
+  // ── Export: flatten all meshes into one JSON ──
+  function exportGeometry(group) {
+    const positions = [], colors = [], indices = [];
+    let offset = 0;
+
+    group.traverse(obj => {
+      if (!(obj instanceof THREE.Mesh)) return;
+      const geo = obj.geometry.clone();
+      geo.applyMatrix4(obj.matrixWorld);
+
+      const pos = geo.attributes.position;
+      const color = obj.material.color;
+
+      for (let i = 0; i < pos.count; i++) {
+        positions.push(pos.getX(i), pos.getY(i), pos.getZ(i));
+        colors.push(color.r, color.g, color.b);
+      }
+
+      if (geo.index) {
+        for (let i = 0; i < geo.index.count; i++) indices.push(geo.index.array[i] + offset);
+      } else {
+        for (let i = 0; i < pos.count; i++) indices.push(i + offset);
+      }
+      offset += pos.count;
+    });
+
+    return { positions, colors, indices };
+  }
+
+  // ── Events ──
+  document.getElementById('gen-btn').addEventListener('click', generate);
+  document.getElementById('prompt').addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+
+  document.querySelectorAll('.tag').forEach(t => {
+    t.addEventListener('click', () => {
+      document.getElementById('prompt').value = t.dataset.p;
+      generate();
+    });
+  });
+
+  document.getElementById('export-btn').addEventListener('click', () => {
+    if (!lastGeoData) return;
+    const blob = new Blob([JSON.stringify(lastGeoData, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mesh.json';
+    a.click();
+  });
+
+  // Init empty scene
+  initScene();
+  function emptyAnimate() { animId = requestAnimationFrame(emptyAnimate); renderer.render(scene, camera); }
+  emptyAnimate();
+  </script>
+</body>
+</html>

@@ -333,6 +333,69 @@ function buildPenguin() {
   return g;
 }
 
+function buildEvilPenguin() {
+  const g = new THREE.Group();
+  const gray    = new THREE.MeshStandardMaterial({ color: 0x555560, roughness: 0.85 });
+  const dkgray  = new THREE.MeshStandardMaterial({ color: 0x333338, roughness: 0.85 });
+  const white   = new THREE.MeshStandardMaterial({ color: 0xdcdce0, roughness: 0.9 });
+  const redEye  = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xaa0000, roughness: 0.3 });
+  const redPup  = new THREE.MeshStandardMaterial({ color: 0x660000, emissive: 0x440000, roughness: 0.3 });
+  const darkbeak= new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7 });
+
+  // Chubby body — wider & rounder than normal penguin
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), dkgray);
+  body.scale.set(1.25, 1.3, 1.15); body.position.y = 0.65; body.castShadow = true;
+  g.add(body);
+
+  // White belly patch
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), white);
+  belly.scale.set(1.1, 1.2, 0.5); belly.position.set(0, 0.62, 0.32);
+  g.add(belly);
+
+  // Head — slightly bigger/rounder
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), dkgray);
+  head.position.y = 1.42;
+  g.add(head);
+
+  // Angry brow ridge — dark bars angled inward
+  [-0.12, 0.12].forEach(x => {
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.04, 0.06), gray);
+    brow.position.set(x, 1.62, 0.27);
+    brow.rotation.z = x > 0 ? 0.45 : -0.45; // angled inward = angry
+    g.add(brow);
+  });
+
+  // Red glowing eyes
+  [-0.13, 0.13].forEach(x => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), redEye);
+    eye.position.set(x, 1.46, 0.29); g.add(eye);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.034, 8, 8), redPup);
+    pupil.position.set(x, 1.46, 0.355); g.add(pupil);
+  });
+
+  // Dark beak — slightly downturned (evil frown)
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.18, 8), darkbeak);
+  beak.rotation.x = Math.PI / 2 + 0.18; // tilt down for frown
+  beak.position.set(0, 1.34, 0.45);
+  g.add(beak);
+
+  // Chubby wings
+  [-1, 1].forEach(side => {
+    const wing = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), gray);
+    wing.scale.set(0.38, 0.88, 0.3); wing.position.set(side * 0.6, 0.7, 0);
+    wing.rotation.z = side * 0.3; wing.castShadow = true;
+    g.add(wing);
+  });
+
+  // Dark feet
+  [-0.19, 0.19].forEach(x => {
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.3), dkgray);
+    foot.position.set(x, 0.025, 0.09); g.add(foot);
+  });
+
+  return g;
+}
+
 function buildSeal() {
   const dark  = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
   const light = new THREE.MeshStandardMaterial({ color: 0x778899, roughness: 0.9 });
@@ -411,7 +474,8 @@ function buildSkua() {
 
 // Wrapper group controls position/rotation; model inside is pre-rotated 180°
 const player = new THREE.Group();
-const penguinMesh = buildPenguin();
+const selectedSkin = localStorage.getItem('playerSkin') || 'normal';
+const penguinMesh = selectedSkin === 'evil' ? buildEvilPenguin() : buildPenguin();
 penguinMesh.rotation.y = Math.PI;
 player.add(penguinMesh);
 player.position.set(35, 0, 25);
@@ -2136,6 +2200,16 @@ function showDeathScreen() {
                letter-spacing:1px">↻ REFRESH</button>
     </div>
     <div id="scoreboardEl" style="min-height:60px"><div style="opacity:0.4;font-size:13px">Loading scores...</div></div>
+    <div style="margin-top:12px;display:flex;gap:10px;justify-content:center">
+      <button id="skinNormal"
+        style="background:${localStorage.getItem('playerSkin')==='evil'?'transparent':'#1a3a5a'};border:2px solid #44aaff;color:#aee8ff;
+               font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
+        🐧 NORMAL</button>
+      <button id="skinEvil"
+        style="background:${localStorage.getItem('playerSkin')==='evil'?'#3a1a1a':'transparent'};border:2px solid #ff4444;color:#ffaaaa;
+               font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
+        😈 EVIL</button>
+    </div>
     <button id="retryBtn"
       style="margin-top:8px;background:transparent;border:2px solid #44aaff55;color:#aee8ff;
              font-family:monospace;font-size:18px;padding:10px 36px;cursor:pointer;letter-spacing:3px">RETRY</button>
@@ -2175,6 +2249,8 @@ function showDeathScreen() {
 
   submit.addEventListener('click', doSubmit);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSubmit(); } });
+  document.getElementById('skinNormal').addEventListener('click', () => { localStorage.setItem('playerSkin','normal'); document.getElementById('skinNormal').style.background='#1a3a5a'; document.getElementById('skinEvil').style.background='transparent'; });
+  document.getElementById('skinEvil').addEventListener('click', () => { localStorage.setItem('playerSkin','evil'); document.getElementById('skinEvil').style.background='#3a1a1a'; document.getElementById('skinNormal').style.background='transparent'; });
   document.getElementById('retryBtn').addEventListener('click', () => { location.href = location.pathname + '?v=' + Date.now(); });
   document.getElementById('refreshBtn').addEventListener('click', () => {
     const el = document.getElementById('scoreboardEl');

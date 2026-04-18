@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Image to 3D Mesh</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; color: #fff; font-family: monospace; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; }
+    h1 { margin-bottom: 20px; font-size: 1.4rem; color: #aef; }
+    #drop-zone {
+      border: 2px dashed #555; border-radius: 12px; padding: 40px 60px;
+      cursor: pointer; text-align: center; color: #888; margin-bottom: 20px;
+      transition: border-color 0.2s;
+    }
+    #drop-zone.hover { border-color: #aef; color: #aef; }
+    #drop-zone input { display: none; }
+    #controls { display: none; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 20px; width: 100%; max-width: 600px; }
+    label { font-size: 0.85rem; color: #aaa; width: 100%; display: flex; justify-content: space-between; }
+    input[type=range] { width: 70%; }
+    #preview-canvas { border: 1px solid #333; border-radius: 8px; }
+    #buttons { display: none; gap: 12px; }
+    button {
+      background: #2a4a6a; color: #fff; border: none; padding: 10px 24px;
+      border-radius: 8px; cursor: pointer; font-family: monospace; font-size: 1rem;
+    }
+    button:hover { background: #3a6a9a; }
+    #status { color: #6f6; font-size: 0.85rem; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Image → 3D Mesh</h1>
+
+  <div id="drop-zone">
+    <div>Drop an image here<br><small>or click to browse</small></div>
+    <input type="file" id="file-input" accept="image/*">
+  </div>
+
+  <div id="controls">
+    <label>Depth <input type="range" id="depth" min="1" max="100" value="20"> <span id="depth-val">20</span>px</label>
+    <label>Pixel Size <input type="range" id="pxsize" min="1" max="16" value="4"> <span id="pxsize-val">4</span>px</label>
+    <label>Alpha Threshold <input type="range" id="alpha" min="0" max="255" value="128"> <span id="alpha-val">128</span></label>
+    <label>Remove BG Color
+      <span style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="bg-enable">
+        <input type="color" id="bg-color" value="#ffffff">
+        Tolerance <input type="range" id="bg-tolerance" min="0" max="150" value="30" style="width:100px"> <span id="bg-tol-val">30</span>
+      </span>
+    </label>
+  </div>
+
+  <canvas id="preview-canvas" width="400" height="400"></canvas>
+
+  <div id="buttons">
+    <button id="btn-preview">Preview 3D</button>
+    <button id="btn-export">Download mesh.json</button>
+  </div>
+
+  <div id="status"></div>
+
+  <!-- Three.js for 3D preview -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const controls = document.getElementById('controls');
+    const buttons = document.getElementById('buttons');
+    const previewCanvas = document.getElementById('preview-canvas');
+    const status = document.getElementById('status');
+
+    let loadedImage = null;
+
+    // Drag & drop
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('hover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('hover');
+      loadFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => loadFile(fileInput.files[0]));
+
+    // Sliders
+    ['depth','pxsize','alpha','bg-tolerance'].forEach(id => {
+      const el = document.getElementById(id);
+      const val = document.getElementById(id + '-val');
+      el.addEventListener('input', () => { if(val) val.textContent = el.value; if (loadedImage) buildMesh(); });
+    });
+    document.getElementById('bg-enable').addEventListener('change', () => { if (loadedImage) buildMesh(); });
+    document.getElementById('bg-color').addEventListener('input', () => { if (loadedImage) buildMesh(); });
+
+    function loadFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          loadedImage = img;
+          controls.style.display = 'flex';
+          buttons.style.display = 'flex';
+          buildMesh();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ── Core: sample pixels → build Three.js geometry ──
+    function samplePixels(img) {
+      const pxSize = parseInt(document.getElementById('pxsize').value);
+      const alphaThresh = parseInt(document.getElementById('alpha').value);
+
+      const offscreen = document.createElement('canvas');
+      const cols = Math.ceil(img.width / pxSize);
+      const rows = Math.ceil(img.height / pxSize);
+      offscreen.width = cols;
+      offscreen.height = rows;
+      const ctx = offscreen.getContext('2d');
+      ctx.drawImage(img, 0, 0, cols, rows);
+      const data = ctx.getImageData(0, 0, cols, rows).data;
+
+      const bgEnabled = document.getElementById('bg-enable').checked;
+      const bgTol = parseInt(document.getElementById('bg-tolerance').value);
+      const bgHex = document.getElementById('bg-color').value;
+      const bgR = parseInt(bgHex.slice(1,3),16), bgG = parseInt(bgHex.slice(3,5),16), bgB = parseInt(bgHex.slice(5,7),16);
+
+      const pixels = [];
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const i = (y * cols + x) * 4;
+          const a = data[i + 3];
+          if (a < alphaThresh) continue;
+          if (bgEnabled) {
+            const dr = Math.abs(data[i] - bgR), dg = Math.abs(data[i+1] - bgG), db = Math.abs(data[i+2] - bgB);
+            if (dr + dg + db < bgTol * 3) continue; // skip background-colored pixels
+          }
+          pixels.push({ x, y, r: data[i], g: data[i+1], b: data[i+2] });
+        }
+      }
+      return { pixels, cols, rows };
+    }
+
+    function buildGeometry(img) {
+      const depth = parseInt(document.getElementById('depth').value);
+      const { pixels, cols, rows } = samplePixels(img);
+
+      const positions = [];
+      const colors = [];
+      const indices = [];
+
+      const cx = cols / 2;
+      const cy = rows / 2;
+
+      // Build a fast lookup set for edge detection
+      const filled = new Set(pixels.map(p => `${p.x},${p.y}`));
+      const colorMap = {};
+      pixels.forEach(p => colorMap[`${p.x},${p.y}`] = p);
+
+      function addQuad(ax,ay,az, bx,by,bz, cx2,cy2,cz2, dx,dy,dz, rc,gc,bc) {
+        const base = positions.length / 3;
+        positions.push(ax,ay,az, bx,by,bz, cx2,cy2,cz2, dx,dy,dz);
+        for (let i=0;i<4;i++) colors.push(rc,gc,bc);
+        indices.push(base,base+1,base+2, base,base+2,base+3);
+      }
+
+      const hz = depth / 2;
+
+      pixels.forEach(({ x, y, r, g, b }) => {
+        const px = x - cx;
+        const py = -(y - cy);
+        const rc = r/255, gc = g/255, bc = b/255;
+        const side = rc*0.55, sg = gc*0.55, sb = bc*0.55;
+
+        // Front face
+        addQuad(px,py,hz,  px+1,py,hz,  px+1,py-1,hz,  px,py-1,hz,  rc,gc,bc);
+        // Back face
+        addQuad(px+1,py,-hz,  px,py,-hz,  px,py-1,-hz,  px+1,py-1,-hz,  rc*0.4,gc*0.4,bc*0.4);
+
+        // Side faces — only on exposed edges
+        if (!filled.has(`${x},${y-1}`)) // top
+          addQuad(px,py,hz,  px+1,py,hz,  px+1,py,-hz,  px,py,-hz,  side,sg,sb);
+        if (!filled.has(`${x},${y+1}`)) // bottom
+          addQuad(px+1,py-1,hz,  px,py-1,hz,  px,py-1,-hz,  px+1,py-1,-hz,  side,sg,sb);
+        if (!filled.has(`${x-1},${y}`)) // left
+          addQuad(px,py,hz,  px,py-1,hz,  px,py-1,-hz,  px,py,-hz,  side,sg,sb);
+        if (!filled.has(`${x+1},${y}`)) // right
+          addQuad(px+1,py-1,hz,  px+1,py,hz,  px+1,py,-hz,  px+1,py-1,-hz,  side,sg,sb);
+      });
+
+      return { positions, colors, indices, cols, rows };
+    }
+
+    // ── Three.js preview ──
+    let renderer, scene, camera, meshObj, animFrame;
+
+    function buildMesh() {
+      if (!loadedImage) return;
+      status.textContent = 'Building mesh...';
+
+      const { positions, colors, indices } = buildGeometry(loadedImage);
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      geo.setIndex(indices);
+      geo.computeVertexNormals();
+
+      const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+
+      if (animFrame) cancelAnimationFrame(animFrame);
+      if (renderer) renderer.dispose();
+
+      const w = 400, h = 400;
+      previewCanvas.width = w; previewCanvas.height = h;
+      renderer = new THREE.WebGLRenderer({ canvas: previewCanvas, antialias: true });
+      renderer.setSize(w, h);
+      renderer.setClearColor(0x222222);
+
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 10000);
+      camera.position.set(0, 0, Math.max(loadedImage.width, loadedImage.height) * 1.2);
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+      const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+      dir.position.set(1, 1, 2);
+      scene.add(dir);
+
+      meshObj = new THREE.Mesh(geo, mat);
+      scene.add(meshObj);
+
+      let t = 0;
+      function animate() {
+        animFrame = requestAnimationFrame(animate);
+        t += 0.01;
+        meshObj.rotation.y = t;
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      status.textContent = `Mesh ready — ${indices.length/3} triangles`;
+    }
+
+    // ── Export ──
+    document.getElementById('btn-preview').addEventListener('click', buildMesh);
+
+    document.getElementById('btn-export').addEventListener('click', () => {
+      if (!loadedImage) return;
+      const { positions, colors, indices } = buildGeometry(loadedImage);
+      const json = JSON.stringify({ positions, colors, indices }, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'mesh.json';
+      a.click();
+      status.textContent = 'mesh.json downloaded!';
+    });
+  </script>
+</body>
+</html>
