@@ -418,7 +418,7 @@ player.position.set(35, 0, 25);
 scene.add(player);
 
 const playerState = { hp: 100, maxHp: 100, iframes: 0, dead: false,
-  shaggyCharges: 1, shaggyMaxCharges: 1, shaggyRechargeTimer: 0 };
+  shaggyCharges: 0, shaggyMaxCharges: 0, shaggyRechargeTimer: 0 };
 
 // ── Player Stats (tome upgrades) ──────────────────────────────────────────────
 
@@ -1463,6 +1463,9 @@ const _warnBaseMat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent:
 const _impactGeo     = new THREE.SphereGeometry(0.4, 6, 6);
 const _impactCritGeo = new THREE.SphereGeometry(0.6, 6, 6);
 const _explodeGeo    = new THREE.SphereGeometry(3, 10, 10);
+const _gustGeo       = new THREE.RingGeometry(0.1, 0.55, 16);
+const _gustMat       = new THREE.MeshBasicMaterial({ color: 0xaaeeff, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+const _gustFX        = []; // active gust rings
 
 // Pre-allocated pools — reused instead of create/destroy every hit
 function _makeImpactMesh(crit) {
@@ -1790,6 +1793,33 @@ function updateExplosions(dt) {
       }
       if (e.flash) scene.remove(e.flash);
       explosionFX.splice(i, 1);
+    }
+  }
+}
+
+function spawnGust(x, z) {
+  for (let i = 0; i < 3; i++) {
+    const mesh = new THREE.Mesh(_gustGeo, _gustMat.clone());
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(x + (Math.random() - 0.5) * 0.4, 0.05, z + (Math.random() - 0.5) * 0.4);
+    scene.add(mesh);
+    _gustFX.push({ mesh, timer: 0.3 + i * 0.07, duration: 0.3 + i * 0.07, delay: i * 0.04 });
+  }
+}
+
+function updateGusts(dt) {
+  for (let i = _gustFX.length - 1; i >= 0; i--) {
+    const g = _gustFX[i];
+    g.delay -= dt;
+    if (g.delay > 0) continue;
+    g.timer -= dt;
+    const t = 1 - g.timer / g.duration;
+    g.mesh.scale.setScalar(1 + t * 2.5);
+    g.mesh.material.opacity = 0.65 * (1 - t);
+    if (g.timer <= 0) {
+      scene.remove(g.mesh);
+      g.mesh.material.dispose();
+      _gustFX.splice(i, 1);
     }
   }
 }
@@ -3269,7 +3299,7 @@ function update(dt) {
       const onSnow  = playerY < 0.3 && isOnSnowPatch(player.position.x, player.position.z);
       const onWater = playerY < 0.3 && isInWater(player.position.x, player.position.z);
       const stunMult = playerPhotoStun > 0 ? 0.35 : 1.0;
-      const airMult  = (_airBoost && playerY > 0) ? 1.6 : 1.0;
+      const airMult  = (_airBoost && playerY > 0) ? 1.1 : 1.0;
       const effSpeed = SPEED * stormSlow * playerStats.moveSpeed * stunMult * airMult * (onSnow ? 0.7 : onWater ? 1.2 : 1.0);
       document.getElementById('ui').style.color = onWater ? '#44ffcc' : '#aee8ff';
       player.position.x = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.x + dx * effSpeed * dt));
@@ -3316,6 +3346,7 @@ function update(dt) {
         playerVY  = JUMP_FORCE;
         _airBoost = true;
         _jumpBuffer = 0;
+        spawnGust(player.position.x, player.position.z);
       } else {
         _airBoost = false;
       }
@@ -3414,6 +3445,7 @@ function update(dt) {
   updateNomOrbs(dt);
   updateBombs(dt);
   updateExplosions(dt);
+  updateGusts(dt);
 }
 
 const fpsHUD = document.getElementById('fpsHUD');
