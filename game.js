@@ -3285,8 +3285,6 @@ function updateHumans(dt) {
 spawnHumans();
 ensureShaggyRing(); // player starts with 1 shaggy charge
 
-// Test tome pickup at (31, 10)
-spawnMapItem(31, 10);
 
 // ── Touch Controls ───────────────────────────────────────────────────────────
 
@@ -3501,7 +3499,6 @@ window.addEventListener('keydown', e => {
     if (e.key === 'p' || e.key === 'P' || e.key === 'Enter') confirmPuChoice();
     e.preventDefault();
   }
-  if (e.key.toLowerCase() === 't' && !playerState.dead) queueTome(); // debug: instant level-up
   if ((e.key === '6' || e.key === '7') && keys['6'] && keys['7'] && !playerState.dead) {
     penguinMesh.clear();
     penguinMesh.add(buildWizardCat());
