@@ -1802,6 +1802,7 @@ const playerVel = new THREE.Vector3(); // xz velocity, updated each frame
 const GRAVITY    = -22;
 const JUMP_FORCE =  9;
 let jumpPressed  = false;
+let _airBoost    = false; // active during jump after a perfect landing
 
 // ── Ice Cracks ────────────────────────────────────────────────────────────────
 
@@ -2155,7 +2156,7 @@ function showDeathScreen() {
 
 window.addEventListener('keydown', e => {
   const typingName = document.activeElement && document.activeElement.id === 'nameInput';
-  if ((e.code === 'Space' || e.key === 'p' || e.key === 'r') && playerState.dead && !typingName) location.href = location.pathname + '?v=' + Date.now();
+  if ((e.code === 'Space' || e.key === 'r') && playerState.dead && !typingName) location.href = location.pathname + '?v=' + Date.now();
 });
 
 function triggerShaggy() {
@@ -3267,7 +3268,8 @@ function update(dt) {
       const onSnow  = playerY < 0.3 && isOnSnowPatch(player.position.x, player.position.z);
       const onWater = playerY < 0.3 && isInWater(player.position.x, player.position.z);
       const stunMult = playerPhotoStun > 0 ? 0.35 : 1.0;
-      const effSpeed = SPEED * stormSlow * playerStats.moveSpeed * stunMult * (onSnow ? 0.7 : onWater ? 1.2 : 1.0);
+      const airMult  = (_airBoost && playerY > 0) ? 1.6 : 1.0;
+      const effSpeed = SPEED * stormSlow * playerStats.moveSpeed * stunMult * airMult * (onSnow ? 0.7 : onWater ? 1.2 : 1.0);
       document.getElementById('ui').style.color = onWater ? '#44ffcc' : '#aee8ff';
       player.position.x = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.x + dx * effSpeed * dt));
       player.position.z = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.z + dz * effSpeed * dt));
@@ -3289,7 +3291,7 @@ function update(dt) {
     }
   }
 
-  // Jump (L or P)
+  // Jump (P)
   const wantsJump = keys['p'] || touchInput.jump;
   if (wantsJump && !jumpPressed && playerY === 0) {
     playerVY = JUMP_FORCE;
@@ -3299,7 +3301,12 @@ function update(dt) {
   const wasAirborne = playerY > 0;
   playerVY += GRAVITY * dt;
   playerY  += playerVY * dt;
-  if (playerY < 0) { playerY = 0; playerVY = 0; }
+  if (playerY < 0) {
+    playerY = 0; playerVY = 0;
+    // Perfect jump: press jump exactly as you land → air boost on next jump
+    if (wasAirborne) _airBoost = wantsJump;
+  }
+  if (!wasAirborne && playerY === 0) _airBoost = false; // clear when grounded without jump
   player.position.y = playerY;
 
   // While airborne — check if crossing a crack (generous 3-unit radius)
