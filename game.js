@@ -1801,8 +1801,9 @@ let playerVY = 0;
 const playerVel = new THREE.Vector3(); // xz velocity, updated each frame
 const GRAVITY    = -22;
 const JUMP_FORCE =  9;
-let jumpPressed  = false;
-let _airBoost    = false; // active during jump after a perfect landing
+let jumpPressed      = false;
+let _airBoost        = false; // active during jump after a perfect landing
+let _jumpBuffer      = 0;     // counts down after P pressed — landing within window = perfect
 
 // ── Ice Cracks ────────────────────────────────────────────────────────────────
 
@@ -3293,9 +3294,15 @@ function update(dt) {
 
   // Jump (P)
   const wantsJump = keys['p'] || touchInput.jump;
-  if (wantsJump && !jumpPressed && playerY === 0) {
-    playerVY = JUMP_FORCE;
+  const justPressed = wantsJump && !jumpPressed;
+  if (justPressed) {
+    if (playerY === 0) {
+      playerVY = JUMP_FORCE; // normal ground jump
+    } else {
+      _jumpBuffer = 0.18;    // airborne press — start perfect-landing window
+    }
   }
+  if (_jumpBuffer > 0) _jumpBuffer -= dt;
   jumpPressed = wantsJump;
 
   const wasAirborne = playerY > 0;
@@ -3303,10 +3310,17 @@ function update(dt) {
   playerY  += playerVY * dt;
   if (playerY < 0) {
     playerY = 0; playerVY = 0;
-    // Perfect jump: press jump exactly as you land → air boost on next jump
-    if (wasAirborne) _airBoost = wantsJump;
+    if (wasAirborne) {
+      if (_jumpBuffer > 0) {
+        // Perfect landing — jump again immediately with air boost
+        playerVY  = JUMP_FORCE;
+        _airBoost = true;
+        _jumpBuffer = 0;
+      } else {
+        _airBoost = false;
+      }
+    }
   }
-  if (!wasAirborne && playerY === 0) _airBoost = false; // clear when grounded without jump
   player.position.y = playerY;
 
   // While airborne — check if crossing a crack (generous 3-unit radius)
