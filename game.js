@@ -453,11 +453,11 @@ function buildWizardCat() {
 
   // Cat ears — poke through the hat sides just above the brim
   [-0.27, 0.27].forEach(x => {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.42, 6), dpurple);
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.63, 6), dpurple);
     ear.position.set(x, 2.02, 0.0);
     ear.rotation.z = x > 0 ? -0.35 : 0.35;
     g.add(ear);
-    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.26, 6), pink);
+    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.0825, 0.39, 6), pink);
     innerEar.position.set(x, 2.02, 0.02);
     innerEar.rotation.z = x > 0 ? -0.35 : 0.35;
     g.add(innerEar);
