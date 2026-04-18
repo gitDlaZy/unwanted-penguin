@@ -3151,7 +3151,7 @@ window.addEventListener('keydown', e => {
   if (choosingPowerUp) {
     if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft')  { puSelectedIdx = 0; puHighlight(); }
     if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') { puSelectedIdx = 1; puHighlight(); }
-    if (e.key === 'p' || e.key === 'P' || e.key === 'Enter' || e.key === 'l' || e.key === 'L') confirmPuChoice();
+    if (e.key === 'p' || e.key === 'P' || e.key === 'Enter') confirmPuChoice();
     e.preventDefault();
   }
   if (e.key.toLowerCase() === 't' && !playerState.dead) queueTome(); // debug: instant level-up
