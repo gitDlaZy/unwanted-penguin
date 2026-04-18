@@ -1445,7 +1445,33 @@ function updateBoss(dt) {
     bossDefeated = true;
     bossHUDEl.style.display = 'none';
     bossArrowEl.style.display = 'none';
+    triggerLevel1End();
   }
+}
+
+function triggerLevel1End() {
+  const defeated = document.getElementById('krillyDefeated');
+  const dialogue = document.getElementById('spooksDialogue');
+
+  // Show "Krilly Defeated" for 3 seconds
+  defeated.style.display = 'block';
+  setTimeout(() => {
+    defeated.style.display = 'none';
+
+    // Spawn Spooks next to the player
+    const spooksMesh = buildWizardCat();
+    spooksMesh.position.set(
+      player.position.x + 1.5,
+      player.position.y,
+      player.position.z + 1.5
+    );
+    spooksMesh.rotation.y = Math.PI; // face the player
+    scene.add(spooksMesh);
+
+    // Show dialogue
+    dialogue.style.display = 'block';
+    setTimeout(() => { dialogue.style.display = 'none'; }, 5000);
+  }, 3000);
 }
 
 function spawnSeal(hpScale = 1) {
