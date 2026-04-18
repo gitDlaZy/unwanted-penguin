@@ -1339,6 +1339,7 @@ function buildKrill() {
 
 let boss = null;
 let bossDefeated = false;
+let spooksNPC = null;
 let bossProjectiles = [];
 const bossHUDEl    = document.getElementById('bossHUD');
 const bossBarInner = document.getElementById('bossBarInner');
@@ -1492,18 +1493,18 @@ function triggerLevel1End() {
 
     // Spawn Spooks next to the player
     try {
-      const spooksMesh = buildWizardCat();
-      spooksMesh.position.set(
+      spooksNPC = buildWizardCat();
+      spooksNPC.position.set(
         player.position.x - 2.5,
         player.position.y,
         player.position.z - 2.5
       );
-      spooksMesh.rotation.y = Math.PI * 0.25;
-      scene.add(spooksMesh);
+      spooksNPC.rotation.y = Math.PI * 0.25;
+      scene.add(spooksNPC);
 
       // Rotate player to face Spooks
-      const dirX = spooksMesh.position.x - player.position.x;
-      const dirZ = spooksMesh.position.z - player.position.z;
+      const dirX = spooksNPC.position.x - player.position.x;
+      const dirZ = spooksNPC.position.z - player.position.z;
       player.rotation.y = Math.atan2(-dirX, -dirZ);
     } catch(e) { console.error('Spooks spawn failed:', e); }
   }, 3000);
@@ -3750,6 +3751,7 @@ function loop() {
     _fpsFrames = 0; _fpsTimer = 0;
   }
   update(dt);
+  if (spooksNPC) spooksNPC.position.y = 0.18 * Math.sin(Date.now() / 500);
   renderer.render(scene, camera);
 }
 loop();
