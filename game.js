@@ -905,16 +905,21 @@ function updatePowerUpHUD() {
   }).join('');
 }
 
+let _puHudTimer = 0;
 function tickPowerUps(dt) {
+  if (!Object.keys(activePowerUps).length) return;
+  let changed = false;
   for (const id of Object.keys(activePowerUps)) {
     activePowerUps[id] -= dt;
     if (activePowerUps[id] <= 0) {
       const def = POWER_UP_DEFS.find(p => p.id === id);
       if (def && def.remove) def.remove();
       delete activePowerUps[id];
+      changed = true;
     }
   }
-  updatePowerUpHUD();
+  _puHudTimer += dt;
+  if (changed || _puHudTimer >= 0.1) { _puHudTimer = 0; updatePowerUpHUD(); }
 }
 
 // Power-up choice screen (pick 1 of 2)
