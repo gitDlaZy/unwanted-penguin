@@ -834,7 +834,7 @@ const activePowerUps = {}; // id → timer remaining
 
 const POWER_UP_DEFS = [
   {
-    id: 'aoe_bomb', name: 'AoE Bomb', emoji: '💣', color: '#ff6600',
+    id: 'aoe_bomb', name: 'AoE Bomb', emoji: '💣', color: '#ff2222',
     desc: 'Instantly obliterate all enemies within 10 units.',
     instant: true,
     apply: () => {
