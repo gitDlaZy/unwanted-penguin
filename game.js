@@ -457,7 +457,7 @@ function buildWizardCat() {
     ear.position.set(x, 2.02, 0.0);
     ear.rotation.z = x > 0 ? -0.35 : 0.35;
     g.add(ear);
-    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.0825, 0.39, 6), pink);
+    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.0825, 0.39, 6), lpurple);
     innerEar.position.set(x, 2.02, 0.02);
     innerEar.rotation.z = x > 0 ? -0.35 : 0.35;
     g.add(innerEar);
