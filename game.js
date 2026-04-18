@@ -862,9 +862,9 @@ const POWER_UP_DEFS = [
   },
   {
     id: 'invulnerable', name: 'Ice Shield', emoji: '🛡️', color: '#88ddff',
-    desc: 'Invulnerable for 2 seconds — activates immediately.',
-    duration: 2,
-    apply: () => { playerState.iframes = 2; },
+    desc: 'Invulnerable for 3 seconds — activates immediately.',
+    duration: 3,
+    apply: () => { playerState.iframes = 3; },
     remove: () => {}
   },
   {
@@ -876,8 +876,8 @@ const POWER_UP_DEFS = [
   },
   {
     id: 'shrink', name: 'Ghost Form', emoji: '👻', color: '#aaffaa',
-    desc: 'Shrink + 100% dodge + speed boost for 10 seconds.',
-    duration: 10,
+    desc: 'Shrink + 100% dodge + speed boost for 4 seconds.',
+    duration: 4,
     apply: () => {
       player.scale.setScalar(0.4);
       playerStats._preGhostEvasion = playerStats.evasion;
