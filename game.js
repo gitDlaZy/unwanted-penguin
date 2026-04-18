@@ -1486,6 +1486,11 @@ function triggerLevel1End() {
       );
       spooksMesh.rotation.y = Math.PI * 0.25;
       scene.add(spooksMesh);
+
+      // Rotate player to face Spooks
+      const dirX = spooksMesh.position.x - player.position.x;
+      const dirZ = spooksMesh.position.z - player.position.z;
+      player.rotation.y = Math.atan2(-dirX, -dirZ);
     } catch(e) { console.error('Spooks spawn failed:', e); }
   }, 3000);
 }
