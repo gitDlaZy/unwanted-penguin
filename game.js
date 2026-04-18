@@ -3098,6 +3098,7 @@ const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   if (e.key.toLowerCase() === 'o') openPendingTome();
+  if (e.key.toLowerCase() === 'l' && pendingPowerUps > 0 && !choosingPowerUp && !playerState.dead) { pendingPowerUps--; updatePowerUpBtn(); showPowerUpChoice(); }
   if (e.key.toLowerCase() === 't' && !playerState.dead) queueTome(); // debug: instant level-up
   if ((e.key === '9' || e.key === '0') && keys['9'] && keys['0'] && !playerState.dead) {
     const before = Math.floor(crackJumps / CRACK_MILESTONE);
