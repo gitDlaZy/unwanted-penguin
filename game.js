@@ -33,7 +33,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.BasicShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMapping = THREE.LinearToneMapping;
 renderer.toneMappingExposure = 1.2;
 document.body.appendChild(renderer.domElement);
 
@@ -44,7 +44,7 @@ scene.add(new THREE.AmbientLight(0x2255aa, 0.6));
 const sun = new THREE.DirectionalLight(0xaaddff, 1.4);
 sun.position.set(15, 30, 10);
 sun.castShadow = true;
-sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.mapSize.set(512, 512);
 ['left','right','top','bottom'].forEach((s,i) => sun.shadow.camera[s] = [-60,60,60,-60][i]);
 sun.shadow.camera.far = 120;
 scene.add(sun);
@@ -55,7 +55,7 @@ scene.add(rimLight);
 // ── Ice Floor ─────────────────────────────────────────────────────────────────
 
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(500, 500, 80, 80),
+  new THREE.PlaneGeometry(500, 500),
   new THREE.MeshStandardMaterial({ color: 0x6ab8d4, roughness: 0.05, metalness: 0.4 })
 );
 floor.rotation.x = -Math.PI / 2;
@@ -231,6 +231,18 @@ const snowPoints = new THREE.Points(snowGeo, new THREE.PointsMaterial({ color: 0
 scene.add(snowPoints);
 
 // ── Models ────────────────────────────────────────────────────────────────────
+// Pre-shared enemy materials (Lambert = no PBR cost, shared = no recompile per spawn)
+const _mat = {
+  sealDark:    new THREE.MeshLambertMaterial({ color: 0x334455 }),
+  sealLight:   new THREE.MeshLambertMaterial({ color: 0x778899 }),
+  sealEye:     new THREE.MeshLambertMaterial({ color: 0x111111 }),
+  skuaBrown:   new THREE.MeshLambertMaterial({ color: 0x6b4226 }),
+  skuaDark:    new THREE.MeshLambertMaterial({ color: 0x3d2010 }),
+  skuaYellow:  new THREE.MeshLambertMaterial({ color: 0xccaa00 }),
+  bearWhite:   new THREE.MeshLambertMaterial({ color: 0xf0f0e8 }),
+  bearCream:   new THREE.MeshLambertMaterial({ color: 0xd8d0c0 }),
+  bearBlack:   new THREE.MeshLambertMaterial({ color: 0x111111 }),
+};
 
 function buildPenguin() {
   const g = new THREE.Group();
@@ -278,100 +290,55 @@ function buildPenguin() {
 
 function buildSeal() {
   const g = new THREE.Group();
-  const darkGray = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
-  const lightGray = new THREE.MeshStandardMaterial({ color: 0x778899, roughness: 0.9 });
-  const spotMat = new THREE.MeshStandardMaterial({ color: 0x223344, roughness: 0.9 });
-
-  // Main body — long and low
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 6), darkGray);
+  // Shared materials — no new allocation per spawn
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 6, 4), _mat.sealDark);
   body.scale.set(2.2, 0.7, 0.9); body.position.y = 0.42;
   g.add(body);
-
-  // Belly
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.45, 7, 5), lightGray);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.45, 5, 4), _mat.sealLight);
   belly.scale.set(1.8, 0.5, 0.6); belly.position.set(0, 0.38, 0.3);
   g.add(belly);
-
-  // Spots on body
-  [[-0.3, 0.6, 0.2], [0.2, 0.55, -0.25], [0.6, 0.65, 0.1], [-0.7, 0.6, -0.1]].forEach(([x,y,z]) => {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), spotMat);
-    s.scale.set(1.5, 0.3, 1.5); s.position.set(x, y, z);
-    g.add(s);
-  });
-
-  // Head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 7, 6), darkGray);
-  head.scale.set(1.1, 0.9, 1.0); head.position.set(1.4, 0.58, 0); 
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 6, 4), _mat.sealDark);
+  head.scale.set(1.1, 0.9, 1.0); head.position.set(1.4, 0.58, 0);
   g.add(head);
-
-  // Snout
-  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 5), lightGray);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.22, 5, 4), _mat.sealLight);
   snout.scale.set(1.0, 0.7, 0.8); snout.position.set(1.78, 0.52, 0);
   g.add(snout);
-
-  // Eyes
   [-0.18, 0.18].forEach(z => {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 5, 4), _mat.sealEye);
     eye.position.set(1.6, 0.68, z); g.add(eye);
-    const glint = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-    glint.position.set(1.65, 0.7, z + 0.04); g.add(glint);
   });
-
-  // Front flippers
   [-1, 1].forEach(side => {
-    const flip = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), darkGray);
+    const flip = new THREE.Mesh(new THREE.SphereGeometry(0.28, 5, 4), _mat.sealDark);
     flip.scale.set(0.8, 0.18, 1.6); flip.position.set(0.8, 0.15, side * 0.75);
     flip.rotation.y = side * 0.3; g.add(flip);
+    const tail = new THREE.Mesh(new THREE.SphereGeometry(0.22, 5, 4), _mat.sealDark);
+    tail.scale.set(0.6, 0.15, 1.4); tail.position.set(-1.3, 0.18, side * 0.5);
+    tail.rotation.y = side * 0.5; g.add(tail);
   });
-
-  // Tail flippers
-  [-1, 1].forEach(side => {
-    const flip = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), darkGray);
-    flip.scale.set(0.6, 0.15, 1.4); flip.position.set(-1.3, 0.18, side * 0.5);
-    flip.rotation.y = side * 0.5; g.add(flip);
-  });
-
   return g;
 }
 
 function buildSkua() {
   const g = new THREE.Group();
-  const brown = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.9 });
-  const darkBrown = new THREE.MeshStandardMaterial({ color: 0x3d2010, roughness: 0.9 });
-  const yellow = new THREE.MeshStandardMaterial({ color: 0xccaa00, roughness: 0.7 });
-
-  // Body
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 7, 5), brown);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 6, 4), _mat.skuaBrown);
   body.scale.set(1.4, 0.8, 1.0); body.position.y = 0; body.castShadow = true;
   g.add(body);
-
-  // Head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 5), darkBrown);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 5, 4), _mat.skuaDark);
   head.position.set(0.5, 0.15, 0); g.add(head);
-
-  // Beak — hooked
-  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.3, 6), yellow);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.3, 5), _mat.skuaYellow);
   beak.rotation.z = -Math.PI / 2; beak.position.set(0.82, 0.1, 0);
   g.add(beak);
-
-  // Wings spread wide
   [-1, 1].forEach(side => {
-    const wing = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), brown);
+    const wing = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 4), _mat.skuaBrown);
     wing.scale.set(0.3, 0.1, 2.2); wing.position.set(0, 0, side * 1.2);
-    wing.rotation.x = side * 0.15;
-    g.add(wing);
-
-    // Wing tip darker
-    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 6), darkBrown);
+    wing.rotation.x = side * 0.15; g.add(wing);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.18, 5, 4), _mat.skuaDark);
     tip.scale.set(0.25, 0.08, 0.8); tip.position.set(-0.1, -0.05, side * 2.2);
     g.add(tip);
   });
-
-  // Tail
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.5, 6), darkBrown);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.5, 5), _mat.skuaDark);
   tail.rotation.z = Math.PI / 2; tail.position.set(-0.7, -0.05, 0);
   g.add(tail);
-
   return g;
 }
 
@@ -1037,58 +1004,31 @@ const enemies = [];
 
 function buildPolarBear() {
   const g = new THREE.Group();
-  const white  = new THREE.MeshStandardMaterial({ color: 0xf0f0e8, roughness: 0.9 });
-  const cream  = new THREE.MeshStandardMaterial({ color: 0xd8d0c0, roughness: 0.9 });
-  const black  = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
-
-  // Body — large round barrel
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.75, 7, 6), white);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.75, 6, 5), _mat.bearWhite);
   body.scale.set(1.6, 1.0, 1.1); body.position.set(0, 0.75, 0); body.castShadow = true;
   g.add(body);
-
-  // Head — round, forward (+X)
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.52, 7, 6), white);
-  head.position.set(1.1, 0.95, 0); 
-  g.add(head);
-
-  // Snout — pushed forward
-  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 5), cream);
-  snout.scale.set(0.9, 0.7, 0.8); snout.position.set(1.55, 0.82, 0);
-  g.add(snout);
-
-  // Nose
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), black);
-  nose.position.set(1.82, 0.88, 0);
-  g.add(nose);
-
-  // Eyes
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.52, 6, 5), _mat.bearWhite);
+  head.position.set(1.1, 0.95, 0); g.add(head);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.28, 5, 4), _mat.bearCream);
+  snout.scale.set(0.9, 0.7, 0.8); snout.position.set(1.55, 0.82, 0); g.add(snout);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.09, 5, 4), _mat.bearBlack);
+  nose.position.set(1.82, 0.88, 0); g.add(nose);
   [-0.22, 0.22].forEach(z => {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), black);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 5, 4), _mat.bearBlack);
     eye.position.set(1.38, 1.08, z); g.add(eye);
   });
-
-  // Ears — round on top of head
   [-0.3, 0.3].forEach(z => {
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), white);
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.16, 5, 4), _mat.bearWhite);
     ear.position.set(0.95, 1.44, z); g.add(ear);
   });
-
-  // 4 legs
   [[-0.55, 0.9], [-0.55, -0.5], [0.55, 0.9], [0.55, -0.5]].forEach(([x, offZ]) => {
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.7, 8), white);
-    leg.position.set(x, 0.35, offZ * 0.55);
-    leg.castShadow = true; g.add(leg);
-    const paw = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), cream);
-    paw.scale.set(1.1, 0.5, 1.3); paw.position.set(x, 0.06, offZ * 0.6);
-    g.add(paw);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.7, 6), _mat.bearWhite);
+    leg.position.set(x, 0.35, offZ * 0.55); g.add(leg);
+    const paw = new THREE.Mesh(new THREE.SphereGeometry(0.2, 5, 4), _mat.bearCream);
+    paw.scale.set(1.1, 0.5, 1.3); paw.position.set(x, 0.06, offZ * 0.6); g.add(paw);
   });
-
-  // Short tail
-  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), white);
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.12, 5, 4), _mat.bearWhite);
   tail.position.set(-1.1, 0.85, 0); g.add(tail);
-
-  // Elite aura — emissive-only, no PointLight
-
   return g;
 }
 
