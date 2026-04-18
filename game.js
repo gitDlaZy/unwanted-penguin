@@ -485,29 +485,28 @@ const penguinMesh = new THREE.Group();
 penguinMesh.rotation.y = Math.PI;
 player.add(penguinMesh);
 
-// Load FBX skin
-const fbxLoader = new THREE.FBXLoader();
-const skinFile = selectedSkin === 'evil' ? 'penguin2.fbx' : 'penguin.fbx';
-fbxLoader.load(skinFile, (fbx) => {
-  // Auto-scale: normalize to roughly penguin height (~1.7 units)
-  const box = new THREE.Box3().setFromObject(fbx);
-  const size = new THREE.Vector3();
-  box.getSize(size);
-  const scale = 1.7 / Math.max(size.x, size.y, size.z);
-  fbx.scale.setScalar(scale);
-
-  // Center feet at y=0
-  box.setFromObject(fbx);
-  fbx.position.y = -box.min.y;
-
-  fbx.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
-  penguinMesh.add(fbx);
-}, undefined, (err) => {
-  // Fallback to built penguin if FBX fails
-  console.warn('FBX load failed, using fallback', err);
-  const fallback = selectedSkin === 'evil' ? buildEvilPenguin() : buildPenguin();
-  penguinMesh.add(fallback);
-});
+// Load skin — FBX or code-built
+if (selectedSkin === 'fbx1' || selectedSkin === 'fbx2') {
+  const fbxLoader = new THREE.FBXLoader();
+  const skinFile = selectedSkin === 'fbx2' ? 'penguin2.fbx' : 'penguin.fbx';
+  fbxLoader.load(skinFile, (fbx) => {
+    const box = new THREE.Box3().setFromObject(fbx);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const scale = 1.7 / Math.max(size.x, size.y, size.z);
+    fbx.scale.setScalar(scale);
+    box.setFromObject(fbx);
+    fbx.position.y = -box.min.y;
+    fbx.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+    penguinMesh.add(fbx);
+  }, undefined, (err) => {
+    console.warn('FBX load failed, using fallback', err);
+    penguinMesh.add(buildPenguin());
+  });
+} else {
+  const builtModel = selectedSkin === 'evil' ? buildEvilPenguin() : buildPenguin();
+  penguinMesh.add(builtModel);
+}
 player.position.set(35, 0, 25);
 scene.add(player);
 
@@ -2230,15 +2229,23 @@ function showDeathScreen() {
                letter-spacing:1px">↻ REFRESH</button>
     </div>
     <div id="scoreboardEl" style="min-height:60px"><div style="opacity:0.4;font-size:13px">Loading scores...</div></div>
-    <div style="margin-top:12px;display:flex;gap:10px;justify-content:center">
+    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
       <button id="skinNormal"
-        style="background:${localStorage.getItem('playerSkin')==='evil'?'transparent':'#1a3a5a'};border:2px solid #44aaff;color:#aee8ff;
+        style="background:${localStorage.getItem('playerSkin')==='normal'||!localStorage.getItem('playerSkin')?'#1a3a5a':'transparent'};border:2px solid #44aaff;color:#aee8ff;
                font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
-        🐧 NORMAL</button>
+        🐧 CLASSIC</button>
       <button id="skinEvil"
         style="background:${localStorage.getItem('playerSkin')==='evil'?'#3a1a1a':'transparent'};border:2px solid #ff4444;color:#ffaaaa;
                font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
         😈 EVIL</button>
+      <button id="skinFbx1"
+        style="background:${localStorage.getItem('playerSkin')==='fbx1'?'#1a3a1a':'transparent'};border:2px solid #44ff88;color:#aaffcc;
+               font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
+        🐧 PENGUIN 1</button>
+      <button id="skinFbx2"
+        style="background:${localStorage.getItem('playerSkin')==='fbx2'?'#2a1a3a':'transparent'};border:2px solid #aa44ff;color:#ddaaff;
+               font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
+        🐧 PENGUIN 2</button>
     </div>
     <button id="retryBtn"
       style="margin-top:8px;background:transparent;border:2px solid #44aaff55;color:#aee8ff;
@@ -2279,8 +2286,16 @@ function showDeathScreen() {
 
   submit.addEventListener('click', doSubmit);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSubmit(); } });
-  document.getElementById('skinNormal').addEventListener('click', () => { localStorage.setItem('playerSkin','normal'); document.getElementById('skinNormal').style.background='#1a3a5a'; document.getElementById('skinEvil').style.background='transparent'; });
-  document.getElementById('skinEvil').addEventListener('click', () => { localStorage.setItem('playerSkin','evil'); document.getElementById('skinEvil').style.background='#3a1a1a'; document.getElementById('skinNormal').style.background='transparent'; });
+  const skinBtns = { normal:'skinNormal', evil:'skinEvil', fbx1:'skinFbx1', fbx2:'skinFbx2' };
+  const skinBg   = { normal:'#1a3a5a', evil:'#3a1a1a', fbx1:'#1a3a1a', fbx2:'#2a1a3a' };
+  Object.entries(skinBtns).forEach(([key, id]) => {
+    document.getElementById(id).addEventListener('click', () => {
+      localStorage.setItem('playerSkin', key);
+      Object.entries(skinBtns).forEach(([k, i]) => {
+        document.getElementById(i).style.background = k === key ? skinBg[k] : 'transparent';
+      });
+    });
+  });
   document.getElementById('retryBtn').addEventListener('click', () => { location.href = location.pathname + '?v=' + Date.now(); });
   document.getElementById('refreshBtn').addEventListener('click', () => {
     const el = document.getElementById('scoreboardEl');
