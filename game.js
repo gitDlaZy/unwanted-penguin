@@ -2979,7 +2979,7 @@ powerUpBtn.style.cssText = `
   touch-action:none; opacity:0.25; pointer-events:none;
   transition:opacity 0.2s, border-color 0.2s, background 0.2s;
 `;
-powerUpBtn.textContent = '💣\nPOWER';
+powerUpBtn.textContent = 'POWER';
 rightTopRow.appendChild(powerUpBtn);
 
 function updatePowerUpBtn() {
@@ -2988,13 +2988,13 @@ function updatePowerUpBtn() {
     powerUpBtn.style.pointerEvents = 'auto';
     powerUpBtn.style.borderColor   = '#88ddffcc';
     powerUpBtn.style.background    = 'rgba(0,30,50,0.6)';
-    powerUpBtn.textContent         = pendingPowerUps > 1 ? `💣 ×${pendingPowerUps}` : '💣 POWER';
+    powerUpBtn.textContent         = pendingPowerUps > 1 ? `POWER ×${pendingPowerUps}` : 'POWER';
   } else {
     powerUpBtn.style.opacity       = '0.25';
     powerUpBtn.style.pointerEvents = 'none';
     powerUpBtn.style.borderColor   = '#88ddff33';
     powerUpBtn.style.background    = 'rgba(0,15,40,0.4)';
-    powerUpBtn.textContent         = '💣\nPOWER';
+    powerUpBtn.textContent         = 'POWER';
   }
 }
 
