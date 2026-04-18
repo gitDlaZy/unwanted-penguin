@@ -1801,7 +1801,7 @@ function getDeviceId() {
 
 async function fetchLeaderboard() {
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/scores?select=name,kills,level,date&order=kills.desc&limit=10`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/scores?select=name,kills,level,date&order=kills.desc&limit=15`, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
     });
     return res.ok ? res.json() : [];
