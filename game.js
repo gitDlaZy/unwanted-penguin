@@ -337,10 +337,10 @@ function buildEvilPenguin() {
   const g = new THREE.Group();
   const gray    = new THREE.MeshStandardMaterial({ color: 0x555560, roughness: 0.85 });
   const dkgray  = new THREE.MeshStandardMaterial({ color: 0x333338, roughness: 0.85 });
-  const white   = new THREE.MeshStandardMaterial({ color: 0xdcdce0, roughness: 0.9 });
+  const white   = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.9 });
   const redEye  = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xaa0000, roughness: 0.3 });
   const redPup  = new THREE.MeshStandardMaterial({ color: 0x660000, emissive: 0x440000, roughness: 0.3 });
-  const darkbeak= new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7 });
+  const darkbeak= new THREE.MeshStandardMaterial({ color: 0xff8800, roughness: 0.7 });
 
   // Chubby body — wider & rounder than normal penguin
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), dkgray);
