@@ -811,7 +811,7 @@ xpRow.appendChild(xpBarOuter);
 document.body.appendChild(xpRow);
 
 let crackJumps = 0;
-const CRACK_MILESTONE = 25;
+const CRACK_MILESTONE = 20;
 
 // Crack jump progress HUD
 const crackHUD = document.createElement('div');
