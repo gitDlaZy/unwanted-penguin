@@ -1154,8 +1154,8 @@ function updateEnemies(dt) {
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
   const hpScale = (gameTime >= 3600 ? Math.pow(1.018, gameTime - 3600) : 1) * Math.pow(1.3, playerStats.cursed);
-  if (sealSpawnTimer <= 0) { if (enemies.length < 40) spawnSeal(hpScale); sealSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
-  if (skuaSpawnTimer <= 0) { if (enemies.length < 40) spawnSkua(hpScale); skuaSpawnTimer = (3.5 + Math.random() * 2) * pressure; }
+  if (sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
+  if (skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (3.5 + Math.random() * 2) * pressure; }
 
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
