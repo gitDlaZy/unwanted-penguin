@@ -3377,11 +3377,21 @@ function update(dt) {
   updateExplosions(dt);
 }
 
+const fpsHUD = document.getElementById('fpsHUD');
+let _fpsTimer = 0, _fpsFrames = 0, _fpsDisplay = 0;
+
 function loop() {
   requestAnimationFrame(loop);
   const now = performance.now();
   const dt  = Math.min((now - lastTime) / 1000, 0.05);
   lastTime  = now;
+  _fpsFrames++;
+  _fpsTimer += dt;
+  if (_fpsTimer >= 0.5) {
+    _fpsDisplay = Math.round(_fpsFrames / _fpsTimer);
+    fpsHUD.textContent = _fpsDisplay + ' fps';
+    _fpsFrames = 0; _fpsTimer = 0;
+  }
   update(dt);
   renderer.render(scene, camera);
 }
