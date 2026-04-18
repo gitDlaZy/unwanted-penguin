@@ -435,15 +435,17 @@ function buildWizardCat() {
     g.add(pupil);
   });
 
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), new THREE.MeshStandardMaterial({ color: 0xff99bb }));
-  nose.position.set(0, 1.28, 0.41);
+  // Button nose — pink sphere
+  const pink = new THREE.MeshStandardMaterial({ color: 0xff66aa, roughness: 0.6 });
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), pink);
+  nose.scale.set(1.1, 0.8, 0.9); nose.position.set(0, 1.28, 0.42);
   g.add(nose);
 
-  // Whiskers
+  // Whiskers — thicker, light purple (same as belly)
   [-1, 1].forEach(side => {
-    [0.04, -0.04].forEach(oy => {
-      const w = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.012, 0.012), lpurple);
-      w.position.set(side * 0.28, 1.27 + oy, 0.36);
+    [0.05, -0.05].forEach(oy => {
+      const w = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.018, 0.018), lpurple);
+      w.position.set(side * 0.34, 1.27 + oy, 0.36);
       w.rotation.z = side * 0.08;
       g.add(w);
     });
@@ -455,7 +457,7 @@ function buildWizardCat() {
     ear.position.set(x, 1.95, 0.0);
     ear.rotation.z = x > 0 ? -0.35 : 0.35; // flare outward through hat wall
     g.add(ear);
-    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.16, 6), lpurple);
+    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.16, 6), pink);
     innerEar.position.set(x, 1.95, 0.02);
     innerEar.rotation.z = x > 0 ? -0.35 : 0.35;
     g.add(innerEar);
