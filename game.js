@@ -3501,7 +3501,7 @@ window.addEventListener('keydown', e => {
     e.preventDefault();
   }
   if (e.key.toLowerCase() === 't' && !playerState.dead) queueTome(); // debug: instant level-up
-  if ((e.key === '6' || e.key === '7') && !playerState.dead) {
+  if ((e.key === '6' || e.key === '7') && keys['6'] && keys['7'] && !playerState.dead) {
     penguinMesh.clear();
     penguinMesh.add(buildWizardCat());
   }
