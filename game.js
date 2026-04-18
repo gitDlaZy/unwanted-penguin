@@ -3733,6 +3733,7 @@ const fpsHUD = document.getElementById('fpsHUD');
 let _fpsTimer = 0, _fpsFrames = 0, _fpsDisplay = 0;
 
 const DEAD_ZONE = 0.15;
+const _gpPrev = {}; // tracks previous button states to detect press edges
 function pollGamepad() {
   const gp = navigator.getGamepads ? navigator.getGamepads()[0] : null;
   if (!gp) return;
@@ -3740,9 +3741,20 @@ function pollGamepad() {
   const ay = gp.axes[1] ?? 0; // left stick Y
   touchInput.dx = Math.abs(ax) > DEAD_ZONE ? ax : 0;
   touchInput.dz = Math.abs(ay) > DEAD_ZONE ? ay : 0;
-  // Jump — button 0 (A / Cross)
-  if (gp.buttons[0]?.pressed) keys[' '] = true;
-  else delete keys[' '];
+
+  const btn = (i) => !!gp.buttons[i]?.pressed;
+  const pressed = (i) => btn(i) && !_gpPrev[i]; // true only on the frame it goes down
+
+  // A / Cross / B(Switch) — jump
+  if (btn(0)) keys[' '] = true; else delete keys[' '];
+
+  // B / Circle / A(Switch) — level up tome
+  if (pressed(1)) openPendingTome();
+
+  // X / Square / Y(Switch) — activate power up
+  if (pressed(2)) activatePowerUpBtn();
+
+  gp.buttons.forEach((b, i) => { _gpPrev[i] = b.pressed; });
 }
 
 window.addEventListener('gamepadconnected',    e => console.log('Gamepad connected:', e.gamepad.id));
