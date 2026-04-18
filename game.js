@@ -3099,6 +3099,12 @@ window.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   if (e.key.toLowerCase() === 'o') openPendingTome();
   if (e.key.toLowerCase() === 't' && !playerState.dead) queueTome(); // debug: instant level-up
+  if ((e.key === '/' || e.key === '*') && keys['/'] && keys['*'] && !playerState.dead) {
+    const before = Math.floor(crackJumps / CRACK_MILESTONE);
+    crackJumps = Math.ceil((crackJumps + 1) / CRACK_MILESTONE) * CRACK_MILESTONE;
+    updateJumpHUD();
+    if (Math.floor(crackJumps / CRACK_MILESTONE) > before) { pendingPowerUps++; updatePowerUpBtn(); }
+  }
   const typing = document.activeElement?.id === 'nameInput';
   if (!typing) resumeGame();
 });
