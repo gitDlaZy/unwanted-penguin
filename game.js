@@ -1982,7 +1982,12 @@ function damagePlayer(amount) {
   showDeathScreen();
 }
 
-function killPlayer() { damagePlayer(playerState.maxHp); }
+function killPlayer() {
+  if (playerState.dead) return;
+  playerState.dead = true;
+  penguinMesh.visible = false;
+  showDeathScreen();
+}
 
 // ── Map Items & Tome Choice ───────────────────────────────────────────────────
 
