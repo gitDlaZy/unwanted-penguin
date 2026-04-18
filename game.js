@@ -3069,7 +3069,7 @@ function makeVisionConeMesh() {
 function buildHuman() {
   const g = new THREE.Group();
   const skin    = new THREE.MeshStandardMaterial({ color: 0xffcc99, roughness: 0.8 });
-  const jacket  = new THREE.MeshStandardMaterial({ color: 0x2244aa, roughness: 0.8 });
+  const jacket  = new THREE.MeshStandardMaterial({ color: 0xff6600, roughness: 0.8 });
   const pants   = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 });
   const camMat  = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3, metalness: 0.7 });
   const lensMat = new THREE.MeshStandardMaterial({ color: 0x88aacc, roughness: 0.0, metalness: 0.9, transparent: true, opacity: 0.85 });
