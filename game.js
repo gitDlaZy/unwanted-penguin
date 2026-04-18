@@ -2404,10 +2404,6 @@ function showDeathScreen() {
         style="background:${localStorage.getItem('playerSkin')==='evil'?'#3a1a1a':'transparent'};border:2px solid #ff4444;color:#ffaaaa;
                font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
         😈 EVIL</button>
-      <button id="skinWizard"
-        style="background:${localStorage.getItem('playerSkin')==='wizard'?'#2a1a4a':'transparent'};border:2px solid #aa66ff;color:#ddaaff;
-               font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
-        🧙 WIZARD CAT</button>
     </div>
     <button id="retryBtn"
       style="margin-top:8px;background:transparent;border:2px solid #44aaff55;color:#aee8ff;
@@ -2448,7 +2444,7 @@ function showDeathScreen() {
 
   submit.addEventListener('click', doSubmit);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSubmit(); } });
-  const _skins = { normal:['skinNormal','#1a3a5a'], evil:['skinEvil','#3a1a1a'], wizard:['skinWizard','#2a1a4a'] };
+  const _skins = { normal:['skinNormal','#1a3a5a'], evil:['skinEvil','#3a1a1a'] };
   Object.entries(_skins).forEach(([key,[id,bg]]) => {
     document.getElementById(id).addEventListener('click', () => {
       localStorage.setItem('playerSkin', key);
@@ -3505,6 +3501,10 @@ window.addEventListener('keydown', e => {
     e.preventDefault();
   }
   if (e.key.toLowerCase() === 't' && !playerState.dead) queueTome(); // debug: instant level-up
+  if ((e.key === '6' || e.key === '7') && !playerState.dead) {
+    penguinMesh.clear();
+    penguinMesh.add(buildWizardCat());
+  }
   if ((e.key === '9' || e.key === '0') && keys['9'] && keys['0'] && !playerState.dead) {
     const before = Math.floor(crackJumps / CRACK_MILESTONE);
     crackJumps = Math.ceil((crackJumps + 1) / CRACK_MILESTONE) * CRACK_MILESTONE;
