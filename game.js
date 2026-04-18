@@ -799,18 +799,19 @@ xpRow.appendChild(xpBarOuter);
 document.body.appendChild(xpRow);
 
 let crackJumps = 0;
+const CRACK_MILESTONE = 25;
 
 // Crack jump progress HUD
 const crackHUD = document.createElement('div');
 crackHUD.style.cssText = 'position:fixed;bottom:24px;left:10%;pointer-events:none;display:flex;flex-direction:column;align-items:flex-start;gap:3px';
 const crackHUDLabel = document.createElement('div');
 crackHUDLabel.style.cssText = 'color:#aee8ff;font-family:monospace;font-size:12px;text-shadow:0 0 6px #44aaff';
-crackHUDLabel.textContent = '🧊 0 / 10';
+crackHUDLabel.textContent = `🧊 0 / ${CRACK_MILESTONE}`;
 const crackHUDPips = document.createElement('div');
-crackHUDPips.style.cssText = 'display:flex;gap:3px';
-for (let i = 0; i < 10; i++) {
+crackHUDPips.style.cssText = 'display:flex;gap:2px;flex-wrap:wrap;max-width:130px';
+for (let i = 0; i < CRACK_MILESTONE; i++) {
   const pip = document.createElement('div');
-  pip.style.cssText = 'width:10px;height:10px;border-radius:2px;border:1px solid #44aaff44;background:#0a2233';
+  pip.style.cssText = 'width:8px;height:8px;border-radius:2px;border:1px solid #44aaff44;background:#0a2233';
   crackHUDPips.appendChild(pip);
 }
 crackHUD.appendChild(crackHUDLabel);
@@ -818,14 +819,151 @@ crackHUD.appendChild(crackHUDPips);
 document.body.appendChild(crackHUD);
 
 function updateJumpHUD() {
-  const progress = crackJumps % 10;
-  const milestone = Math.floor(crackJumps / 10);
-  crackHUDLabel.textContent = `🧊 ${progress} / 10`;
+  const progress = crackJumps % CRACK_MILESTONE;
+  crackHUDLabel.textContent = `🧊 ${progress} / ${CRACK_MILESTONE}`;
   const pips = crackHUDPips.children;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < CRACK_MILESTONE; i++) {
     pips[i].style.background = i < progress ? '#44aaff' : '#0a2233';
     pips[i].style.borderColor = i < progress ? '#88ddff' : '#44aaff44';
   }
+}
+
+// ── Temporary Power-Up System ─────────────────────────────────────────────────
+
+const activePowerUps = {}; // id → timer remaining
+
+const POWER_UP_DEFS = [
+  {
+    id: 'aoe_bomb', name: 'AoE Bomb', emoji: '💣', color: '#ff6600',
+    desc: 'Instantly obliterate all enemies within 10 units.',
+    instant: true,
+    apply: () => {
+      const px = player.position.x, pz = player.position.z;
+      explode(px, pz);
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        if (!e.mesh) continue;
+        const d = Math.hypot(e.mesh.position.x - px, e.mesh.position.z - pz);
+        if (d < 10) {
+          if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 5 : 1);
+          if (e.type === 'belgica') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, 1);
+          killCount++; killHUDEl.textContent = `☠ ${killCount}`;
+          disposeMesh(e.mesh); scene.remove(e.mesh); enemies.splice(i, 1);
+        }
+      }
+    }
+  },
+  {
+    id: 'attack_speed', name: 'Frenzy', emoji: '⚡', color: '#ffee44',
+    desc: '+25% attack speed for 10 seconds.',
+    duration: 10,
+    apply: () => { playerStats.weaponCooldown *= 0.75; },
+    remove: () => { playerStats.weaponCooldown /= 0.75; }
+  },
+  {
+    id: 'invulnerable', name: 'Ice Shield', emoji: '🛡️', color: '#88ddff',
+    desc: 'Invulnerable for 2 seconds — activates immediately.',
+    duration: 2,
+    apply: () => { playerState.iframes = 2; },
+    remove: () => {}
+  },
+  {
+    id: 'spell_damage', name: 'Power Surge', emoji: '🔥', color: '#ff44aa',
+    desc: '+50% damage for 10 seconds.',
+    duration: 10,
+    apply: () => { playerStats.damage *= 1.5; },
+    remove: () => { playerStats.damage /= 1.5; }
+  },
+  {
+    id: 'shrink', name: 'Ghost Form', emoji: '👻', color: '#aaffaa',
+    desc: 'Shrink + 100% dodge + speed boost for 10 seconds.',
+    duration: 10,
+    apply: () => {
+      player.scale.setScalar(0.4);
+      playerStats._preGhostEvasion = playerStats.evasion;
+      playerStats.evasion = 1.0;
+      playerStats.moveSpeed *= 1.4;
+    },
+    remove: () => {
+      player.scale.setScalar(1.0);
+      playerStats.evasion = playerStats._preGhostEvasion || 0;
+      playerStats.moveSpeed /= 1.4;
+    }
+  },
+];
+
+// Active power-up HUD
+const powerUpHUDEl = document.createElement('div');
+powerUpHUDEl.style.cssText = 'position:fixed;bottom:80px;left:10%;pointer-events:none;display:flex;flex-direction:column;gap:4px';
+document.body.appendChild(powerUpHUDEl);
+
+function updatePowerUpHUD() {
+  powerUpHUDEl.innerHTML = Object.entries(activePowerUps).map(([id, t]) => {
+    const def = POWER_UP_DEFS.find(p => p.id === id);
+    if (!def || def.instant) return '';
+    return `<div style="font-family:monospace;font-size:11px;color:${def.color};text-shadow:0 0 6px ${def.color}">${def.emoji} ${def.name} ${t.toFixed(1)}s</div>`;
+  }).join('');
+}
+
+function tickPowerUps(dt) {
+  for (const id of Object.keys(activePowerUps)) {
+    activePowerUps[id] -= dt;
+    if (activePowerUps[id] <= 0) {
+      const def = POWER_UP_DEFS.find(p => p.id === id);
+      if (def && def.remove) def.remove();
+      delete activePowerUps[id];
+    }
+  }
+  updatePowerUpHUD();
+}
+
+// Power-up choice screen (pick 1 of 2)
+let choosingPowerUp = false;
+const powerUpScreen = document.createElement('div');
+powerUpScreen.style.cssText = `
+  display:none; position:fixed; inset:0; z-index:200;
+  background:rgba(0,8,20,0.82); display:none;
+  flex-direction:column; align-items:center; justify-content:center; gap:24px;
+`;
+powerUpScreen.innerHTML = `
+  <div style="font-family:monospace;font-size:14px;letter-spacing:4px;color:#88ddff;opacity:0.7">🧊 CRACK MASTER — CHOOSE A POWER-UP</div>
+  <div id="powerUpCards" style="display:flex;gap:24px"></div>
+`;
+document.body.appendChild(powerUpScreen);
+
+function showPowerUpChoice() {
+  choosingPowerUp = true;
+  // Pick 2 random distinct power-ups
+  const shuffled = POWER_UP_DEFS.slice().sort(() => Math.random() - 0.5);
+  const choices = shuffled.slice(0, 2);
+  const container = document.getElementById('powerUpCards');
+  container.innerHTML = '';
+  choices.forEach(def => {
+    const card = document.createElement('div');
+    card.style.cssText = `
+      cursor:pointer; border:1px solid ${def.color}55; padding:28px 22px;
+      width:180px; background:rgba(0,16,36,0.95); border-radius:8px;
+      text-align:center; font-family:monospace;
+      box-shadow:0 0 16px ${def.color}22;
+      transition:border-color 0.12s, box-shadow 0.12s;
+    `;
+    card.innerHTML = `
+      <div style="font-size:40px;margin-bottom:12px">${def.emoji}</div>
+      <div style="font-size:15px;font-weight:bold;color:${def.color};margin-bottom:10px">${def.name}</div>
+      <div style="font-size:12px;opacity:0.75;line-height:1.4">${def.desc}</div>
+    `;
+    card.onmouseenter = () => { card.style.borderColor = def.color; card.style.boxShadow = `0 0 24px ${def.color}55`; };
+    card.onmouseleave = () => { card.style.borderColor = `${def.color}55`; card.style.boxShadow = `0 0 16px ${def.color}22`; };
+    card.onclick = () => {
+      def.apply();
+      if (def.duration) activePowerUps[def.id] = def.duration;
+      powerUpScreen.style.display = 'none';
+      choosingPowerUp = false;
+      updatePowerUpHUD();
+    };
+    container.appendChild(card);
+  });
+  powerUpScreen.style.display = 'flex';
 }
 
 function updateXPBar() {
@@ -2927,7 +3065,8 @@ let frameTime = 0; // cached Date.now()/1000 per frame — avoids repeated calls
 function update(dt) {
   frameTime = Date.now() / 1000;
   updateTomeInput(dt);
-  if (playerState.dead || choosingTome || waitingToResume) return;
+  if (playerState.dead || choosingTome || choosingPowerUp || waitingToResume) return;
+  tickPowerUps(dt);
   playerState.iframes   = Math.max(0, playerState.iframes - dt);
   if (playerState.shaggyMaxCharges > 0 && playerState.shaggyCharges < playerState.shaggyMaxCharges) {
     playerState.shaggyRechargeTimer += dt;
@@ -3029,10 +3168,10 @@ function update(dt) {
       if (c.clearedThisJump) { cleared++; c.clearedThisJump = false; }
     }
     if (cleared > 0) {
-      const before = Math.floor(crackJumps / 10);
+      const before = Math.floor(crackJumps / CRACK_MILESTONE);
       crackJumps += cleared;
       updateJumpHUD();
-      if (Math.floor(crackJumps / 10) > before) queueTome();
+      if (Math.floor(crackJumps / CRACK_MILESTONE) > before) showPowerUpChoice();
     }
   }
 
