@@ -349,7 +349,7 @@ function buildEvilPenguin() {
 
   // White belly patch
   const belly = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), white);
-  belly.scale.set(1.1, 1.2, 0.45); belly.position.set(0, 0.62, 0.48);
+  belly.scale.set(1.6, 1.8, 0.45); belly.position.set(0, 0.62, 0.48);
   g.add(belly);
 
   // Head — slightly bigger/rounder
