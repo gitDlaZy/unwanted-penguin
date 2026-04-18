@@ -938,18 +938,47 @@ powerUpScreen.innerHTML = `
     <div style="font-size:30px;font-weight:bold;letter-spacing:4px;text-shadow:0 0 20px #44aaff;margin-bottom:8px">🧊 CRACK POWER-UP</div>
     <div style="font-size:13px;opacity:0.5;margin-bottom:32px">Pick one — activate whenever you're ready</div>
     <div id="powerUpCards" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center;max-width:800px"></div>
+    <div style="margin-top:28px;font-size:12px;opacity:0.4;letter-spacing:2px">A / D to navigate &nbsp;|&nbsp; P / L to confirm</div>
   </div>
 `;
 document.body.appendChild(powerUpScreen);
 
+let puSelectedIdx = 0;
+let puChoices = [];
+
+function puHighlight() {
+  const cards = document.getElementById('powerUpCards').children;
+  for (let i = 0; i < cards.length; i++) {
+    const def = puChoices[i];
+    if (i === puSelectedIdx) {
+      cards[i].style.borderColor = def.color;
+      cards[i].style.transform = 'scale(1.04)';
+      cards[i].style.boxShadow = `0 0 20px ${def.color}44`;
+    } else {
+      cards[i].style.borderColor = `${def.color}33`;
+      cards[i].style.transform = '';
+      cards[i].style.boxShadow = `0 0 12px ${def.color}11`;
+    }
+  }
+}
+
+function confirmPuChoice() {
+  const def = puChoices[puSelectedIdx];
+  storedPowerUp = def;
+  powerUpScreen.style.display = 'none';
+  choosingPowerUp = false;
+  touchInput.dx = 0; touchInput.dz = 0; touchInput.jump = false;
+  updatePowerUpBtn();
+}
+
 function showPowerUpChoice() {
   choosingPowerUp = true;
-  // Pick 2 random distinct power-ups
+  puSelectedIdx = 0;
   const shuffled = POWER_UP_DEFS.slice().sort(() => Math.random() - 0.5);
-  const choices = shuffled.slice(0, 2);
+  puChoices = shuffled.slice(0, 2);
   const container = document.getElementById('powerUpCards');
   container.innerHTML = '';
-  choices.forEach(def => {
+  puChoices.forEach((def, i) => {
     const card = document.createElement('div');
     card.style.cssText = `
       cursor:pointer; border:1px solid ${def.color}33; padding:22px 18px;
@@ -964,17 +993,12 @@ function showPowerUpChoice() {
       <div style="font-size:15px;font-weight:bold;color:${def.color};margin-bottom:8px">${def.name}</div>
       <div style="font-size:12px;opacity:0.75;line-height:1.4">${def.desc}</div>
     `;
-    card.onmouseenter = () => { card.style.borderColor = def.color; card.style.transform = 'scale(1.04)'; card.style.boxShadow = `0 0 20px ${def.color}44`; };
-    card.onmouseleave = () => { card.style.borderColor = `${def.color}33`; card.style.transform = ''; card.style.boxShadow = `0 0 12px ${def.color}11`; };
-    card.onclick = () => {
-      storedPowerUp = def;
-      powerUpScreen.style.display = 'none';
-      choosingPowerUp = false;
-      updatePowerUpBtn();
-    };
+    card.onmouseenter = () => { puSelectedIdx = i; puHighlight(); };
+    card.onclick = () => { puSelectedIdx = i; confirmPuChoice(); };
     container.appendChild(card);
   });
   powerUpScreen.style.display = 'flex';
+  puHighlight();
 }
 
 function updateXPBar() {
@@ -3124,6 +3148,12 @@ window.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   if (e.key.toLowerCase() === 'o') openPendingTome();
   if (e.key.toLowerCase() === 'l') activatePowerUpBtn();
+  if (choosingPowerUp) {
+    if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft')  { puSelectedIdx = 0; puHighlight(); }
+    if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') { puSelectedIdx = 1; puHighlight(); }
+    if (e.key === 'p' || e.key === 'P' || e.key === 'Enter' || e.key === 'l' || e.key === 'L') confirmPuChoice();
+    e.preventDefault();
+  }
   if (e.key.toLowerCase() === 't' && !playerState.dead) queueTome(); // debug: instant level-up
   if ((e.key === '9' || e.key === '0') && keys['9'] && keys['0'] && !playerState.dead) {
     const before = Math.floor(crackJumps / CRACK_MILESTONE);
