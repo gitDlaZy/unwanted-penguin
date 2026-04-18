@@ -492,8 +492,8 @@ function buildWizardCat() {
 
   // Tail — curved back
   const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.04, 0.9, 8), purple);
-  tail.position.set(0.2, 0.45, -0.55);
-  tail.rotation.x = -0.7; tail.rotation.z = 0.3;
+  tail.position.set(0.0, 0.55, -0.72);
+  tail.rotation.x = -1.1; tail.rotation.z = 0.15;
   g.add(tail);
 
   // Feet
