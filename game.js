@@ -1948,7 +1948,8 @@ async function fetchLeaderboard() {
 async function submitOnlineScore(name, kills, level) {
   const deviceId  = getDeviceId();
   const cleanName = name.trim().slice(0, 16) || 'Anonymous';
-  const date      = new Date().toLocaleDateString();
+  const _now = new Date();
+  const date = _now.toLocaleDateString() + ' ' + _now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const headers   = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
   try {
     const check    = await fetch(`${SUPABASE_URL}/rest/v1/scores?device_id=eq.${deviceId}&select=kills`, { headers });
