@@ -1907,6 +1907,7 @@ const JUMP_FORCE =  9;
 let jumpPressed      = false;
 let _airBoost        = false; // active during jump after a perfect landing
 let _jumpBuffer      = 0;     // counts down after P pressed — landing within window = perfect
+let _perfectCooldown = 0;     // prevents chaining perfect jumps by spamming
 
 // ── Ice Cracks ────────────────────────────────────────────────────────────────
 
@@ -3418,6 +3419,7 @@ function update(dt) {
     }
   }
   if (_jumpBuffer > 0) _jumpBuffer -= dt;
+  if (_perfectCooldown > 0) _perfectCooldown -= dt;
   jumpPressed = wantsJump;
 
   const wasAirborne = playerY > 0;
@@ -3426,11 +3428,12 @@ function update(dt) {
   if (playerY < 0) {
     playerY = 0; playerVY = 0;
     if (wasAirborne) {
-      if (_jumpBuffer > 0) {
+      if (_jumpBuffer > 0 && _perfectCooldown <= 0) {
         // Perfect landing — jump again immediately with air boost
         playerVY  = JUMP_FORCE;
         _airBoost = true;
         _jumpBuffer = 0;
+        _perfectCooldown = 0.6; // must wait 0.6s before next perfect jump
         spawnGust(player.position.x, player.position.z);
       } else {
         _airBoost = false;
