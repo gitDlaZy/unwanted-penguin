@@ -3099,7 +3099,7 @@ window.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   if (e.key.toLowerCase() === 'o') openPendingTome();
   if (e.key.toLowerCase() === 't' && !playerState.dead) queueTome(); // debug: instant level-up
-  if ((e.key === '/' || e.key === '*') && keys['/'] && keys['*'] && !playerState.dead) {
+  if ((e.key === '9' || e.key === '0') && keys['9'] && keys['0'] && !playerState.dead) {
     const before = Math.floor(crackJumps / CRACK_MILESTONE);
     crackJumps = Math.ceil((crackJumps + 1) / CRACK_MILESTONE) * CRACK_MILESTONE;
     updateJumpHUD();
