@@ -2907,7 +2907,6 @@ function updateHumans(dt) {
 
 spawnHumans();
 ensureShaggyRing(); // player starts with 1 shaggy charge
-pendingPowerUps++; updatePowerUpBtn(); // debug: start with 1 power-up
 
 // Test tome pickup at (31, 10)
 spawnMapItem(31, 10);
@@ -3030,6 +3029,8 @@ rightTopRow.appendChild(levelBtn);
 
 // JUMP button — bottom row, centered
 const jumpBtn = makeActionBtn('JUMP', '#aee8ff', rightPad);
+
+pendingPowerUps++; updatePowerUpBtn(); // debug: start with 1 power-up
 
 // ── Joystick logic ────────────────────────────────────────────────────────────
 
