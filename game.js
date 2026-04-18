@@ -1928,7 +1928,7 @@ function showDeathScreen() {
 
   submit.addEventListener('click', doSubmit);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSubmit(); } });
-  document.getElementById('retryBtn').addEventListener('click', () => location.reload());
+  document.getElementById('retryBtn').addEventListener('click', () => { location.href = location.pathname + '?v=' + Date.now(); });
   document.getElementById('refreshBtn').addEventListener('click', () => {
     const el = document.getElementById('scoreboardEl');
     if (el) el.innerHTML = '<div style="opacity:0.4;font-size:13px">Refreshing...</div>';
@@ -1941,7 +1941,7 @@ function showDeathScreen() {
 
 window.addEventListener('keydown', e => {
   const typingName = document.activeElement && document.activeElement.id === 'nameInput';
-  if ((e.code === 'Space' || e.key === 'l' || e.key === 'p') && playerState.dead && !typingName) location.reload();
+  if ((e.code === 'Space' || e.key === 'l' || e.key === 'p') && playerState.dead && !typingName) location.href = location.pathname + '?v=' + Date.now();
 });
 
 function triggerShaggy() {
