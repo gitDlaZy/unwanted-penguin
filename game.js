@@ -924,6 +924,7 @@ function tickPowerUps(dt) {
 
 // Power-up choice screen (pick 1 of 2)
 let choosingPowerUp = false;
+let storedPowerUp = null; // picked but not yet activated
 const powerUpScreen = document.createElement('div');
 powerUpScreen.style.cssText = `
   display:none; position:fixed; inset:0; z-index:200;
@@ -960,11 +961,10 @@ function showPowerUpChoice() {
     card.onmouseenter = () => { card.style.borderColor = def.color; card.style.boxShadow = `0 0 24px ${def.color}55`; };
     card.onmouseleave = () => { card.style.borderColor = `${def.color}55`; card.style.boxShadow = `0 0 16px ${def.color}22`; };
     card.onclick = () => {
-      def.apply();
-      if (def.duration) activePowerUps[def.id] = def.duration;
+      storedPowerUp = def;
       powerUpScreen.style.display = 'none';
       choosingPowerUp = false;
-      updatePowerUpHUD();
+      updatePowerUpBtn();
     };
     container.appendChild(card);
   });
@@ -2989,36 +2989,46 @@ powerUpBtn.textContent = 'POWER';
 rightTopRow.appendChild(powerUpBtn);
 
 function updatePowerUpBtn() {
-  if (pendingPowerUps > 0) {
+  if (storedPowerUp) {
+    powerUpBtn.style.opacity       = '1';
+    powerUpBtn.style.pointerEvents = 'auto';
+    powerUpBtn.style.borderColor   = `${storedPowerUp.color}cc`;
+    powerUpBtn.style.background    = 'rgba(0,30,50,0.8)';
+    powerUpBtn.style.color         = storedPowerUp.color;
+    powerUpBtn.textContent         = `USE\n${storedPowerUp.emoji}`;
+  } else if (pendingPowerUps > 0) {
     powerUpBtn.style.opacity       = '1';
     powerUpBtn.style.pointerEvents = 'auto';
     powerUpBtn.style.borderColor   = '#88ddffcc';
     powerUpBtn.style.background    = 'rgba(0,30,50,0.6)';
+    powerUpBtn.style.color         = '#88ddff';
     powerUpBtn.textContent         = pendingPowerUps > 1 ? `POWER ×${pendingPowerUps}` : 'POWER';
   } else {
     powerUpBtn.style.opacity       = '0.25';
     powerUpBtn.style.pointerEvents = 'none';
     powerUpBtn.style.borderColor   = '#88ddff33';
     powerUpBtn.style.background    = 'rgba(0,15,40,0.4)';
+    powerUpBtn.style.color         = '#88ddff';
     powerUpBtn.textContent         = 'POWER';
   }
 }
 
-powerUpBtn.addEventListener('pointerdown', () => {
-  if (pendingPowerUps > 0 && !choosingPowerUp && !playerState.dead) {
+function activatePowerUpBtn() {
+  if (playerState.dead) return;
+  if (storedPowerUp) {
+    storedPowerUp.apply();
+    if (storedPowerUp.duration) activePowerUps[storedPowerUp.id] = storedPowerUp.duration;
+    storedPowerUp = null;
+    updatePowerUpBtn();
+    updatePowerUpHUD();
+  } else if (pendingPowerUps > 0 && !choosingPowerUp) {
     pendingPowerUps--;
     updatePowerUpBtn();
     showPowerUpChoice();
   }
-});
-powerUpBtn.addEventListener('touchstart', e => {
-  e.preventDefault();
-  if (pendingPowerUps > 0 && !choosingPowerUp && !playerState.dead) {
-    pendingPowerUps--;
-    updatePowerUpBtn();
-    showPowerUpChoice();
-  }
-}, { passive: false });
+}
+powerUpBtn.addEventListener('pointerdown', activatePowerUpBtn);
+powerUpBtn.addEventListener('touchstart', e => { e.preventDefault(); activatePowerUpBtn(); }, { passive: false });
 
 // LEVEL button — dimmed until tomes are pending
 const levelBtn = document.createElement('div');
@@ -3108,7 +3118,7 @@ const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   if (e.key.toLowerCase() === 'o') openPendingTome();
-  if (e.key.toLowerCase() === 'l' && pendingPowerUps > 0 && !choosingPowerUp && !playerState.dead) { pendingPowerUps--; updatePowerUpBtn(); showPowerUpChoice(); }
+  if (e.key.toLowerCase() === 'l') activatePowerUpBtn();
   if (e.key.toLowerCase() === 't' && !playerState.dead) queueTome(); // debug: instant level-up
   if ((e.key === '9' || e.key === '0') && keys['9'] && keys['0'] && !playerState.dead) {
     const before = Math.floor(crackJumps / CRACK_MILESTONE);
