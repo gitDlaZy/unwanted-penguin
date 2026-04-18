@@ -598,25 +598,20 @@ function updateAuraRing() {
 
 function showAuraDamageFlash(px, pz) {
   const r   = getAuraRadius();
-  const geo  = new THREE.CircleGeometry(r, 48);
+  const geo  = new THREE.CircleGeometry(r, 20);
   const mat  = new THREE.MeshBasicMaterial({ color: 0xff4444, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
   const fill = new THREE.Mesh(geo, mat);
   fill.rotation.x = -Math.PI / 2;
   fill.position.set(px, 0.08, pz);
   scene.add(fill);
 
-  const light = new THREE.PointLight(0xff4444, 8, r * 3);
-  light.position.set(px, 1, pz);
-  scene.add(light);
-
   let age = 0;
   const tick = setInterval(() => {
     age += 0.05;
-    mat.opacity     = Math.max(0, 0.35 - age * 1.5);
-    light.intensity = Math.max(0, 8  - age * 35);
+    mat.opacity = Math.max(0, 0.35 - age * 1.5);
     if (age >= 0.35) {
       clearInterval(tick);
-      scene.remove(fill); scene.remove(light);
+      scene.remove(fill);
       geo.dispose(); mat.dispose();
     }
   }, 50);
@@ -1155,7 +1150,7 @@ function updateEnemies(dt) {
   const pressure = Math.max(0.08, Math.exp(-gameTime / 60)) * Math.pow(0.75, playerStats.cursed);
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
-  const hpScale = (gameTime >= 45 ? Math.pow(1.002, gameTime - 45) : 1) * Math.pow(1.3, playerStats.cursed);
+  const hpScale = (gameTime >= 120 ? Math.pow(1.002, gameTime - 120) : 1) * Math.pow(1.3, playerStats.cursed);
   if (sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (0.9 + Math.random() * 0.5) * pressure; }
   if (skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
 
@@ -1175,6 +1170,7 @@ function updateEnemies(dt) {
             if (k === i || enemies[k].type !== 'seal') continue;
             const ox = e.mesh.position.x - enemies[k].mesh.position.x;
             const oz = e.mesh.position.z - enemies[k].mesh.position.z;
+            if (Math.abs(ox) > 3 || Math.abs(oz) > 3) continue; // cheap early-out
             const od = Math.hypot(ox, oz);
             const minDist = e.elite ? 2.5 : 1.6;
             if (od < minDist && od > 0.01) { sepX += (ox / od) * (minDist - od); sepZ += (oz / od) * (minDist - od); }
@@ -1256,6 +1252,10 @@ function updateEnemies(dt) {
 
 const bombs = [];
 const explosionFX = [];
+const _bombGeo = new THREE.SphereGeometry(0.22, 6, 6);
+const _bombBaseMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 });
+const _warnGeo = new THREE.RingGeometry(0.1, 3, 12);
+const _warnBaseMat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
 
 // ── Snowballs ─────────────────────────────────────────────────────────────────
 
@@ -1498,22 +1498,14 @@ function spawnImpact(x, y, z, crit = false) {
 }
 
 function dropBomb(tx, tz, fromY) {
-  const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(0.22, 8, 8),
-    new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 })
-  );
+  if (bombs.filter(b => !b.landed).length >= 3) return; // cap in-flight bombs
+  const mesh = new THREE.Mesh(_bombGeo, _bombBaseMat.clone());
   mesh.position.set(tx, fromY, tz);
   scene.add(mesh);
-
-  // danger circle on ground
-  const warnMesh = new THREE.Mesh(
-    new THREE.RingGeometry(0.1, 3, 32),
-    new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.35, side: THREE.DoubleSide })
-  );
+  const warnMesh = new THREE.Mesh(_warnGeo, _warnBaseMat.clone());
   warnMesh.rotation.x = -Math.PI / 2;
   warnMesh.position.set(tx, 0.05, tz);
   scene.add(warnMesh);
-
   bombs.push({ mesh, warnMesh, tx, tz, fromY, landed: false, timer: 1.0 });
 }
 
