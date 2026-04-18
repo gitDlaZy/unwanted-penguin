@@ -33,6 +33,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.BasicShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.2;
 document.body.appendChild(renderer.domElement);
@@ -490,14 +491,26 @@ if (selectedSkin === 'fbx1' || selectedSkin === 'fbx2') {
   const fbxLoader = new THREE.FBXLoader();
   const skinFile = selectedSkin === 'fbx2' ? 'penguin2.fbx' : 'penguin.fbx';
   fbxLoader.load(skinFile, (fbx) => {
+    console.log('FBX loaded:', skinFile, fbx);
     const box = new THREE.Box3().setFromObject(fbx);
     const size = new THREE.Vector3();
     box.getSize(size);
+    console.log('FBX size:', size);
     const scale = 1.7 / Math.max(size.x, size.y, size.z);
     fbx.scale.setScalar(scale);
     box.setFromObject(fbx);
     fbx.position.y = -box.min.y;
-    fbx.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+    fbx.traverse(c => {
+      if (c.isMesh) {
+        c.castShadow = true;
+        c.receiveShadow = true;
+        // keep FBX materials but ensure they encode correctly
+        if (c.material) {
+          const mats = Array.isArray(c.material) ? c.material : [c.material];
+          mats.forEach(m => { if (m.map) m.map.encoding = THREE.sRGBEncoding; });
+        }
+      }
+    });
     penguinMesh.add(fbx);
   }, undefined, (err) => {
     console.warn('FBX load failed, using fallback', err);
