@@ -1904,6 +1904,8 @@ function showDeathScreen() {
 
   const input  = document.getElementById('nameInput');
   const submit = document.getElementById('submitScore');
+  const savedName = localStorage.getItem('playerName');
+  if (savedName) input.value = savedName;
   let submitted = false;
 
   async function doSubmit() {
@@ -1911,6 +1913,7 @@ function showDeathScreen() {
     submitted = true;
     submit.textContent = 'SAVING...';
     submit.disabled = true;
+    localStorage.setItem('playerName', input.value);
     const isNewHigh = await submitOnlineScore(input.value, killCount, playerLevel);
     submit.textContent = isNewHigh ? '✓ NEW HIGH SCORE' : '✓ SUBMITTED';
     submit.style.borderColor = '#44ffaa';
