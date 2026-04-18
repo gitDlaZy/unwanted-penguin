@@ -3754,6 +3754,20 @@ function pollGamepad() {
   // X / Square / Y(Switch) — activate power up
   if (pressed(2)) activatePowerUpBtn();
 
+  // Y / Triangle / X(Switch) — enter name on death screen
+  if (pressed(3) && playerState.dead) {
+    const input = document.getElementById('nameInput');
+    if (input) {
+      const name = prompt('Enter your name:', input.value || '');
+      if (name !== null) input.value = name;
+    }
+  }
+
+  // Start / Options / Plus — retry when dead
+  if (pressed(9) && playerState.dead) {
+    location.href = location.pathname + '?v=' + Date.now();
+  }
+
   gp.buttons.forEach((b, i) => { _gpPrev[i] = b.pressed; });
 }
 
