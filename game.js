@@ -2072,7 +2072,6 @@ function showDeathScreen() {
       if (el) el.innerHTML = renderScoreboard(scores);
     });
   });
-  setTimeout(() => input.focus(), 100);
 }
 
 window.addEventListener('keydown', e => {
