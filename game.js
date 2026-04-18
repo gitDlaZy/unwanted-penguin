@@ -3752,7 +3752,7 @@ function loop() {
     _fpsFrames = 0; _fpsTimer = 0;
   }
   update(dt);
-  if (spooksNPC) spooksNPC.position.y = 0.18 * Math.sin(Date.now() / 500);
+  if (spooksNPC) spooksNPC.position.y = 0.30 + 0.18 * Math.sin(Date.now() / 500);
   renderer.render(scene, camera);
 }
 loop();
