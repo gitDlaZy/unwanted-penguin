@@ -1871,7 +1871,7 @@ function updateExplosions(dt) {
 }
 
 function spawnGust(x, z) {
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 1; i++) {
     const mesh = new THREE.Mesh(_gustGeo, _gustMat.clone());
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.set(x + (Math.random() - 0.5) * 0.4, 0.05, z + (Math.random() - 0.5) * 0.4);
