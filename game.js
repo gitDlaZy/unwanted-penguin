@@ -449,16 +449,15 @@ function buildWizardCat() {
     });
   });
 
-  // Cat ears — pointed triangles
-  [-0.22, 0.22].forEach(x => {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 6), dpurple);
-    ear.position.set(x, 1.67, 0.05);
-    ear.rotation.z = x > 0 ? -0.2 : 0.2;
+  // Cat ears — poke through the hat sides just above the brim
+  [-0.27, 0.27].forEach(x => {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.28, 6), dpurple);
+    ear.position.set(x, 1.95, 0.0);
+    ear.rotation.z = x > 0 ? -0.35 : 0.35; // flare outward through hat wall
     g.add(ear);
-    // Inner ear
-    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.13, 6), lpurple);
-    innerEar.position.set(x, 1.67, 0.08);
-    innerEar.rotation.z = x > 0 ? -0.2 : 0.2;
+    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.16, 6), lpurple);
+    innerEar.position.set(x, 1.95, 0.02);
+    innerEar.rotation.z = x > 0 ? -0.35 : 0.35;
     g.add(innerEar);
   });
 
