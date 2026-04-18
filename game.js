@@ -2076,7 +2076,7 @@ function showDeathScreen() {
 
 window.addEventListener('keydown', e => {
   const typingName = document.activeElement && document.activeElement.id === 'nameInput';
-  if ((e.code === 'Space' || e.key === 'l' || e.key === 'p') && playerState.dead && !typingName) location.href = location.pathname + '?v=' + Date.now();
+  if ((e.code === 'Space' || e.key === 'l' || e.key === 'p' || e.key === 'r') && playerState.dead && !typingName) location.href = location.pathname + '?v=' + Date.now();
 });
 
 function triggerShaggy() {
