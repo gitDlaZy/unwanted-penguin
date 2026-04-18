@@ -25,6 +25,7 @@
 ## ⏰ Timestamps
 - NEVER hardcode dates or times in HTML/JS — always generate them dynamically at runtime.
 - `index.html` uses a script block to set the timestamp on load. Keep it that way.
+- Do NOT mention timestamp changes to the user — just silently fix them.
 
 ## 📏 Coding Standards
 - Language: Node.js / JavaScript
