@@ -1578,8 +1578,8 @@ function spawnSwarmWave() {
 
 function updateEnemies(dt) {
   gameTime += dt;
-  if (gameTime >= 10 && !boss && !bossDefeated && !playerState.dead) { spawnBoss(); }
-  const remaining = Math.max(0, 10 - gameTime);
+  if (gameTime >= 300 && !boss && !bossDefeated && !playerState.dead) { spawnBoss(); }
+  const remaining = Math.max(0, 300 - gameTime);
   const secs = Math.floor(remaining % 60);
   if (timerHUDEl && secs !== _lastTimerSec) {
     _lastTimerSec = secs;
