@@ -1458,19 +1458,21 @@ function triggerLevel1End() {
   setTimeout(() => {
     defeated.style.display = 'none';
 
-    // Spawn Spooks next to the player
-    const spooksMesh = buildWizardCat();
-    spooksMesh.position.set(
-      player.position.x - 2.5,
-      player.position.y,
-      player.position.z - 2.5
-    );
-    spooksMesh.rotation.y = Math.PI * 0.25; // face southeast toward player
-    scene.add(spooksMesh);
-
-    // Show dialogue
+    // Show dialogue first so an error in mesh building can't block it
     dialogue.style.display = 'block';
     setTimeout(() => { dialogue.style.display = 'none'; }, 5000);
+
+    // Spawn Spooks next to the player
+    try {
+      const spooksMesh = buildWizardCat();
+      spooksMesh.position.set(
+        player.position.x - 2.5,
+        player.position.y,
+        player.position.z - 2.5
+      );
+      spooksMesh.rotation.y = Math.PI * 0.25;
+      scene.add(spooksMesh);
+    } catch(e) { console.error('Spooks spawn failed:', e); }
   }, 3000);
 }
 
