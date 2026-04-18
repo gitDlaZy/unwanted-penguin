@@ -3745,8 +3745,9 @@ function pollGamepad() {
   const btn = (i) => !!gp.buttons[i]?.pressed;
   const pressed = (i) => btn(i) && !_gpPrev[i]; // true only on the frame it goes down
 
-  // A / Cross / B(Switch) — jump
-  if (btn(0)) keys[' '] = true; else delete keys[' '];
+  // A / Cross / B(Switch) — jump + confirm tome/powerup choice
+  touchInput.jump = btn(0);
+  if (btn(0)) keys['p'] = true; else delete keys['p'];
 
   // B / Circle / A(Switch) — level up tome
   if (pressed(1)) openPendingTome();
@@ -3762,6 +3763,14 @@ function pollGamepad() {
       if (name !== null) input.value = name;
     }
   }
+
+  // D-pad left/right + left stick — navigate tome and power-up choices
+  const goingLeft  = btn(14) || ax < -DEAD_ZONE;
+  const goingRight = btn(15) || ax >  DEAD_ZONE;
+  if (pressed(14) || (goingLeft  && !_gpPrev._stickLeft))  { keys['a'] = true;  _gpPrev._stickLeft  = true; }
+  if (pressed(15) || (goingRight && !_gpPrev._stickRight)) { keys['d'] = true;  _gpPrev._stickRight = true; }
+  if (!goingLeft)  { delete keys['a']; _gpPrev._stickLeft  = false; }
+  if (!goingRight) { delete keys['d']; _gpPrev._stickRight = false; }
 
   // Start / Options / Plus — retry when dead
   if (pressed(9) && playerState.dead) {
