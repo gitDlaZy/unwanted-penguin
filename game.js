@@ -1472,9 +1472,23 @@ function triggerLevel1End() {
   setTimeout(() => {
     defeated.style.display = 'none';
 
-    // Show dialogue first so an error in mesh building can't block it
-    dialogue.style.display = 'block';
-    setTimeout(() => { dialogue.style.display = 'none'; }, 6000);
+    // Show dialogue messages sequentially, 3 sec each
+    const lines = [
+      'Hello myauw fellow traveler',
+      'Thanks for killing Krilly *purr*',
+      'You pleasantly surprised me',
+      '....',
+      'wordt vervolgd',
+    ];
+    const textEl = document.getElementById('spooksDialogueText');
+    let idx = 0;
+    function showNextLine() {
+      if (idx >= lines.length) { dialogue.style.display = 'none'; return; }
+      textEl.textContent = '"' + lines[idx++] + '"';
+      dialogue.style.display = 'block';
+      setTimeout(showNextLine, 3000);
+    }
+    showNextLine();
 
     // Spawn Spooks next to the player
     try {
