@@ -330,7 +330,12 @@ scene.add(portalGroup);
 const _l2IcePlatforms = []; // { x, z, r }
 const _l2Jellyfish = [];
 const _l2Sharks = [];
-let   _l2Ships  = [];
+let   _l2Ships    = [];
+const _l2Orcas    = [];
+const _l2Crabs    = [];
+const _l2Currents = [];
+let   _l2Bottle   = null;
+const _l2BeachPirates = [];
 let   _l2JellySlowTimer = 0;
 const _l2SharkAlertEl = { style: { display: '' } }; // removed shark alert
 const _l2ClueEl = (() => {
@@ -999,11 +1004,6 @@ function buildShark() {
 
 // ── Level 2 creature models + data ───────────────────────────────────────────
 
-const _l2Orcas   = [];
-const _l2Crabs   = [];
-const _l2Currents = [];
-let   _l2Bottle  = null;
-
 // Ship interaction UI
 const _shipPopup = (() => {
   const el = document.createElement('div');
@@ -1208,8 +1208,6 @@ function buildBeachL2() {
     _l2Crabs.push({ mesh: c, angle: Math.random() * Math.PI * 2, timer: Math.random() * 3, speed: 0.6 + Math.random() * 0.5 });
   }
 }
-
-const _l2BeachPirates = [];
 
 function buildSeal() {
   const dark  = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
