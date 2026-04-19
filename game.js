@@ -394,6 +394,18 @@ if (CURRENT_LEVEL === 2) {
     _l2IcePlatforms.push({ x: s.x, z: s.z, r: s.r });
   });
 
+  // Safe spawn plateau — player starts here (35, 0, 25)
+  const _spawnIceMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x224466, emissiveIntensity: 0.3, roughness: 0.5 });
+  const _spawnPlat = new THREE.Mesh(new THREE.CylinderGeometry(7, 6.2, 0.35, 14), _spawnIceMat);
+  _spawnPlat.position.set(35, 0.17, 25);
+  scene.add(_spawnPlat);
+  // Cracked edge ring for visual interest
+  const _spawnRing = new THREE.Mesh(new THREE.TorusGeometry(6.8, 0.18, 6, 20), new THREE.MeshStandardMaterial({ color: 0x88ccee, roughness: 0.8 }));
+  _spawnRing.rotation.x = Math.PI / 2;
+  _spawnRing.position.set(35, 0.36, 25);
+  scene.add(_spawnRing);
+  _l2IcePlatforms.push({ x: 35, z: 25, r: 6.8 });
+
   // Shipwrecks
   const _wdMat = new THREE.MeshStandardMaterial({ color: 0x4a2e12, roughness: 0.95 });
   const _wdDk  = new THREE.MeshStandardMaterial({ color: 0x2a1808, roughness: 0.9 });
