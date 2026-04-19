@@ -1649,10 +1649,10 @@ function showAdhdMsg() {
 }
 
 const TOME_DEFS = [
-  { id:'damage',     name:'Damage Tome',           emoji:'⚔️',  color:'#ff6644', desc:'+10% damage (all weapons)',      apply: s => { s.damage     *= 1.1; } },
+  { id:'damage',     name:'Damage Tome',           emoji:'⚔️',  color:'#ff6644', desc:'+5% damage (all weapons)',       apply: s => { s.damage     *= 1.05; } },
   { id:'snowball_dmg', name:'Snowball Tome',         emoji:'🌨️', color:'#cceeff', desc:'+20% snowball damage',           apply: s => { s.snowballDmgMult = (s.snowballDmgMult||1) * 1.2; } },
   { id:'precision',  name:'Precision Tome',        emoji:'🎯',  color:'#ffaa22', desc:'+5% critical hit chance',   apply: s => { s.critChance  = Math.min(0.9, s.critChance+0.05); } },
-  { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-8% weapon cooldown',       apply: s => { s.weaponCooldown *= 0.92; } },
+  { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-8% spell cooldown (staff, aura, homhom)', apply: s => { s.weaponCooldown *= 0.92; } },
   { id:'atkspeed',   name:'Attack Speed Tome',     emoji:'🏹',  color:'#ffcc44', desc:'+8% snowball attack speed',  apply: s => { s.attackRate *= 0.92; } },
   { id:'quantity',   name:'Quantity Tome',         emoji:'❄️',  color:'#aaddff', desc:'+1 snowball (50% less each stack)', apply: (s) => {
     const stacks = tomeStacks['quantity'] || 0;
@@ -1669,9 +1669,9 @@ const TOME_DEFS = [
   { id:'evasion',    name:'Evasion Tome',          emoji:'🌀',  color:'#44ffaa', desc:'+10% dodge chance',         apply: s => { s.evasion    = Math.min(0.7, s.evasion+0.1); } },
   { id:'bloody',     name:'Bloody Tome',           emoji:'🩸',  color:'#ff4466', desc:'+20% lifesteal on hit',     apply: s => { s.lifesteal  = Math.min(1, s.lifesteal+0.2); } },
   { id:'hp',         name:'HP Tome',               emoji:'💙',  color:'#2266ff', desc:'+25 max HP',                apply: s => { s.maxShield += 1; s.shield = s.maxShield; playerState.maxHp+=25; playerState.hp+=25; updateHUD(); } },
-  { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+3% movement speed. "You obtained ADHD!"', apply: s => { s.moveSpeed *= 1.03; showAdhdMsg(); } },
+  { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+1.5% movement speed. "You obtained ADHD!"', apply: s => { s.moveSpeed *= 1.015; showAdhdMsg(); } },
   { id:'attraction', name:'Attraction Tome',       emoji:'🧲',  color:'#ffaa44', desc:'+1 pickup radius',          apply: s => { s.pickupRadius += 1; } },
-  { id:'knockback',  name:'Knockback Tome',        emoji:'💥',  color:'#ff8844', desc:'+1.5 knockback on hit',     apply: s => { s.knockback  += 1.5; } },
+  { id:'knockback',  name:'Knockback Tome',        emoji:'💥',  color:'#ff8844', desc:'+0.75 knockback on hit',    apply: s => { s.knockback  += 0.75; } },
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'+25% spawn rate, +30% enemy HP', apply:s => { s.cursed += 1; } },
   { id:'chaos',      name:'Chaos Tome',            emoji:'🎲',  color:'#ff44ff', desc:'Random tome effect!',        apply: (s, chaos) => chaos() },
   { id:'hasper',     name:'Deveh',        emoji:'🪃',  color:'#ffaa88', desc:'Boomerang snowball — deals damage both ways, +0.5 damage. Next shot waits for return.', apply: s => { s.boomerang = true; s.damage += 0.5; } },
@@ -2672,7 +2672,7 @@ function updateEnemies(dt) {
   const pressure = Math.max(0.1, Math.exp(-gameTime / SPAWN_RAMP_SPEED)) * Math.pow(0.75, playerStats.cursed) * _pebblesBonus;
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
-  const hpScale = (gameTime >= 120 ? Math.pow(1.002, gameTime - 120) : 1) * Math.pow(1.3, playerStats.cursed) * (_pebblesActive ? 1.1 : 1.0);
+  const hpScale = (gameTime >= 30 ? Math.pow(1.002, gameTime - 30) : 1) * Math.pow(1.3, playerStats.cursed) * (_pebblesActive ? 1.1 : 1.0);
   if (!bossDefeated && !_spawnsDisabled && sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (0.9 + Math.random() * 0.5) * pressure; }
   if (!bossDefeated && !_spawnsDisabled && skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
 
@@ -2946,10 +2946,10 @@ function updateBurst(dt) {
   }
 }
 
-function hitEnemy(j, impactX, impactY, impactZ) {
+function hitEnemy(j, impactX, impactY, impactZ, dmgMult = 1) {
   const e = enemies[j];
   const isCrit = Math.random() < playerStats.critChance;
-  e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+  e.hp -= SNOWBALL_DAMAGE * playerStats.damage * dmgMult * (isCrit ? 2 : 1);
   spawnImpact(impactX, impactY, impactZ, isCrit);
   if (playerStats.knockback > 0 && e.mesh) {
     const kx = impactX - e.mesh.position.x, kz = impactZ - e.mesh.position.z;
@@ -3012,7 +3012,8 @@ function updateSnowballs(dt) {
           // Each enemy hit once per leg — pierces through all
           if (!s.hitSet) s.hitSet = { out: new Set(), ret: new Set() };
           const legSet = s.returning ? s.hitSet.ret : s.hitSet.out;
-          if (!legSet.has(e)) { legSet.add(e); hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z); }
+          const _bDmg = s.returning ? 0.4 : 0.8;
+          if (!legSet.has(e)) { legSet.add(e); hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z, _bDmg); }
           continue; // pierce — keep checking other enemies this frame
         } else {
           hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z);
@@ -5141,7 +5142,7 @@ function update(dt) {
       const onSnow  = playerY < 0.3 && isOnSnowPatch(player.position.x, player.position.z);
       const onWater = playerY < 0.3 && isInWater(player.position.x, player.position.z);
       const stunMult = playerPhotoStun > 0 ? 0.35 : 1.0;
-      const airMult  = playerY > 0 ? 1 + _perfectStreak * 0.01 : 1.0;
+      const airMult  = playerY > 0 ? 1 + _perfectStreak * 0.005 : 1.0;
       const effSpeed = SPEED * stormSlow * playerStats.moveSpeed * stunMult * airMult * (onSnow ? 0.7 : onWater ? 1.2 : 1.0);
       document.getElementById('ui').style.color = onWater ? '#44ffcc' : '#aee8ff';
       player.position.x = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.x + dx * effSpeed * dt));
