@@ -137,33 +137,70 @@
     }
     window.introNav = introNav;
 
-    // BGM — defined here so it's ready before game.js loads
-    const bgm = window.bgm = new Audio('sounds/Cowboy%20Bebop%20-%20Opening%20Tank.mp3');
-    bgm.loop   = false;
-    bgm.volume = parseFloat(localStorage.getItem('bgmVolume') ?? '0.4');
+    // ── Audio system ─────────────────────────────────────────────────────────────
+    const _vol = parseFloat(localStorage.getItem('bgmVolume') ?? '0.4');
 
-    // Volume slider
+    // Intro track — plays on champ select screen
+    const _introTrack = new Audio('sounds/Gavel%20Penguin%20Intro.mp3');
+    _introTrack.loop   = true;
+    _introTrack.volume = _vol;
+
+    // Game playlist — shuffled, plays sequentially then reshuffles
+    const _playlist = [
+      'sounds/Gavel%20Penguin.mp3',
+      'sounds/Penguin%20Glitch-Quest%20Adventure.mp3',
+      'sounds/Penguin%20Glitch-Quest.mp3',
+      'sounds/Penguin%20Glockspiel.mp3',
+      'sounds/Penguin%20Glockspiel2.mp3',
+    ];
+    let _trackIdx = 0, _shuffled = [];
+    function _shufflePlaylist() {
+      _shuffled = _playlist.slice().sort(() => Math.random() - 0.5);
+      _trackIdx = 0;
+    }
+    _shufflePlaylist();
+
+    const _gameTrack = window.bgm = new Audio();
+    _gameTrack.volume = _vol;
+    function _loadNextTrack() {
+      _gameTrack.src = _shuffled[_trackIdx];
+      _gameTrack.load();
+      _gameTrack.play().catch(() => {});
+    }
+    _gameTrack.addEventListener('ended', () => {
+      _trackIdx++;
+      if (_trackIdx >= _shuffled.length) _shufflePlaylist();
+      _loadNextTrack();
+    });
+
+    // Volume slider controls both tracks
     const volWrap = document.createElement('div');
     volWrap.style.cssText = 'position:fixed;bottom:16px;right:16px;display:flex;align-items:center;gap:6px;font-family:monospace;font-size:12px;color:#668899;pointer-events:auto;z-index:50';
-    volWrap.innerHTML = `🎵 <input id="volSlider" type="range" min="0" max="1" step="0.05" value="${bgm.volume}" style="width:72px;accent-color:#44aaff;cursor:pointer" default="0.3">`;
+    volWrap.innerHTML = `🎵 <input id="volSlider" type="range" min="0" max="1" step="0.05" value="${_vol}" style="width:72px;accent-color:#44aaff;cursor:pointer">`;
     document.body.appendChild(volWrap);
     document.getElementById('volSlider').addEventListener('input', e => {
-      bgm.volume = parseFloat(e.target.value);
-      localStorage.setItem('bgmVolume', bgm.volume);
+      const v = parseFloat(e.target.value);
+      _introTrack.volume = v;
+      _gameTrack.volume  = v;
+      localStorage.setItem('bgmVolume', v);
     });
 
     function dismissIntro() {
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
-      bgm.play().catch(() => {});
+      // Fade out intro, start game playlist
+      _introTrack.pause();
+      _loadNextTrack();
     }
 
     if (sessionStorage.getItem('bgmAutoStart')) {
       sessionStorage.removeItem('bgmAutoStart');
-      bgm.play().catch(() => {});
+      _loadNextTrack();
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
     } else {
+      // Play intro track immediately on page load
+      _introTrack.play().catch(() => {});
       function _introKeydown(e) {
         if (document.getElementById('introScreen')?.style.display === 'none') { window.removeEventListener('keydown', _introKeydown); return; }
         if (e.key === 'ArrowLeft'  || e.key === 'a') { introNav(-1); return; }
