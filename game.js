@@ -2106,6 +2106,13 @@ let spooksNPC = null;
 let bossProjectiles = [];
 const bossHUDEl    = document.getElementById('bossHUD');
 const bossBarInner = document.getElementById('bossBarInner');
+let bossTimer = 0; // counts down from 180 once boss spawns
+const bossTimerEl = (() => {
+  const el = document.createElement('div');
+  el.style.cssText = 'display:none;position:fixed;top:74px;left:50%;transform:translateX(-50%);font-family:monospace;font-size:16px;color:#ff4444;text-shadow:0 0 10px #ff0000;pointer-events:none;z-index:500;letter-spacing:2px';
+  document.body.appendChild(el);
+  return el;
+})();
 const bossArrowEl  = document.getElementById('bossArrow');
 const bossProjectileGeo = new THREE.SphereGeometry(0.3, 8, 8);
 const bossProjectileMat = new THREE.MeshStandardMaterial({ color: 0xff2255, emissive: 0xff0033, emissiveIntensity: 0.8, transparent: true, opacity: 0.9 });
@@ -2124,6 +2131,8 @@ function spawnBoss(x, z) {
   scene.add(mesh);
   boss = { mesh, hp: 500, maxHp: 500, shootTimer: 2.0, age: 0, teleportThresholds: [0.75, 0.50, 0.25] };
   bossHUDEl.style.display = 'block';
+  bossTimer = 180;
+  bossTimerEl.style.display = 'block';
 }
 
 function updateBoss(dt) {
@@ -2136,6 +2145,15 @@ function updateBoss(dt) {
 
   boss.age += dt;
   bossBarInner.style.width = Math.max(0, boss.hp / boss.maxHp * 100) + '%';
+
+  // 3-min enrage timer
+  bossTimer -= dt;
+  const bossSecsLeft = Math.max(0, Math.ceil(bossTimer));
+  const bossMin = Math.floor(bossSecsLeft / 60);
+  const bossSec = String(bossSecsLeft % 60).padStart(2, '0');
+  bossTimerEl.textContent = `⏱ KRILLY ENRAGES ${bossMin}:${bossSec}`;
+  bossTimerEl.style.color = bossTimer < 30 ? '#ff2200' : bossTimer < 60 ? '#ff8800' : '#ff4444';
+  if (bossTimer <= 0 && !playerState.dead) { killPlayer(); }
 
   // Screen-edge arrow — camera is fixed: right=+X, down-screen=+Z
   const wdx = boss.mesh.position.x - player.position.x;
@@ -2209,6 +2227,7 @@ function updateBoss(dt) {
     bossDefeated = true;
     bossHUDEl.style.display = 'none';
     bossArrowEl.style.display = 'none';
+    bossTimerEl.style.display = 'none';
     triggerLevel1End();
   }
 }
