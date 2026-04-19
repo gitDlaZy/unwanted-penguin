@@ -1,29 +1,5 @@
 // FrostBite — Ice arena, Penguin, Leopard Seals, Skuas
 
-// ── BGM ───────────────────────────────────────────────────────────────────────
-const bgm = new Audio('sounds/Cowboy%20Bebop%20-%20Opening%20Tank.mp3');
-bgm.loop   = true;
-bgm.volume = parseFloat(localStorage.getItem('bgmVolume') ?? '0.5');
-
-// Start on first user interaction (browser autoplay policy)
-let bgmStarted = false;
-function startBGM() {
-  if (bgmStarted) return;
-  bgmStarted = true;
-  bgm.play().catch(() => {});
-}
-window.addEventListener('keydown', startBGM, { once: true });
-window.addEventListener('pointerdown', startBGM, { once: true });
-
-// Volume slider (bottom-right corner)
-const volWrap = document.createElement('div');
-volWrap.style.cssText = 'position:fixed;bottom:16px;right:16px;display:flex;align-items:center;gap:6px;font-family:monospace;font-size:12px;color:#668899;pointer-events:auto;z-index:50';
-volWrap.innerHTML = `🎵 <input id="volSlider" type="range" min="0" max="1" step="0.05" value="${bgm.volume}" style="width:72px;accent-color:#44aaff;cursor:pointer">`;
-document.body.appendChild(volWrap);
-document.getElementById('volSlider').addEventListener('input', e => {
-  bgm.volume = parseFloat(e.target.value);
-  localStorage.setItem('bgmVolume', bgm.volume);
-});
 
 // ── Renderer ──────────────────────────────────────────────────────────────────
 

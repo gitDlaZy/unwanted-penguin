@@ -124,9 +124,25 @@
     // Highlight whichever skin is saved
     introSelectSkin(localStorage.getItem('playerSkin') || 'normal');
 
+    // BGM — defined here so it's ready before game.js loads
+    const bgm = window.bgm = new Audio('sounds/Cowboy%20Bebop%20-%20Opening%20Tank.mp3');
+    bgm.loop   = true;
+    bgm.volume = parseFloat(localStorage.getItem('bgmVolume') ?? '0.5');
+
+    // Volume slider
+    const volWrap = document.createElement('div');
+    volWrap.style.cssText = 'position:fixed;bottom:16px;right:16px;display:flex;align-items:center;gap:6px;font-family:monospace;font-size:12px;color:#668899;pointer-events:auto;z-index:50';
+    volWrap.innerHTML = `🎵 <input id="volSlider" type="range" min="0" max="1" step="0.05" value="${bgm.volume}" style="width:72px;accent-color:#44aaff;cursor:pointer">`;
+    document.body.appendChild(volWrap);
+    document.getElementById('volSlider').addEventListener('input', e => {
+      bgm.volume = parseFloat(e.target.value);
+      localStorage.setItem('bgmVolume', bgm.volume);
+    });
+
     function dismissIntro() {
       const el = document.getElementById('introScreen');
       if (el) el.remove();
+      bgm.play().catch(() => {});  // user gesture is guaranteed here
     }
     window.addEventListener('keydown', dismissIntro, { once: true });
     window.addEventListener('pointerdown', dismissIntro, { once: true });
