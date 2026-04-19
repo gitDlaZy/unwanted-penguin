@@ -48,10 +48,70 @@
 <div id="coordHUD" style="position:fixed;top:20px;left:16px;font-family:monospace;font-size:13px;color:#668899;pointer-events:none">0, 0</div>
   <div id="playsHUD" style="position:fixed;top:38px;left:16px;font-family:monospace;font-size:13px;color:#668899;pointer-events:none">▶ 0 plays</div>
   <div id="fpsHUD" style="position:fixed;top:56px;left:16px;font-family:monospace;font-size:13px;color:#668899;pointer-events:none">-- fps</div>
+  <div id="introScreen" style="position:fixed;inset:0;background:rgba(2,8,20,0.97);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;color:#aee8ff;overflow-y:auto;padding:24px">
+    <div style="font-size:36px;font-weight:bold;letter-spacing:6px;text-shadow:0 0 30px #44aaff;margin-bottom:4px">UNWANTED PENGUIN</div>
+    <div style="font-size:12px;color:#446688;letter-spacing:3px;margin-bottom:28px">SURVIVE · LEVEL UP · DEFEAT KRILLY</div>
+
+    <div style="display:flex;gap:32px;flex-wrap:wrap;justify-content:center;max-width:860px;margin-bottom:28px">
+
+      <div style="background:rgba(0,30,60,0.7);border:1px solid #1a4a6a;border-radius:8px;padding:16px 20px;min-width:220px">
+        <div style="color:#44aaff;font-size:11px;letter-spacing:2px;margin-bottom:10px">⌨ KEYBOARD</div>
+        <div style="line-height:2;font-size:13px;color:#88bbdd">
+          <b>WASD / Arrows</b> — Move<br>
+          <b>P</b> — Jump<br>
+          <b>O</b> — Open tome<br>
+          <b>L</b> — Activate power-up<br>
+          <b>A / D</b> — Navigate choices<br>
+          <b>6 + 7</b> — Secret skin 🐱
+        </div>
+      </div>
+
+      <div style="background:rgba(0,30,60,0.7);border:1px solid #1a4a6a;border-radius:8px;padding:16px 20px;min-width:220px">
+        <div style="color:#44aaff;font-size:11px;letter-spacing:2px;margin-bottom:10px">🎮 CONTROLLER</div>
+        <div style="line-height:2;font-size:13px;color:#88bbdd">
+          <b>Left Stick</b> — Move<br>
+          <b>A / Cross / B</b> — Jump · Confirm<br>
+          <b>B / Circle / A</b> — Open tome<br>
+          <b>X / Square / Y</b> — Power-up<br>
+          <b>D-pad ←→</b> — Navigate choices<br>
+          <b>Start / Options / +</b> — Retry
+        </div>
+      </div>
+
+      <div style="background:rgba(0,30,60,0.7);border:1px solid #1a4a6a;border-radius:8px;padding:16px 20px;min-width:220px">
+        <div style="color:#44aaff;font-size:11px;letter-spacing:2px;margin-bottom:10px">⭐ FEATURES</div>
+        <div style="line-height:2;font-size:13px;color:#88bbdd">
+          Survive <b>5 minutes</b> of seal waves<br>
+          Defeat the boss <b>Krilly</b><br>
+          Collect <b>XP orbs</b> to level up<br>
+          Choose <b>tome upgrades</b> each level<br>
+          Elites drop <b>item tomes</b> on death<br>
+          <b>Spooks</b> appears after Krilly falls
+        </div>
+      </div>
+
+    </div>
+
+    <div style="font-size:13px;color:#336688;letter-spacing:1px;margin-bottom:6px">CHARACTERS: 🐧 Classic &nbsp;|&nbsp; 😈 Evil &nbsp;|&nbsp; 🐱 Spooks (secret)</div>
+    <div style="font-size:11px;color:#224455;margin-bottom:28px">Music: Cowboy Bebop — Tank</div>
+
+    <div style="font-size:15px;color:#aee8ff;letter-spacing:3px;animation:pulse 1.2s ease-in-out infinite">PRESS ANY KEY TO START</div>
+  </div>
+
+  <style>
+    @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+  </style>
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta http-equiv="Cache-Control" content="no-store">
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script>
+    function dismissIntro() {
+      const el = document.getElementById('introScreen');
+      if (el) el.remove();
+    }
+    window.addEventListener('keydown', dismissIntro, { once: true });
+    window.addEventListener('pointerdown', dismissIntro, { once: true });
     setTimeout(() => { document.getElementById('ui').style.opacity = '0'; }, 3000);
     const s = document.createElement('script');
     s.src = 'game.js?t=' + Date.now();

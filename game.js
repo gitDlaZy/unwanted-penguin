@@ -3795,6 +3795,11 @@ function pollGamepad() {
   if (!goingLeft)  { delete keys['a']; _gpPrev._stickLeft  = false; }
   if (!goingRight) { delete keys['d']; _gpPrev._stickRight = false; }
 
+  // Any button — dismiss intro screen
+  if (gp.buttons.some(b => b.pressed) && document.getElementById('introScreen')) {
+    document.getElementById('introScreen').remove();
+  }
+
   // Any button — resume after tome pick
   if (waitingToResume && gp.buttons.some(b => b.pressed)) resumeGame();
 
