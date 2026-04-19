@@ -340,7 +340,7 @@ const _l2BeachPirates = [];
 let _sharkDragging  = false;
 let _dragShark      = null;
 let _dragBreakCount = 0;
-const DRAG_BREAKS_NEEDED = 6; // jump presses to escape
+const DRAG_BREAKS_NEEDED = 10; // jump presses to escape
 const L2_SOUTH_DANGER = 75;   // z > this → strong current toward death
 const L2_KILL_BORDER  = 100;  // z > this → die
 const L2_NORTH_LIMIT  = -115; // z < this → can't go further north
@@ -476,6 +476,17 @@ if (CURRENT_LEVEL === 2) {
     _l2Currents.push({ mesh: m, speed: 1.8 + Math.random() * 1.2, ox: m.position.x, oz: m.position.z });
   }
 
+  // Danger-zone currents near south kill border — red/orange, denser, faster
+  const _dangerCurMat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.28, side: THREE.DoubleSide });
+  for (let i = 0; i < 40; i++) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 0.22), _dangerCurMat);
+    m.rotation.x = -Math.PI / 2;
+    m.rotation.z = 0.05 + (Math.random()-0.5)*0.15; // nearly south-pointing
+    m.position.set((Math.random()-0.5)*160, 0.06, 72 + Math.random() * 30);
+    scene.add(m);
+    _l2Currents.push({ mesh: m, speed: 4.5 + Math.random() * 3, ox: m.position.x, oz: m.position.z, danger: true });
+  }
+
   // North beach
   buildBeachL2();
 }
@@ -570,9 +581,15 @@ function updateL2Enemies(dt) {
 
   // Water currents — drift then wrap
   _l2Currents.forEach(cur => {
-    cur.mesh.position.x += cur.speed * dt * 0.95;
-    cur.mesh.position.z += cur.speed * dt * 0.22;
-    if (cur.mesh.position.x > cur.ox + 18) { cur.mesh.position.x = cur.ox - 18; cur.mesh.position.z = cur.oz; }
+    if (cur.danger) {
+      // Danger currents flow southward (toward kill border)
+      cur.mesh.position.z += cur.speed * dt;
+      if (cur.mesh.position.z > cur.oz + 20) cur.mesh.position.z = cur.oz - 4;
+    } else {
+      cur.mesh.position.x += cur.speed * dt * 0.95;
+      cur.mesh.position.z += cur.speed * dt * 0.22;
+      if (cur.mesh.position.x > cur.ox + 18) { cur.mesh.position.x = cur.ox - 18; cur.mesh.position.z = cur.oz; }
+    }
   });
 
   // Bottle interaction prompt
@@ -615,16 +632,14 @@ function updateL2Enemies(dt) {
   // Border death
   if (player.position.z > L2_KILL_BORDER && !playerState.dead) killPlayer();
 
-  // Swimming animation — belly-down, bob on mesh (not player), jump physics unaffected
-  if (inWater && !playerState.dead) {
+  // Swimming animation — belly-down on surface, upright when airborne
+  if (!playerState.dead) {
     const t = Date.now() / 500;
-    penguinMesh.rotation.x += (-Math.PI / 2 - penguinMesh.rotation.x) * 0.12;
-    penguinMesh.rotation.z = Math.sin(t) * 0.12;
-    penguinMesh.position.y = Math.sin(t * 1.2) * 0.07; // bob on mesh, not player
-  } else if (!playerState.dead) {
-    penguinMesh.rotation.x += (0 - penguinMesh.rotation.x) * 0.15;
-    penguinMesh.rotation.z += (0 - penguinMesh.rotation.z) * 0.15;
-    penguinMesh.position.y = 0;
+    const onWaterSurface = inWater && playerY < 0.15;
+    const targetX = onWaterSurface ? -Math.PI / 2 : 0;
+    penguinMesh.rotation.x += (targetX - penguinMesh.rotation.x) * 0.15;
+    penguinMesh.rotation.z = onWaterSurface ? Math.sin(t) * 0.12 : penguinMesh.rotation.z * 0.85;
+    penguinMesh.position.y = onWaterSurface ? Math.sin(t * 1.2) * 0.07 : 0;
   }
 }
 
@@ -4782,6 +4797,29 @@ function update(dt) {
     if (dist < col.r && dist > 0.01) {
       player.position.x = col.x + (mdx / dist) * col.r;
       player.position.z = col.z + (mdz / dist) * col.r;
+    }
+  }
+
+  // Shipwreck OBB collision — push player out of hull (L2 only)
+  if (CURRENT_LEVEL === 2) {
+    for (const ship of _l2Ships) {
+      const dx = player.position.x - ship.position.x;
+      const dz = player.position.z - ship.position.z;
+      const ry = -ship.rotation.y;
+      // Rotate offset into ship-local space
+      const lx =  dx * Math.cos(ry) - dz * Math.sin(ry);
+      const lz =  dx * Math.sin(ry) + dz * Math.cos(ry);
+      const hx = 5.4, hz = 2.8;
+      if (Math.abs(lx) < hx && Math.abs(lz) < hz) {
+        // Push out along shortest axis
+        const ox = hx - Math.abs(lx), oz = hz - Math.abs(lz);
+        let pushLx = 0, pushLz = 0;
+        if (ox < oz) pushLx = (lx < 0 ? -ox : ox);
+        else         pushLz = (lz < 0 ? -oz : oz);
+        // Rotate push back to world space
+        player.position.x = ship.position.x + (lx + pushLx) * Math.cos(-ry) - (lz + pushLz) * Math.sin(-ry);
+        player.position.z = ship.position.z + (lx + pushLx) * Math.sin(-ry) + (lz + pushLz) * Math.cos(-ry);
+      }
     }
   }
 
