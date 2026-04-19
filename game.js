@@ -1596,7 +1596,7 @@ function triggerLevel1End() {
       if (idx >= lines.length) { dialogue.style.display = 'none'; return; }
       textEl.textContent = lines[idx++];
       dialogue.style.display = 'block';
-      setTimeout(showNextLine, 3000);
+      setTimeout(showNextLine, 4000);
     }
     showNextLine();
 
@@ -2668,6 +2668,7 @@ function triggerShaggy() {
 }
 
 function damagePlayer(amount) {
+  if (_godMode) return;
   if (playerState.dead || playerState.iframes > 0) return;
   if (playerStats.evasion > 0 && Math.random() < playerStats.evasion) {
     playerState.iframes = 0.8;
@@ -3722,6 +3723,7 @@ const _debugOverlay = (() => {
   return el;
 })();
 
+let _godMode = false;
 const _debugActions = [
   { label: '💀  Kill Boss',            fn: () => { if (boss) { boss.hp = 1; } } },
   { label: '⚡  Instant Level Up',     fn: () => { queueTome(); openPendingTome(); } },
@@ -3731,18 +3733,20 @@ const _debugActions = [
   { label: '☠  Kill All Enemies',      fn: () => { seals.forEach(s => s.hp = 0); } },
   { label: '🌀  Spawn Boss Now',        fn: () => { if (!boss) spawnBoss(player.position.x + 15, player.position.z); } },
   { label: '🐱  Trigger Level 1 End',  fn: () => { triggerLevel1End(); } },
+  { label: () => _godMode ? '🛡  God Mode  [ON]' : '🛡  God Mode  [OFF]', fn: () => { _godMode = !_godMode; }, noClose: true },
 ];
 
 function buildDebugList() {
   const list = document.getElementById('_dbgList');
   list.innerHTML = '';
-  _debugActions.forEach((a, i) => {
+  _debugActions.forEach((a) => {
     const btn = document.createElement('button');
-    btn.textContent = a.label;
+    const getLabel = () => typeof a.label === 'function' ? a.label() : a.label;
+    btn.textContent = getLabel();
     btn.style.cssText = 'background:#0d1a30;border:1px solid #1a4a6a;color:#aee8ff;font-family:monospace;font-size:14px;padding:9px 16px;cursor:pointer;border-radius:6px;text-align:left;transition:background 0.1s';
     btn.onmouseenter = () => btn.style.background = '#1a3a5a';
     btn.onmouseleave = () => btn.style.background = '#0d1a30';
-    btn.onclick = () => { a.fn(); closeDebugMenu(); };
+    btn.onclick = () => { a.fn(); if (a.noClose) { btn.textContent = getLabel(); } else { closeDebugMenu(); } };
     list.appendChild(btn);
   });
 }
