@@ -217,66 +217,97 @@ function isInWater(x, z) {
 
 // ── Portal ────────────────────────────────────────────────────────────────────
 
-// ── Mage Portal ───────────────────────────────────────────────────────────────
+// ── Dark Portal ───────────────────────────────────────────────────────────────
 
 const portalGroup = new THREE.Group();
 portalGroup.position.set(35, 0, 18);
 
-const _stoneMat  = new THREE.MeshStandardMaterial({ color: 0x6677, roughness: 0.95, metalness: 0.1 });
-const _runeMat   = new THREE.MeshStandardMaterial({ color: 0x6633ff, emissive: 0x4400cc, emissiveIntensity: 1.4, roughness: 0.3 });
+// Obsidian/cracked stone material
+const _darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.85, metalness: 0.3 });
+const _voidMat      = new THREE.MeshStandardMaterial({ color: 0x050005, emissive: 0x1a0033, emissiveIntensity: 1.0, transparent: true, opacity: 0.95, side: THREE.DoubleSide });
+const _swirl1Mat    = new THREE.MeshStandardMaterial({ color: 0x1a0044, emissive: 0x6600aa, emissiveIntensity: 1.2, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
+const _swirl2Mat    = new THREE.MeshStandardMaterial({ color: 0x330011, emissive: 0xaa0022, emissiveIntensity: 1.0, transparent: true, opacity: 0.38, side: THREE.DoubleSide });
+const _crackMat     = new THREE.MeshStandardMaterial({ color: 0xaa0033, emissive: 0xff0044, emissiveIntensity: 2.0, roughness: 0.2 });
 
-// Stone arch — two pillars + curved top (half-torus)
-const pillarGeo  = new THREE.CylinderGeometry(0.22, 0.26, 4.2, 8);
-const pillarL    = new THREE.Mesh(pillarGeo, _stoneMat);
-const pillarR    = new THREE.Mesh(pillarGeo, _stoneMat);
-pillarL.position.set(-1.3, 2.1, 0);
-pillarR.position.set( 1.3, 2.1, 0);
-portalGroup.add(pillarL, pillarR);
+// Two jagged obsidian pillars — low-poly cylinders, slightly tilted for unease
+const pillarGeoL = new THREE.CylinderGeometry(0.18, 0.3, 5.0, 5);
+const pillarL    = new THREE.Mesh(pillarGeoL, _darkStoneMat);
+pillarL.position.set(-1.4, 2.5, 0);
+pillarL.rotation.z = 0.06;
+portalGroup.add(pillarL);
 
-// Arch top — half torus
-const archGeo  = new THREE.TorusGeometry(1.3, 0.22, 8, 24, Math.PI);
-const arch     = new THREE.Mesh(archGeo, _stoneMat);
-arch.position.set(0, 4.2, 0);
-arch.rotation.z = Math.PI; // flat side down
-portalGroup.add(arch);
+const pillarGeoR = new THREE.CylinderGeometry(0.16, 0.28, 5.0, 5);
+const pillarR    = new THREE.Mesh(pillarGeoR, _darkStoneMat);
+pillarR.position.set(1.4, 2.5, 0);
+pillarR.rotation.z = -0.05;
+portalGroup.add(pillarR);
 
-// Rune blocks along pillars
-[-1.5, 0.5, 2.5].forEach(y => {
-  [-1.3, 1.3].forEach(x => {
-    const r = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), _runeMat);
-    r.position.set(x, y + 1.1, 0.24);
-    portalGroup.add(r);
-  });
+// Jagged shard crown — spike-like shards jutting up from the top
+[[-1.4,5.05,-0.18],[-0.6,5.4,0.12],[0,5.6,-0.08],[0.65,5.35,0.15],[1.4,5.0,-0.1]].forEach(([x,y,rz]) => {
+  const shard = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.9, 5), _darkStoneMat);
+  shard.position.set(x, y, 0);
+  shard.rotation.z = rz;
+  portalGroup.add(shard);
 });
 
-// Energy disc — vertical, two layers for depth
-const portalDiscMat = new THREE.MeshStandardMaterial({ color: 0x2200aa, emissive: 0x5500ff, emissiveIntensity: 1.1, transparent: true, opacity: 0.78, side: THREE.DoubleSide });
-const portalDisc    = new THREE.Mesh(new THREE.CircleGeometry(1.28, 64), portalDiscMat);
-portalDisc.position.z = 0.01;
+// Crack-glow lines on pillars (thin emissive boxes)
+[[-1.4, 1.5], [-1.4, 3.2], [1.4, 2.0], [1.4, 4.0]].forEach(([x, y]) => {
+  const crack = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.7 + Math.random() * 0.5, 0.05), _crackMat);
+  crack.position.set(x + (Math.random()-0.5)*0.2, y, 0.22);
+  crack.rotation.z = (Math.random()-0.5) * 0.4;
+  portalGroup.add(crack);
+});
+
+// Void center — near-black abyss
+const portalDisc = new THREE.Mesh(new THREE.CircleGeometry(1.32, 64), _voidMat);
+portalDisc.position.z = 0.0;
 portalGroup.add(portalDisc);
 
-// Shimmer layer — slightly larger, contrasting hue
-const shimmerMat  = new THREE.MeshStandardMaterial({ color: 0x0033ff, emissive: 0x0066ff, emissiveIntensity: 0.7, transparent: true, opacity: 0.32, side: THREE.DoubleSide });
-const portalShimmer = new THREE.Mesh(new THREE.CircleGeometry(1.28, 32), shimmerMat);
-portalShimmer.position.z = -0.01;
+// Swirl layer 1 — purple
+const portalShimmer = new THREE.Mesh(new THREE.CircleGeometry(1.32, 48), _swirl1Mat);
+portalShimmer.position.z = 0.02;
 portalGroup.add(portalShimmer);
 
-// Outer ring frame
-const portalRingMat = new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6600cc, emissiveIntensity: 1.5, roughness: 0.2, metalness: 0.6 });
-const portalRing    = new THREE.Mesh(new THREE.TorusGeometry(1.28, 0.1, 12, 48), portalRingMat);
+// Swirl layer 2 — blood red, counter-rotating
+const portalShimmer2 = new THREE.Mesh(new THREE.CircleGeometry(1.0, 32), _swirl2Mat);
+portalShimmer2.position.z = 0.03;
+portalGroup.add(portalShimmer2);
+
+// Outer ring — blood-red crackling frame
+const portalRingMat = new THREE.MeshStandardMaterial({ color: 0x220011, emissive: 0xcc0033, emissiveIntensity: 1.8, roughness: 0.3, metalness: 0.5 });
+const portalRing    = new THREE.Mesh(new THREE.TorusGeometry(1.32, 0.13, 10, 52), portalRingMat);
 portalGroup.add(portalRing);
 
-// Glow light
-const portalLight = new THREE.PointLight(0x6633ff, 3.5, 18);
-portalLight.position.set(0, 2.1, 0.5);
-portalGroup.add(portalLight);
+// Floating debris — small dark shards orbiting the portal
+const _debrisMat = new THREE.MeshStandardMaterial({ color: 0x0a0010, emissive: 0x440033, emissiveIntensity: 0.8, roughness: 0.6 });
+const portalDebris = [];
+for (let i = 0; i < 10; i++) {
+  const d = new THREE.Mesh(new THREE.BoxGeometry(0.07 + Math.random()*0.08, 0.07 + Math.random()*0.08, 0.04), _debrisMat);
+  const angle = (i / 10) * Math.PI * 2;
+  d.userData.angle = angle;
+  d.userData.radius = 1.55 + Math.random() * 0.35;
+  d.userData.speed  = 0.4 + Math.random() * 0.3;
+  d.userData.yOff   = (Math.random()-0.5) * 1.2;
+  portalGroup.add(d);
+  portalDebris.push(d);
+}
 
-// Base stones
-[-0.9, 0, 0.9].forEach(x => {
-  const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5), _stoneMat);
-  b.position.set(x, 0.09, 0);
+// Base — cracked obsidian slabs
+[[-0.9,0],[0,0],[0.9,0]].forEach(([x]) => {
+  const b = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.14, 0.7), _darkStoneMat);
+  b.position.set(x, 0.07, 0);
   portalGroup.add(b);
 });
+
+// Flickering red/purple light
+const portalLight = new THREE.PointLight(0xcc0044, 4.0, 20);
+portalLight.position.set(0, 2.5, 0.8);
+portalGroup.add(portalLight);
+
+// Secondary dim purple fill light
+const portalLight2 = new THREE.PointLight(0x440066, 1.5, 12);
+portalLight2.position.set(0, 2.5, -1.0);
+portalGroup.add(portalLight2);
 
 scene.add(portalGroup);
 
@@ -4118,9 +4149,20 @@ function loop() {
   pollGamepad();
   update(dt);
   if (spooksNPC) spooksNPC.position.y = 0.30 + 0.18 * Math.sin(Date.now() / 500);
-  portalDisc.rotation.z    += 0.018;
-  portalShimmer.rotation.z -= 0.009;
-  portalLight.intensity = 3.0 + 0.8 * Math.sin(Date.now() / 350);
+  const _pt = Date.now();
+  portalShimmer.rotation.z  += 0.014;
+  portalShimmer2.rotation.z -= 0.022;
+  portalLight.intensity  = 3.5 + 1.2 * Math.sin(_pt / 180) + 0.5 * Math.sin(_pt / 70);
+  portalLight2.intensity = 1.2 + 0.5 * Math.sin(_pt / 250);
+  portalDebris.forEach(d => {
+    d.userData.angle += d.userData.speed * 0.016;
+    d.position.set(
+      Math.cos(d.userData.angle) * d.userData.radius,
+      2.5 + d.userData.yOff + Math.sin(d.userData.angle * 1.3) * 0.3,
+      Math.sin(d.userData.angle) * d.userData.radius * 0.25
+    );
+    d.rotation.z += 0.04;
+  });
   if (_godMode) { _godRing.rotation.z += 0.04; _godRingMat.opacity = 0.4 + 0.2 * Math.sin(Date.now() / 300); }
   renderer.render(scene, camera);
 }
