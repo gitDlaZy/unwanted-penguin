@@ -1648,7 +1648,8 @@ function showAdhdMsg() {
 }
 
 const TOME_DEFS = [
-  { id:'damage',     name:'Damage Tome',           emoji:'⚔️',  color:'#ff6644', desc:'+10% snowball damage',      apply: s => { s.damage     *= 1.1; } },
+  { id:'damage',     name:'Damage Tome',           emoji:'⚔️',  color:'#ff6644', desc:'+10% damage (all weapons)',      apply: s => { s.damage     *= 1.1; } },
+  { id:'snowball_dmg', name:'Snowball Tome',         emoji:'🌨️', color:'#cceeff', desc:'+20% snowball damage',           apply: s => { s.snowballDmgMult = (s.snowballDmgMult||1) * 1.2; } },
   { id:'precision',  name:'Precision Tome',        emoji:'🎯',  color:'#ffaa22', desc:'+5% critical hit chance',   apply: s => { s.critChance  = Math.min(0.9, s.critChance+0.05); } },
   { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-8% weapon cooldown',       apply: s => { s.weaponCooldown *= 0.92; } },
   { id:'atkspeed',   name:'Attack Speed Tome',     emoji:'🏹',  color:'#ffcc44', desc:'+8% snowball attack speed',  apply: s => { s.attackRate *= 0.92; } },
@@ -1673,7 +1674,7 @@ const TOME_DEFS = [
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'+25% spawn rate, +30% enemy HP', apply:s => { s.cursed += 1; } },
   { id:'chaos',      name:'Chaos Tome',            emoji:'🎲',  color:'#ff44ff', desc:'Random tome effect!',        apply: (s, chaos) => chaos() },
   { id:'hasper',     name:'Deveh',        emoji:'🪃',  color:'#ffaa88', desc:'Boomerang snowball — deals damage both ways, +0.5 damage. Next shot waits for return.', apply: s => { s.boomerang = true; s.damage += 0.5; } },
-  { id:'shaggy',    name:'Shaggy',                emoji:'🦬', color:'#cc9966', desc:'Absorb 1 hit (0.5s iframes). Refresh after 15s. Each pick: +0.2 damage.', apply: s => {
+  { id:'shaggy',    name:'Shaggy',                emoji:'🦬', color:'#cc9966', desc:'Absorb 1 hit (iframes scale with stacks, cap 0.5s). Refresh after 130s (-10s/stack, cap 50s). Each pick: +0.2 damage.', apply: s => {
     s.shaggyStacks = Math.max(1, s.shaggyStacks + 1);
     s.damage += 0.2;
     if (playerState.shaggyMaxCharges === 0) {
@@ -1761,7 +1762,7 @@ function showLightningStrike(x, z) {
 const gandalfRecentlyHit = new Set(); // enemies hit this cycle — cleared when all in range used
 function fireGandalfStaff() {
   const px = player.position.x, pz = player.position.z;
-  const stacks = weaponStacks['gandalf_staff'] || 1;
+  const stacks = (weaponStacks['gandalf_staff'] || 1) + Math.max(0, playerStats.projCount - 1);
   const range  = 10 * playerStats.projSize * (1 + (stacks - 1) * 0.15);
   const pool = [];
   for (let i = 0; i < enemies.length; i++) {
@@ -1785,7 +1786,7 @@ function fireGandalfStaff() {
   }
   targets.forEach(target => {
     const isCrit = Math.random() < playerStats.critChance;
-    target.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1) * (1 + playerStats.projSize * 0.5 - 0.5);
+    target.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1) * (1 + playerStats.projSize * 0.5 - 0.5);
     if (playerStats.knockback > 0 && target.mesh) {
       const dx = target.mesh.position.x - px, dz = target.mesh.position.z - pz;
       const dist = Math.sqrt(dx * dx + dz * dz) || 1;
@@ -1805,7 +1806,7 @@ const auraRingMat = new THREE.MeshBasicMaterial({ color: 0xff4444, transparent: 
 let   auraRingMesh = null;
 let   auraRingLastSize = -1;
 
-function getAuraRadius() { return 3 * playerStats.projSize; }
+function getAuraRadius() { const aStacks = weaponStacks['aura_farmer'] || 1; return 3 * playerStats.projSize * (1 + (aStacks - 1) * 0.002); }
 
 function updateAuraRing() {
   const r = getAuraRadius();
@@ -1874,7 +1875,7 @@ function fireAuraFarmer() {
 }
 
 function tickWeapons(dt) {
-  if (!equippedWeapons.size || choosingTome || playerState.dead) return;
+  if (!equippedWeapons.size || choosingTome || playerState.dead || movementLockout === Infinity) return;
   equippedWeapons.forEach(id => {
     const def = WEAPON_DEFS.find(w => w.id === id);
     weaponTimers[id] = (weaponTimers[id] || 0) - dt;
@@ -2105,6 +2106,12 @@ const POWER_UP_DEFS = [
     duration: 10,
     apply: () => { playerStats.damage *= 1.5; },
     remove: () => { playerStats.damage /= 1.5; }
+  },
+  {
+    id: 'pebbles', name: 'Pebbles', emoji: '🪨', color: '#aaaaaa',
+    desc: 'Increase difficulty: +8% spawn rate, +10% enemy HP. (Permanent)',
+    instant: true,
+    apply: () => { _pebblesActive = true; }
   },
   {
     id: 'shrink', name: 'Ghost Form', emoji: '👻', color: '#aaffaa',
@@ -2354,7 +2361,7 @@ const bossBarInner = document.getElementById('bossBarInner');
 let bossTimer = 0; // counts down from 180 once boss spawns
 const bossTimerEl = (() => {
   const el = document.createElement('div');
-  el.style.cssText = 'display:none;position:fixed;top:74px;left:50%;transform:translateX(-50%);font-family:monospace;font-size:16px;color:#ff4444;text-shadow:0 0 10px #ff0000;pointer-events:none;z-index:500;letter-spacing:2px';
+  el.style.cssText = 'display:none;position:fixed;top:100px;left:50%;transform:translateX(-50%);font-family:monospace;font-size:16px;color:#ff4444;text-shadow:0 0 10px #ff0000;pointer-events:none;z-index:500;letter-spacing:2px';
   document.body.appendChild(el);
   return el;
 })();
@@ -2364,17 +2371,21 @@ const bossProjectileMat = new THREE.MeshStandardMaterial({ color: 0xff2255, emis
 
 function spawnBoss(x, z) {
   if (x === undefined) {
-    const angle = Math.random() * Math.PI * 2;
-    const dist  = 40 + Math.random() * 40; // 40–80 units from center
-    x = Math.cos(angle) * dist;
-    z = Math.sin(angle) * dist;
+    let tries = 0;
+    do {
+      const angle = Math.random() * Math.PI * 2;
+      const dist  = 40 + Math.random() * 40;
+      x = Math.cos(angle) * dist;
+      z = Math.sin(angle) * dist;
+      tries++;
+    } while (tries < 20 && mountainColliders.some(m => Math.hypot(x - m.x, z - m.z) < m.r + 4));
   }
   if (boss) return;
   const mesh = buildKrill();
   mesh.position.set(x, 0, z);
   mesh.scale.setScalar(2.5);
   scene.add(mesh);
-  boss = { mesh, hp: 500, maxHp: 500, shootTimer: 2.0, age: 0, teleportThresholds: [0.75, 0.50, 0.25] };
+  boss = { mesh, hp: 500, maxHp: 500, shootTimer: 2.0, age: 0, teleportThresholds: [0.66, 0.33] };
   bossHUDEl.style.display = 'block';
   bossTimer = 180;
   bossTimerEl.style.display = 'block';
@@ -2481,6 +2492,11 @@ function triggerLevel1End() {
   const defeated = document.getElementById('krillyDefeated');
   const dialogue = document.getElementById('spooksDialogue');
 
+  // Force close all popups
+  try { _bottlePopup.style.display='none'; _shipPopup.style.display='none'; _bottlePopupOpen=false; _shipPopupOpen=false; } catch(e2){}
+  if (typeof powerUpScreen !== 'undefined') powerUpScreen.style.display = 'none';
+  choosingPowerUp = false;
+
   // Lock player in place permanently for the end sequence
   movementLockout = Infinity;
 
@@ -2494,6 +2510,31 @@ function triggerLevel1End() {
     scene.remove(bombs[i].mesh);
   }
   bombs.length = 0;
+
+  // XP magnetize: pull orbs within 20 units toward player, remove the rest
+  const _bossX = player.position.x, _bossZ = player.position.z;
+  for (let i = xpOrbs.length - 1; i >= 0; i--) {
+    const orb = xpOrbs[i];
+    if (Math.hypot(orb.group.position.x - _bossX, orb.group.position.z - _bossZ) <= 20) {
+      orb.magnetize = true; // flag: fly toward player during dialogue
+    } else {
+      disposeMesh(orb.group); scene.remove(orb.group); xpOrbs.splice(i, 1);
+    }
+  }
+
+  // Drop piece of krill at boss death position (picked up after dialogue)
+  const _krillDrop = (() => {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0xff8844, emissive: 0xff5500, emissiveIntensity: 0.8, roughness: 0.5 });
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), mat); body.scale.set(1.8, 0.6, 0.9); g.add(body);
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.35, 6), mat); tail.position.set(-0.55, 0, 0); tail.rotation.z = -Math.PI/2; g.add(tail);
+    const glow = new THREE.PointLight(0xff6600, 1.0, 5); g.add(glow);
+    g.position.set(_bossX, 0.5, _bossZ);
+    scene.add(g);
+    return g;
+  })();
+  window._krillDropMesh = _krillDrop;
+  window._krillDropPickable = false; // enabled after dialogue ends
 
   // Show "Krilly Defeated" for 3 seconds
   defeated.style.display = 'block';
@@ -2513,7 +2554,7 @@ function triggerLevel1End() {
     const textEl = document.getElementById('spooksDialogueText');
     let idx = 0;
     function showNextLine() {
-      if (idx >= lines.length) { dialogue.style.display = 'none'; movementLockout = 0; saveProgressAndUnlockPortal(); return; }
+      if (idx >= lines.length) { dialogue.style.display = 'none'; movementLockout = 0; window._krillDropPickable = true; saveProgressAndUnlockPortal(); return; }
       textEl.textContent = lines[idx++];
       dialogue.style.display = 'block';
       setTimeout(showNextLine, 4000);
@@ -2565,6 +2606,7 @@ function spawnSkua(hpScale = 1) {
 
 let sealSpawnTimer = 2;
 let skuaSpawnTimer = 2;
+let _pebblesActive = false; // pebbles powerup active
 let sepFrame = 0; // alternating frame flag for seal separation
 let gameTime = 0; // seconds elapsed
 let _lastTimerSec = -1;
@@ -2621,10 +2663,15 @@ function updateEnemies(dt) {
   }
 
   // Pressure ramps gradually over 5 min (k=150), floors at 0.1; cursed stacks each add 25% spawn rate
-  const pressure = Math.max(0.1, Math.exp(-gameTime / 150)) * Math.pow(0.75, playerStats.cursed);
+  // ── SR1 Spawnrate Baseline ────────────────────────────────────────────────
+  // Tune SPAWN_RAMP_SPEED: lower = faster ramp to max density.
+  // SR1 values: sealSpawn base 0.9-1.4s, skuaSpawn base 1.75-2.75s, SPAWN_RAMP_SPEED=150
+  const SPAWN_RAMP_SPEED = 150;   // SR1: change this single value to speed up / slow down ramp
+  const _pebblesBonus = _pebblesActive ? 0.92 : 1.0; // pebbles: +8% spawn rate
+  const pressure = Math.max(0.1, Math.exp(-gameTime / SPAWN_RAMP_SPEED)) * Math.pow(0.75, playerStats.cursed) * _pebblesBonus;
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
-  const hpScale = (gameTime >= 120 ? Math.pow(1.002, gameTime - 120) : 1) * Math.pow(1.3, playerStats.cursed);
+  const hpScale = (gameTime >= 120 ? Math.pow(1.002, gameTime - 120) : 1) * Math.pow(1.3, playerStats.cursed) * (_pebblesActive ? 1.1 : 1.0);
   if (!bossDefeated && !_spawnsDisabled && sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (0.9 + Math.random() * 0.5) * pressure; }
   if (!bossDefeated && !_spawnsDisabled && skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
 
@@ -2637,6 +2684,15 @@ function updateEnemies(dt) {
 
     if (e.type === 'seal') {
       if (dist > 0.1) {
+        // Mountain avoidance — push enemies out of mountain colliders
+        for (const col of mountainColliders) {
+          const mdx = e.mesh.position.x - col.x, mdz = e.mesh.position.z - col.z;
+          const md = Math.hypot(mdx, mdz);
+          if (md < col.r + 0.8 && md > 0.01) {
+            e.mesh.position.x = col.x + (mdx/md)*(col.r+0.8);
+            e.mesh.position.z = col.z + (mdz/md)*(col.r+0.8);
+          }
+        }
         // Seal-seal separation — run every other frame to halve O(n²) cost
         if ((i + sepFrame) % 2 === 0) {
           let sepX = 0, sepZ = 0;
@@ -2646,11 +2702,11 @@ function updateEnemies(dt) {
             const oz = e.mesh.position.z - enemies[k].mesh.position.z;
             if (Math.abs(ox) > 3 || Math.abs(oz) > 3) continue; // cheap early-out
             const od = Math.hypot(ox, oz);
-            const minDist = e.elite ? 2.5 : 1.6;
+            const minDist = e.elite ? 2.5 : 1.3;
             if (od < minDist && od > 0.01) { sepX += (ox / od) * (minDist - od); sepZ += (oz / od) * (minDist - od); }
           }
-          e.mesh.position.x += sepX * 0.3;
-          e.mesh.position.z += sepZ * 0.3;
+          e.mesh.position.x += sepX * 0.15;
+          e.mesh.position.z += sepZ * 0.15;
         }
 
         let inPool = false;
@@ -2690,7 +2746,8 @@ function updateEnemies(dt) {
           const leadTime = fallTime + 1.0;
           const leadX = player.position.x + playerVel.x * leadTime + (Math.random() - 0.5) * 0.75;
           const leadZ = player.position.z + playerVel.z * leadTime + (Math.random() - 0.5) * 0.75;
-          dropBomb(leadX, leadZ, e.mesh.position.y);
+          const _tooClose = bombs.some(b => b.landed && Math.hypot(b.tx - leadX, b.tz - leadZ) < 2.5);
+          if (!_tooClose) dropBomb(leadX, leadZ, e.mesh.position.y);
           e.state = 'leaving';
           // Fly away in the opposite direction from player
           e.exitDX = -dx / (dist || 1);
@@ -2802,7 +2859,7 @@ function updateNomOrbs(dt) {
         orb.hitCooldowns.set(e, 0.4);
         e.nomSlowTimer = 1.0; // 20% slow for 1 second
         const isCrit = Math.random() < playerStats.critChance;
-        e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1) * 3 * Math.pow(1.25, (orb.stacks || 1) - 1);
+        e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1) * 1.8 * Math.pow(1.25, (orb.stacks || 1) - 1);
         spawnImpact(orb.mesh.position.x, orb.mesh.position.y, orb.mesh.position.z, isCrit);
         if (e.hp <= 0) {
           if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
@@ -2976,8 +3033,9 @@ function updateSnowballs(dt) {
         for (let ti = boss.teleportThresholds.length - 1; ti >= 0; ti--) {
           if (hpPct <= boss.teleportThresholds[ti]) {
             boss.teleportThresholds.splice(ti, 1);
-            const tx = (Math.random() - 0.5) * 140;
-            const tz = (Math.random() - 0.5) * 140;
+            let tx, tz, _tt = 0;
+            do { tx = (Math.random()-0.5)*140; tz = (Math.random()-0.5)*140; _tt++; }
+            while (_tt < 20 && mountainColliders.some(m => Math.hypot(tx-m.x,tz-m.z) < m.r+4));
             boss.mesh.position.set(tx, 0, tz);
             spawnGust(boss.mesh.position.x, boss.mesh.position.z);
             break;
@@ -3071,7 +3129,8 @@ function spawnImpact(x, y, z, crit = false) {
 }
 
 function dropBomb(tx, tz, fromY) {
-  if (bombs.filter(b => !b.landed).length >= 3) return; // cap in-flight bombs
+  const _inFlightCap = Math.min(3, Math.max(1, Math.floor(4 - gameTime / 120)));
+  if (bombs.filter(b => !b.landed).length >= _inFlightCap) return; // cap in-flight bombs
   const mesh = new THREE.Mesh(_bombGeo, _bombBaseMat.clone());
   mesh.position.set(tx, fromY, tz);
   scene.add(mesh);
@@ -3638,7 +3697,7 @@ window.addEventListener('keydown', e => {
 function triggerShaggy() {
   playerState.shaggyCharges--;
   playerState.shaggyRechargeTimer = 0;
-  playerState.iframes = 0.5;
+  playerState.iframes = Math.min(0.5, 0.1 + playerState.shaggyMaxCharges * 0.1);
   if (playerStats.shaggyStacks > 0) {
     const nearest = findNearestEnemy();
     if (nearest) nearest.hp -= playerStats.shaggyStacks;
@@ -4016,13 +4075,36 @@ function gainXP(amount) {
 function updateXpOrbs(dt) {
   if (choosingTome) return;
   const t = frameTime;
+  // Krill drop pickup
+  if (window._krillDropPickable && window._krillDropMesh) {
+    const kd = window._krillDropMesh;
+    kd.position.y = 0.5 + Math.sin(t * 2) * 0.1;
+    kd.children.forEach(c => { if (c.isObject3D && !c.isLight) c.rotation.y += dt * 1.5; });
+    if (Math.hypot(player.position.x - kd.position.x, player.position.z - kd.position.z) < 1.5) {
+      scene.remove(kd); window._krillDropMesh = null; window._krillDropPickable = false;
+      const el = document.createElement('div');
+      el.style.cssText = 'position:fixed;top:36%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:22px;color:#ff8844;text-shadow:0 0 12px #ff5500;pointer-events:none;z-index:9999;text-align:center';
+      el.textContent = '🦐 Piece of Krill obtained!';
+      document.body.appendChild(el); setTimeout(() => el.remove(), 2500);
+    }
+  }
   for (let i = xpOrbs.length - 1; i >= 0; i--) {
     const orb = xpOrbs[i];
+    if (orb.magnetize) {
+      // Fly toward player
+      const mx = player.position.x - orb.group.position.x, mz = player.position.z - orb.group.position.z;
+      const md = Math.hypot(mx, mz) || 1;
+      orb.group.position.x += (mx/md) * 8 * dt;
+      orb.group.position.z += (mz/md) * 8 * dt;
+      orb.group.position.y = 0.5 + Math.sin(t * 6 + orb.bobOffset) * 0.2;
+      orb.orb.rotation.y += dt * 5;
+    } else {
     orb.group.position.y = 0.5 + Math.sin(t * 3 + orb.bobOffset) * 0.15;
     orb.orb.rotation.y += dt * 2;
+    }
     const dx = player.position.x - orb.group.position.x;
     const dz = player.position.z - orb.group.position.z;
-    const pr = playerStats.pickupRadius + 0.8;
+    const pr = orb.magnetize ? 1.2 : playerStats.pickupRadius + 0.8;
     if (dx*dx + dz*dz < pr * pr) {
       disposeMesh(orb.group); scene.remove(orb.group);
       xpOrbs.splice(i, 1);
@@ -4108,9 +4190,9 @@ function updateFish(dt) {
       scene.remove(f.mesh);
       fish.splice(i, 1);
       if (playerState.hp < playerState.maxHp) {
-        playerState.hp++;
+        playerState.hp = Math.min(playerState.maxHp, playerState.hp + 25);
         updateHUD();
-        showFishFlash('+1 HP 🐟', '#44ffaa');
+        showFishFlash('+25 HP 🐟', '#44ffaa');
       } else {
         showFishFlash('wasted 🐟', '#ffaa44');
       }
@@ -5011,7 +5093,8 @@ function update(dt) {
   playerState.iframes   = Math.max(0, playerState.iframes - dt);
   if (playerState.shaggyMaxCharges > 0 && playerState.shaggyCharges < playerState.shaggyMaxCharges) {
     playerState.shaggyRechargeTimer += dt;
-    if (playerState.shaggyRechargeTimer >= 30) {
+    const _shaggyCD = Math.max(50, 130 - (playerState.shaggyMaxCharges - 1) * 10);
+    if (playerState.shaggyRechargeTimer >= _shaggyCD) {
       playerState.shaggyCharges = playerState.shaggyMaxCharges;
       playerState.shaggyRechargeTimer = 0;
     }
@@ -5203,7 +5286,7 @@ function update(dt) {
   pos.needsUpdate = true;
 
   // Auto-attack (boomerang waits for return before firing again)
-  if ((enemies.length > 0 || boss) && !boomerangInFlight) {
+  if ((enemies.length > 0 || boss) && !boomerangInFlight && movementLockout !== Infinity) {
     attackTimer -= dt;
     if (attackTimer <= 0) {
       const target = findNearestEnemy();
