@@ -1,4 +1,5 @@
-// FrostBite — Ice arena, Penguin, Leopard Seals, Skuas
+// Unwanted Penguin — shared engine for all levels
+const CURRENT_LEVEL = window.CURRENT_LEVEL || 1;
 
 
 // ── Renderer ──────────────────────────────────────────────────────────────────
@@ -53,37 +54,50 @@ scene.add(sun);
 const rimLight = new THREE.PointLight(0x00aaff, 0.8, 60);
 scene.add(rimLight);
 
-// ── Ice Floor ─────────────────────────────────────────────────────────────────
+// ── Level-specific map setup ──────────────────────────────────────────────────
 
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(500, 500, 80, 80),
-  new THREE.MeshStandardMaterial({ color: 0x6ab8d4, roughness: 0.05, metalness: 0.4 })
-);
-floor.rotation.x = -Math.PI / 2;
-floor.receiveShadow = true;
-scene.add(floor);
+if (CURRENT_LEVEL === 2) {
+  scene.background = new THREE.Color(0x020c18);
+  scene.fog = new THREE.FogExp2(0x020c18, 0.014);
+}
 
-const grid = new THREE.GridHelper(500, 80, 0x88ccff, 0x224466);
-grid.position.y = 0.01;
-grid.material.opacity = 0.1;
-grid.material.transparent = true;
-scene.add(grid);
+// ── Ice Floor (Level 1 only) ──────────────────────────────────────────────────
 
-// ── Snow Patches ──────────────────────────────────────────────────────────────
+const floor = CURRENT_LEVEL === 1 ? (() => {
+  const f = new THREE.Mesh(
+    new THREE.PlaneGeometry(500, 500, 80, 80),
+    new THREE.MeshStandardMaterial({ color: 0x6ab8d4, roughness: 0.05, metalness: 0.4 })
+  );
+  f.rotation.x = -Math.PI / 2;
+  f.receiveShadow = true;
+  scene.add(f);
+  return f;
+})() : null;
+
+if (CURRENT_LEVEL === 1) {
+  const grid = new THREE.GridHelper(500, 80, 0x88ccff, 0x224466);
+  grid.position.y = 0.01;
+  grid.material.opacity = 0.1;
+  grid.material.transparent = true;
+  scene.add(grid);
+}
+
+// ── Snow Patches (Level 1 only) ───────────────────────────────────────────────
 
 const snowPatchMat = new THREE.MeshStandardMaterial({ color: 0xddeeff, roughness: 1.0 });
 const snowPatches = [];
-for (let i = 0; i < 120; i++) {
-  const r  = Math.random() * 3.5 + 0.5;
-  const px = (Math.random() - 0.5) * 200;
-  const pz = (Math.random() - 0.5) * 200;
-  // Skip patches inside the water zone (68, 68, r=32)
-  if (Math.hypot(px - 68, pz - 68) < 34) continue;
-  const p  = new THREE.Mesh(new THREE.CircleGeometry(r, 10), snowPatchMat);
-  p.rotation.x = -Math.PI / 2;
-  p.position.set(px, 0.012, pz);
-  scene.add(p);
-  snowPatches.push({ x: px, z: pz, r });
+if (CURRENT_LEVEL === 1) {
+  for (let i = 0; i < 120; i++) {
+    const r  = Math.random() * 3.5 + 0.5;
+    const px = (Math.random() - 0.5) * 200;
+    const pz = (Math.random() - 0.5) * 200;
+    if (Math.hypot(px - 68, pz - 68) < 34) continue;
+    const p  = new THREE.Mesh(new THREE.CircleGeometry(r, 10), snowPatchMat);
+    p.rotation.x = -Math.PI / 2;
+    p.position.set(px, 0.012, pz);
+    scene.add(p);
+    snowPatches.push({ x: px, z: pz, r });
+  }
 }
 
 function isOnSnowPatch(x, z) {
@@ -91,7 +105,7 @@ function isOnSnowPatch(x, z) {
   return false;
 }
 
-// ── Ice Crystals ──────────────────────────────────────────────────────────────
+// ── Ice Crystals ─────────────────────────────────────────────────────────────
 
 function makeCrystalCluster(x, z) {
   const g = new THREE.Group();
@@ -108,49 +122,48 @@ function makeCrystalCluster(x, z) {
   g.position.set(x, 0, z);
   scene.add(g);
 }
-// Spread clusters across the full new map
-[
-  [12,12],[-12,12],[12,-12],[-12,-12],[22,5],[-22,5],[22,-5],[-22,-5],
-  [5,22],[-5,22],[5,-22],[-5,-22],[18,18],[-18,18],[18,-18],[-18,-18],
-  [30,0],[-30,0],[0,30],[0,-30],[40,20],[-40,20],[40,-20],[-40,-20],
-  [20,40],[-20,40],[20,-40],[-20,-40],[55,10],[-55,10],[55,-10],[-55,-10],
-  [10,55],[-10,55],[10,-55],[-10,-55],[50,50],[-50,50],[50,-50],[70,30],[-70,-30]
-].forEach(([x,z]) => makeCrystalCluster(x, z));
+if (CURRENT_LEVEL === 1) {
+  [
+    [12,12],[-12,12],[12,-12],[-12,-12],[22,5],[-22,5],[22,-5],[-22,-5],
+    [5,22],[-5,22],[5,-22],[-5,-22],[18,18],[-18,18],[18,-18],[-18,-18],
+    [30,0],[-30,0],[0,30],[0,-30],[40,20],[-40,20],[40,-20],[-40,-20],
+    [20,40],[-20,40],[20,-40],[-20,-40],[55,10],[-55,10],[55,-10],[-55,-10],
+    [10,55],[-10,55],[10,-55],[-10,-55],[50,50],[-50,50],[50,-50],[70,30],[-70,-30]
+  ].forEach(([x,z]) => makeCrystalCluster(x, z));
+}
 
 // ── Boundary Wall ─────────────────────────────────────────────────────────────
 
 const ARENA = 96;
 
-// Solid glowing wall around the arena border
-const wallMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x224488, emissiveIntensity: 0.6, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.7 });
-const wallH = 4;
-const wallT = 0.8;
-[
-  { w: ARENA*2+wallT*2, d: wallT, x: 0,      z: -ARENA },
-  { w: ARENA*2+wallT*2, d: wallT, x: 0,      z:  ARENA },
-  { w: wallT, d: ARENA*2,         x: -ARENA, z: 0      },
-  { w: wallT, d: ARENA*2,         x:  ARENA, z: 0      },
-].forEach(({w, d, x, z}) => {
-  const wall = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, d), wallMat);
-  wall.position.set(x, wallH / 2, z);
-  scene.add(wall);
-  // Glowing top strip
-  const top = new THREE.Mesh(new THREE.BoxGeometry(w, 0.3, d + 0.1),
-    new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x44aaff, emissiveIntensity: 2, roughness: 0 }));
-  top.position.set(x, wallH + 0.15, z);
-  scene.add(top);
-});
-
-// Corner pillars for extra clarity
-const pillarMat = new THREE.MeshStandardMaterial({ color: 0x44aacc, emissive: 0x0044aa, emissiveIntensity: 0.8, roughness: 0.0, metalness: 0.7 });
-[[-ARENA,-ARENA],[-ARENA,ARENA],[ARENA,-ARENA],[ARENA,ARENA]].forEach(([x,z]) => {
-  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 10, 8), pillarMat);
-  pillar.position.set(x, 5, z);
-  scene.add(pillar);
-  const glow = new THREE.PointLight(0x44aaff, 2, 15);
-  glow.position.set(x, 8, z);
-  scene.add(glow);
-});
+if (CURRENT_LEVEL === 1) {
+  // Solid glowing wall around the arena border
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x224488, emissiveIntensity: 0.6, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.7 });
+  const wallH = 4, wallT = 0.8;
+  [
+    { w: ARENA*2+wallT*2, d: wallT, x: 0,      z: -ARENA },
+    { w: ARENA*2+wallT*2, d: wallT, x: 0,      z:  ARENA },
+    { w: wallT, d: ARENA*2,         x: -ARENA, z: 0      },
+    { w: wallT, d: ARENA*2,         x:  ARENA, z: 0      },
+  ].forEach(({w, d, x, z}) => {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, d), wallMat);
+    wall.position.set(x, wallH / 2, z);
+    scene.add(wall);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(w, 0.3, d + 0.1),
+      new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x44aaff, emissiveIntensity: 2, roughness: 0 }));
+    top.position.set(x, wallH + 0.15, z);
+    scene.add(top);
+  });
+  const pillarMat = new THREE.MeshStandardMaterial({ color: 0x44aacc, emissive: 0x0044aa, emissiveIntensity: 0.8, roughness: 0.0, metalness: 0.7 });
+  [[-ARENA,-ARENA],[-ARENA,ARENA],[ARENA,-ARENA],[ARENA,ARENA]].forEach(([x,z]) => {
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 10, 8), pillarMat);
+    pillar.position.set(x, 5, z);
+    scene.add(pillar);
+    const glow = new THREE.PointLight(0x44aaff, 2, 15);
+    glow.position.set(x, 8, z);
+    scene.add(glow);
+  });
+}
 
 // ── Mountain (North-West) ─────────────────────────────────────────────────────
 
@@ -187,31 +200,31 @@ function buildMountain(cx, cz) {
     mountainColliders.push({ x: bx, z: bz, r: bs * 1.2 });
   }
 }
-buildMountain(-20, -20);
+if (CURRENT_LEVEL === 1) buildMountain(-20, -20);
 
-// ── Water Zone (South-East) ───────────────────────────────────────────────────
+// ── Water Zone (Level 1 South-East corner) ────────────────────────────────────
 
 const WATER_CX = 68, WATER_CZ = 68, WATER_R = 32;
 
-const waterMesh = new THREE.Mesh(
-  new THREE.CircleGeometry(WATER_R, 48),
-  new THREE.MeshStandardMaterial({ color: 0x1166aa, emissive: 0x003366, emissiveIntensity: 0.4, roughness: 0.0, metalness: 0.5, transparent: true, opacity: 0.75 })
-);
-waterMesh.rotation.x = -Math.PI / 2;
-waterMesh.position.set(WATER_CX, 0.02, WATER_CZ);
-scene.add(waterMesh);
-
-// Water glow light
-const waterLight = new THREE.PointLight(0x0088ff, 1.5, 50);
-waterLight.position.set(WATER_CX, 2, WATER_CZ);
-scene.add(waterLight);
-
-// Water edge label ring
-const waterLabel = document.createElement('div');
-waterLabel.style.cssText = 'display:none'; // shown via HUD when on water
-document.body.appendChild(waterLabel);
+let waterMesh = null, waterLight = null;
+if (CURRENT_LEVEL === 1) {
+  waterMesh = new THREE.Mesh(
+    new THREE.CircleGeometry(WATER_R, 48),
+    new THREE.MeshStandardMaterial({ color: 0x1166aa, emissive: 0x003366, emissiveIntensity: 0.4, roughness: 0.0, metalness: 0.5, transparent: true, opacity: 0.75 })
+  );
+  waterMesh.rotation.x = -Math.PI / 2;
+  waterMesh.position.set(WATER_CX, 0.02, WATER_CZ);
+  scene.add(waterMesh);
+  waterLight = new THREE.PointLight(0x0088ff, 1.5, 50);
+  waterLight.position.set(WATER_CX, 2, WATER_CZ);
+  scene.add(waterLight);
+  const waterLabel = document.createElement('div');
+  waterLabel.style.cssText = 'display:none';
+  document.body.appendChild(waterLabel);
+}
 
 function isInWater(x, z) {
+  if (CURRENT_LEVEL === 2) return !_l2OnIce(x, z); // whole map is water on L2
   return Math.hypot(x - WATER_CX, z - WATER_CZ) < WATER_R;
 }
 
@@ -310,6 +323,182 @@ portalLight2.position.set(0, 2.5, -1.0);
 portalGroup.add(portalLight2);
 
 scene.add(portalGroup);
+
+// ── Level 2 Map ───────────────────────────────────────────────────────────────
+
+const _l2IcePlatforms = []; // { x, z, r }
+const _l2Jellyfish = [];
+const _l2Sharks = [];
+let   _l2JellySlowTimer = 0;
+const _l2SharkAlertEl = (() => {
+  const el = document.createElement('div');
+  el.style.cssText = 'display:none;position:fixed;top:45%;left:50%;transform:translate(-50%,-50%);font-family:monospace;font-size:32px;color:#ff3300;text-shadow:0 0 16px #ff0000;pointer-events:none;z-index:9999';
+  el.textContent = '🦈 SHARK!';
+  document.body.appendChild(el);
+  return el;
+})();
+const _l2ClueEl = (() => {
+  const el = document.createElement('div');
+  el.style.cssText = 'display:none;position:fixed;bottom:50px;left:50%;transform:translateX(-50%);background:rgba(10,5,0,0.88);border:2px solid #aa8833;border-radius:10px;padding:14px 28px;font-family:monospace;font-size:15px;color:#f0d080;text-shadow:0 0 6px #aa7700;pointer-events:none;z-index:9999;text-align:center;max-width:460px';
+  el.innerHTML = '<span style="color:#aa7733;font-size:11px;letter-spacing:2px;display:block;margin-bottom:5px">📜 PIRATE LOG</span><span id="_l2ClueText"></span>';
+  document.body.appendChild(el);
+  return el;
+})();
+
+function _l2OnIce(x, z) {
+  return _l2IcePlatforms.some(p => Math.hypot(x - p.x, z - p.z) < p.r - 0.3);
+}
+
+if (CURRENT_LEVEL === 2) {
+  // Full water floor
+  scene.add(new THREE.AmbientLight(0x112244, 0.4));
+  const _wFloor = new THREE.Mesh(new THREE.PlaneGeometry(500, 500),
+    new THREE.MeshStandardMaterial({ color: 0x0a3a6a, emissive: 0x001a44, emissiveIntensity: 0.5, roughness: 0.1, metalness: 0.3, transparent: true, opacity: 0.88 }));
+  _wFloor.rotation.x = -Math.PI / 2;
+  scene.add(_wFloor);
+
+  // Deep glow patches
+  for (let i = 0; i < 10; i++) {
+    const gl = new THREE.PointLight(0x0044aa, 0.5 + Math.random() * 0.4, 20);
+    gl.position.set((Math.random()-0.5)*160, -1, (Math.random()-0.5)*160);
+    scene.add(gl);
+  }
+
+  // Ice platforms
+  const iceMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x226688, emissiveIntensity: 0.15, roughness: 0.15, metalness: 0.3, transparent: true, opacity: 0.92 });
+  const ICE_SPOTS = [
+    { x:  0,  z:  0,  r: 5.0 },{ x: 12, z:  3, r: 2.8 },{ x:-11, z:  7, r: 2.2 },
+    { x:  5,  z: 14,  r: 3.0 },{ x: -6, z:-12, r: 2.5 },{ x: 22, z: 10, r: 2.0 },
+    { x: 18,  z:-14,  r: 1.8 },{ x:-18, z: 16, r: 2.2 },{ x:-20, z: -8, r: 1.6 },
+    { x:  8,  z:-22,  r: 2.0 },{ x: -8, z: 25, r: 1.8 },{ x: 30, z: -4, r: 1.5 },
+    { x:-28,  z:  2,  r: 1.6 },{ x: 14, z: 28, r: 2.0 },{ x:-14, z:-24, r: 1.5 },
+    { x: 35,  z: 20,  r: 1.4 },{ x: 40, z: 12, r: 1.3 },{ x: 44, z:  2, r: 1.5 },
+    { x:-32,  z: 28,  r: 1.4 },{ x:-38, z: 18, r: 1.3 },{ x:-40, z:  6, r: 1.2 },
+    { x: 28,  z:-28,  r: 1.4 },{ x: 36, z:-20, r: 1.3 },{ x:-22, z:-32, r: 1.5 },
+    { x:-30,  z:-22,  r: 1.3 },{ x: 50, z:  8, r: 2.5 },{ x:-46, z: 22, r: 2.0 },
+    { x: 32,  z:-38,  r: 2.0 },{ x:-28, z:-42, r: 2.2 },{ x:  2, z: 44, r: 1.8 },
+  ];
+  ICE_SPOTS.forEach(s => {
+    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(s.r, s.r * 0.9, 0.22, 10), iceMat);
+    mesh.position.set(s.x, 0.11, s.z);
+    scene.add(mesh);
+    _l2IcePlatforms.push({ x: s.x, z: s.z, r: s.r });
+  });
+
+  // Shipwrecks
+  const _wdMat = new THREE.MeshStandardMaterial({ color: 0x4a2e12, roughness: 0.95 });
+  const _wdDk  = new THREE.MeshStandardMaterial({ color: 0x2a1808, roughness: 0.9 });
+  const _wdSail= new THREE.MeshStandardMaterial({ color: 0xd4c9a0, roughness: 1.0, transparent: true, opacity: 0.75, side: THREE.DoubleSide });
+  const _wdIron= new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7, metalness: 0.5 });
+  const _wdGold= new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xaa8800, emissiveIntensity: 0.6, roughness: 0.3, metalness: 0.8 });
+  const _wdBar = new THREE.MeshStandardMaterial({ color: 0x5a3010, roughness: 0.9 });
+  const _wdFlg = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0, side: THREE.DoubleSide });
+
+  const _l2Ships = [];
+  function _buildShip(gx, gz, rotY, tiltZ, clue) {
+    const g = new THREE.Group();
+    g.position.set(gx, 0, gz);
+    g.rotation.y = rotY;
+    const bx = (w,h,d,m,px,py,pz) => { const mb = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); mb.position.set(px,py,pz); mb.castShadow=true; g.add(mb); return mb; };
+    bx(10,0.8,5,_wdMat,0,0.4,0); bx(10,2.2,0.4,_wdDk,0,1.5,2.5); bx(10,2.2,0.4,_wdDk,0,1.5,-2.5);
+    bx(0.4,2.2,5,_wdDk,5,1.5,0); bx(0.4,2.2,5,_wdDk,-5,1.5,0);
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.15,6,8),_wdDk); mast.position.set(1.5,3.8,0); mast.rotation.z=tiltZ; g.add(mast);
+    const sail = new THREE.Mesh(new THREE.PlaneGeometry(3.5,2.2),_wdSail); sail.position.set(0,5.8,0.6); sail.rotation.y=0.3; g.add(sail);
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.9,0.6),_wdFlg); flag.position.set(2.0,7.5+tiltZ*-3,0); g.add(flag);
+    [[1.0,0.6],[-0.5,-0.8],[2.0,-0.5]].forEach(([bpx,bpz])=>{ const bar=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,0.48,8),_wdBar); bar.position.set(bpx,1.08,bpz); g.add(bar); });
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.45,0.42),_wdMat); chest.position.set(-1.5,1.28,0.8); g.add(chest);
+    for(let i=0;i<5;i++){const coin=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.03,8),_wdGold); coin.position.set(-1.5+(Math.random()-0.5)*0.5,0.86,0.8+(Math.random()-0.5)*0.4); g.add(coin);}
+    g.userData.clue = clue;
+    scene.add(g);
+    _l2IcePlatforms.push({ x: gx, z: gz, r: 7.0 });
+    _l2Ships.push(g);
+    return g;
+  }
+  _buildShip( 50,  8,  0.3,  0.12, "X marks the spot — three paces from the mast, one from the chest.");
+  _buildShip(-46, 22, -0.5, -0.18, "They came from the north. We never saw the storm coming.");
+  _buildShip( 32,-38,  1.1,  0.22, "The portal was here long before us. Do NOT enter alone.");
+  _buildShip(-28,-42, -1.8, -0.15, "Captain's log — Day 47: The water whispers at night. We are not the first.");
+
+  // Jellyfish
+  const _jBodyMat = new THREE.MeshStandardMaterial({ color: 0x88aaff, emissive: 0x4466ff, emissiveIntensity: 0.7, transparent: true, opacity: 0.55 });
+  const _jTentMat = new THREE.MeshStandardMaterial({ color: 0xaabbff, emissive: 0x3355ff, emissiveIntensity: 0.5, transparent: true, opacity: 0.4 });
+  for (let i = 0; i < 28; i++) {
+    let jx, jz, tries = 0;
+    do { jx = (Math.random()-0.5)*140; jz = (Math.random()-0.5)*140; tries++; } while (_l2OnIce(jx,jz) && tries < 20);
+    const jg = new THREE.Group();
+    const bell = new THREE.Mesh(new THREE.SphereGeometry(0.32,8,6), _jBodyMat); bell.scale.y=0.65; jg.add(bell);
+    for(let t=0;t<6;t++){ const a=(t/6)*Math.PI*2; const tent=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.01,0.5+Math.random()*0.4,4),_jTentMat); tent.position.set(Math.cos(a)*0.15,-0.35,Math.sin(a)*0.15); jg.add(tent); }
+    jg.position.set(jx, 0.3, jz);
+    scene.add(jg);
+    _l2Jellyfish.push({ mesh: jg, x: jx, z: jz, angle: Math.random()*Math.PI*2, speed: 0.3+Math.random()*0.2 });
+  }
+
+  // Sharks
+  const _shMat = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.7 });
+  const _shFin = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.75 });
+  for (let i = 0; i < 5; i++) {
+    const sg = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.08,1.6,6),_shMat); body.rotation.z=Math.PI/2; sg.add(body);
+    const fin  = new THREE.Mesh(new THREE.ConeGeometry(0.14,0.42,4),_shFin); fin.position.set(0,0.32,0); fin.rotation.z=0.15; sg.add(fin);
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.18,0.38,4),_shFin); tail.position.set(-0.85,0.12,0); tail.rotation.z=Math.PI/2; sg.add(tail);
+    sg.position.set((Math.random()-0.5)*80, 0.12, (Math.random()-0.5)*80);
+    scene.add(sg);
+    const sw1 = _l2Ships[Math.floor(Math.random()*_l2Ships.length)];
+    const sw2 = _l2Ships[Math.floor(Math.random()*_l2Ships.length)];
+    _l2Sharks.push({
+      mesh: sg,
+      patrolA: new THREE.Vector3(sw1.position.x+(Math.random()-0.5)*12, 0.12, sw1.position.z+(Math.random()-0.5)*12),
+      patrolB: new THREE.Vector3(sw2.position.x+(Math.random()-0.5)*12, 0.12, sw2.position.z+(Math.random()-0.5)*12),
+      target: 0, speed: 5.5+Math.random()*2,
+    });
+  }
+}
+
+function updateL2Enemies(dt) {
+  if (CURRENT_LEVEL !== 2) return;
+  const px = player.position.x, pz = player.position.z;
+  const inWater = !_l2OnIce(px, pz);
+  if (_l2JellySlowTimer > 0) _l2JellySlowTimer -= dt;
+
+  let sharkNear = false;
+  _l2Jellyfish.forEach(j => {
+    j.angle += j.speed * dt * 0.4;
+    j.mesh.position.set(j.x + Math.cos(j.angle)*2.5, 0.25+Math.sin(Date.now()/800+j.angle)*0.18, j.z + Math.sin(j.angle)*2.5);
+    j.mesh.rotation.y += 0.01;
+    const pulse = 0.9+0.12*Math.sin(Date.now()/400+j.angle);
+    j.mesh.children[0].scale.set(pulse, pulse*0.65, pulse);
+    if (inWater && _l2JellySlowTimer <= 0) {
+      if (Math.hypot(px-j.mesh.position.x, pz-j.mesh.position.z) < 0.7) {
+        damagePlayer(8); _l2JellySlowTimer = 2.0;
+        playerStats.moveSpeed = Math.max(0.3, playerStats.moveSpeed * 0.8); // 20% slow
+        setTimeout(() => { playerStats.moveSpeed = (_levelSave?.stats?.moveSpeed ?? 1.05); }, 2000);
+      }
+    }
+  });
+
+  _l2Sharks.forEach(sh => {
+    const pdx = px - sh.mesh.position.x, pdz = pz - sh.mesh.position.z;
+    const pdist = Math.hypot(pdx, pdz);
+    sh.chasing = inWater && pdist < 18;
+    let tx, tz, spd;
+    if (sh.chasing) { tx=px; tz=pz; spd=sh.speed; if(pdist<18) sharkNear=true; }
+    else { const pt=sh.target===0?sh.patrolA:sh.patrolB; tx=pt.x; tz=pt.z; spd=3.5; if(Math.hypot(sh.mesh.position.x-tx,sh.mesh.position.z-tz)<2) sh.target^=1; }
+    const sdx=tx-sh.mesh.position.x, sdz=tz-sh.mesh.position.z, sdist=Math.hypot(sdx,sdz);
+    if(sdist>0.5){ sh.mesh.position.x+=(sdx/sdist)*spd*dt; sh.mesh.position.z+=(sdz/sdist)*spd*dt; sh.mesh.rotation.y=Math.atan2(-sdz,sdx)-Math.PI/2; }
+    sh.mesh.position.y=0.12+Math.sin(Date.now()/600+sh.mesh.position.x)*0.04;
+    if(sh.chasing && pdist<1.2 && playerState.iframes<=0) damagePlayer(35);
+  });
+  _l2SharkAlertEl.style.display = sharkNear ? 'block' : 'none';
+
+  // Clue proximity
+  let nearClue = null;
+  if (CURRENT_LEVEL === 2) {
+    const _l2Ships = _l2Sharks.length ? [] : []; // accessed via closure
+    scene.children.forEach(c => { if(c.userData?.clue && Math.hypot(px-c.position.x,pz-c.position.z)<9) nearClue=c.userData.clue; });
+  }
+  if(nearClue){ document.getElementById('_l2ClueText').textContent=nearClue; _l2ClueEl.style.display='block'; }
+  else _l2ClueEl.style.display='none';
+}
 
 // ── Falling Snow ──────────────────────────────────────────────────────────────
 
@@ -761,8 +950,8 @@ function buildSkua() {
 
 // Wrapper group controls position/rotation; model inside is pre-rotated 180°
 const player = new THREE.Group();
-const selectedSkin = localStorage.getItem('playerSkin') || 'normal';
-let activeSkin = selectedSkin;
+const selectedSkin = _levelSave?.skin ?? localStorage.getItem('playerSkin') ?? 'normal';
+let activeSkin = _levelSave?.activeSkinVal ?? selectedSkin;
 
 // Placeholder mesh shown until FBX loads
 const penguinMesh = new THREE.Group();
@@ -774,36 +963,28 @@ penguinMesh.add(builtModel);
 player.position.set(35, 0, 25);
 scene.add(player);
 
-const playerState = { hp: 100, maxHp: 100, iframes: 0, dead: false,
-  shaggyCharges: 0, shaggyMaxCharges: 0, shaggyRechargeTimer: 0 };
+// Restore progress from Level 1 if entering Level 2
+const _levelSave = JSON.parse(sessionStorage.getItem('levelProgress') || 'null');
+const playerState = {
+  hp:               _levelSave?.hp              ?? 100,
+  maxHp:            _levelSave?.maxHp           ?? 100,
+  iframes: 0, dead: false,
+  shaggyCharges:    _levelSave?.shaggyCharges    ?? 0,
+  shaggyMaxCharges: _levelSave?.shaggyMaxCharges ?? 0,
+  shaggyRechargeTimer: 0,
+};
 
 // ── Player Stats (tome upgrades) ──────────────────────────────────────────────
 
-const playerStats = {
-  damage:          1.0,
-  critChance:      0,
-  attackRate:      1.0,  // snowball fire rate multiplier
-  weaponCooldown:  1.0,  // weapon fire rate multiplier (Cooldown Tome)
-  projCount:       1,
-  projExtraChance: 0,
-  projSize:        1.0,
-  projSpeed:       1.0,
-  maxShield:       0,
-  shield:          0,
-  shieldRecharge:  0,
-  shieldDmgTimer:  0,    // seconds since last shield damage (regen blocked for 30s)
-  evasion:         0,
-  lifesteal:       0,
-  moveSpeed:       1.05,
-  pickupRadius:    0.7,
-  knockback:       0,
-  cursed:          0,
-  boomerang:       false,
-  iframeDuration:  1.0,
-  shaggyStacks:    0,
-};
+const playerStats = Object.assign({
+  damage: 1.0, critChance: 0, attackRate: 1.0, weaponCooldown: 1.0,
+  projCount: 1, projExtraChance: 0, projSize: 1.0, projSpeed: 1.0,
+  maxShield: 0, shield: 0, shieldRecharge: 0, shieldDmgTimer: 0,
+  evasion: 0, lifesteal: 0, moveSpeed: 1.05, pickupRadius: 0.7,
+  knockback: 0, cursed: 0, boomerang: false, iframeDuration: 1.0, shaggyStacks: 0,
+}, _levelSave?.stats ?? {});
 
-const tomeStacks = {};
+const tomeStacks = Object.assign({}, _levelSave?.tomeStacks ?? {});
 
 // "You obtained ADHD" message for Phrico Rico
 const adhdMsg = document.createElement('div');
@@ -895,7 +1076,7 @@ const WEAPON_DEFS = [
   },
 ];
 
-const equippedWeapons = new Set();   // supports multiple weapons at once
+const equippedWeapons = new Set(_levelSave?.weapons ?? []);   // supports multiple weapons at once
 const weaponTimers    = {};          // per-weapon cooldown timers
 const weaponStacks    = {};          // extra hits per proc (gandalf_staff stacks here)
 
@@ -2825,7 +3006,7 @@ function updateTomeHighlight() {
   });
 }
 
-let pendingTomes = 0;
+let pendingTomes = _levelSave?.pendingTomes ?? 0;
 
 // Right-side level-up indicator (mid-screen)
 const levelIndicator = document.createElement('div');
@@ -3059,7 +3240,7 @@ function updateItems(dt) {
 
 // ── XP System ─────────────────────────────────────────────────────────────────
 
-let playerLevel = 1;
+let playerLevel = _levelSave?.level ?? 1;
 let playerXP    = 0;
 let killCount   = 0;
 
@@ -4245,16 +4426,19 @@ function update(dt) {
   }
   if (equippedWeapons.has('aura_farmer')) updateAuraRing();
   updateBurst(dt);
-  updateOrcas(dt);
-  updateHumans(dt);
-  updateItems(dt);
+  if (CURRENT_LEVEL === 1) {
+    updateOrcas(dt);
+    updateHumans(dt);
+    updateItems(dt);
+    updateFish(dt);
+    updateThinIce(dt);
+    updateStorm(dt);
+    sepFrame ^= 1;
+    updateEnemies(dt);
+    updateBoss(dt);
+  }
   updateXpOrbs(dt);
-  updateFish(dt);
-  updateThinIce(dt);
-  updateStorm(dt);
-  sepFrame ^= 1;
-  updateEnemies(dt);
-  updateBoss(dt);
+  updateL2Enemies(dt);
   updateSnowballs(dt);
   updateNomOrbs(dt);
   updateBombs(dt);

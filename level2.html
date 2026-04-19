@@ -12,7 +12,7 @@
 </head>
 <body>
   <div id="ui" style="position:fixed;top:20px;left:50%;transform:translateX(-50%);color:#aee8ff;font-family:monospace;font-size:18px;text-shadow:0 0 8px #44aaff;pointer-events:none;opacity:1;transition:opacity 1s ease">
-    LEVEL 2 — THE SUNKEN SEA &nbsp;|&nbsp; WASD move &nbsp;|&nbsp; P jump &nbsp;|&nbsp; L power-up
+    THE SUNKEN SEA &nbsp;|&nbsp; WASD move &nbsp;|&nbsp; P jump &nbsp;|&nbsp; L power-up
   </div>
   <div style="position:fixed;top:20px;right:24px;pointer-events:none">
     <div id="killHUD" style="font-family:monospace;font-size:16px;color:#aee8ff;text-shadow:0 0 8px #44aaff;text-align:right">☠ 0</div>
@@ -25,14 +25,21 @@
       <div id="bossBarInner" style="width:100%;height:100%;background:#ff2255;border-radius:4px;transition:width 0.15s"></div>
     </div>
   </div>
+  <div id="krillyDefeated" style="display:none;position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:42px;color:#ff4477;text-shadow:0 0 24px #ff0044,0 0 6px #fff;pointer-events:none;z-index:200;letter-spacing:3px;white-space:nowrap">Boss Defeated</div>
+  <div id="spooksDialogue" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(20,0,40,0.88);border:2px solid #aa66cc;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:20px;color:#e8c8ff;text-shadow:0 0 8px #aa66cc;pointer-events:none;z-index:9999;text-align:center;white-space:nowrap">
+    <span style="color:#aa66cc;font-size:13px;letter-spacing:2px;display:block;margin-bottom:6px">SPOOKS</span>
+    <span id="spooksDialogueText"></span>
+  </div>
   <div id="coordHUD" style="position:fixed;top:20px;left:16px;font-family:monospace;font-size:13px;color:#668899;pointer-events:none">0, 0</div>
-  <div id="fpsHUD"   style="position:fixed;top:38px;left:16px;font-family:monospace;font-size:13px;color:#668899;pointer-events:none">-- fps</div>
-  <div id="levelTag" style="position:fixed;top:56px;left:16px;font-family:monospace;font-size:13px;color:#aee8ff;pointer-events:none">⚓ LEVEL 2</div>
+  <div id="playsHUD" style="position:fixed;top:38px;left:16px;font-family:monospace;font-size:13px;color:#668899;pointer-events:none">▶ 0 plays</div>
+  <div id="fpsHUD"   style="position:fixed;top:56px;left:16px;font-family:monospace;font-size:13px;color:#668899;pointer-events:none">-- fps</div>
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta http-equiv="Cache-Control" content="no-store">
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script>
+    window.CURRENT_LEVEL = 2;
+
     const bgm = window.bgm = new Audio('sounds/Cowboy%20Bebop%20-%20Opening%20Tank.mp3');
     bgm.loop   = false;
     bgm.volume = parseFloat(localStorage.getItem('bgmVolume') ?? '0.4');
@@ -51,8 +58,9 @@
       bgm.play().catch(() => {});
     }
     setTimeout(() => { document.getElementById('ui').style.opacity = '0'; }, 3000);
+
     const s = document.createElement('script');
-    s.src = 'level2.js?t=' + Date.now();
+    s.src = 'game.js?t=' + Date.now();
     document.body.appendChild(s);
   </script>
 </body>

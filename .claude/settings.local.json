@@ -6,7 +6,27 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(git remote *)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(sed -i 's/head\\\\.castShadow = true;//g' game.js)",
+      "Bash(sed -i 's/SphereGeometry\\(0\\\\.45, 12, 10\\)/SphereGeometry\\(0.45, 7, 5\\)/g; *)",
+      "Bash(node --check game.js)",
+      "Bash(node -e ' *)",
+      "Bash(python3 -m http.server 8080)",
+      "Bash(kill %1)",
+      "Bash(node *)",
+      "Bash(git revert *)",
+      "WebSearch",
+      "WebFetch(domain:docs.meshy.ai)",
+      "WebFetch(domain:platform.tripo3d.ai)",
+      "Bash(npm list *)",
+      "Bash(npx --yes fbx2gltf --version)",
+      "Bash(npm install *)",
+      "Bash(gltf-transform --version)",
+      "Bash(assimp version *)",
+      "Bash(apt-get install *)",
+      "Bash(sudo apt-get *)",
+      "Bash(fbx2gltf *)",
+      "Bash(npx fbx2gltf *)"
     ]
   }
 }
