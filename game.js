@@ -1558,9 +1558,11 @@ function triggerLevel1End() {
     const lines = [
       'Hello myauw fellow traveler',
       'Thanks for killing Krilly *purr*',
-      'You pleasantly surprised me',
-      '....',
-      'wordt vervolgd',
+      'You pleasantly suprised me',
+      '.... pssst,',
+      'I\'ve found a portal somewhere near the water',
+      'No clue where it leads, maybe you should check it out',
+      'Good luck traveler!',
     ];
     const textEl = document.getElementById('spooksDialogueText');
     let idx = 0;
