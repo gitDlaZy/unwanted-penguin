@@ -2697,7 +2697,7 @@ function damagePlayer(amount) {
 }
 
 function killPlayer() {
-  if (playerState.dead) return;
+  if (playerState.dead || _godMode) return;
   playerState.dead = true;
   penguinMesh.visible = false;
   showDeathScreen();
@@ -3239,7 +3239,7 @@ function updateOrcas(dt) {
         o.mesh.rotation.y = Math.atan2(-dz, dx);
       }
 
-      if (dist < 1.4 && inWater && playerY < 0.3 && !playerOnWaterIceSpot() && playerState.iframes <= 0 && !_godMode) killPlayer();
+      if (dist < 1.4 && inWater && playerY < 0.3 && !playerOnWaterIceSpot() && playerState.iframes <= 0) killPlayer();
     } else {
       // Idle — circle the pool
       o.idleAngle += o.idleSpeed * dt;
