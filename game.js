@@ -487,6 +487,36 @@ if (CURRENT_LEVEL === 2) {
     _l2Currents.push({ mesh: m, speed: 4.5 + Math.random() * 3, ox: m.position.x, oz: m.position.z, danger: true });
   }
 
+  // Warning signs along south danger zone
+  const _signPost = new THREE.MeshStandardMaterial({ color: 0x8b5e2a, roughness: 0.9 });
+  const _signBoard = new THREE.MeshStandardMaterial({ color: 0xffdd00, emissive: 0xaa8800, emissiveIntensity: 0.5, roughness: 0.7 });
+  const _signText  = new THREE.MeshStandardMaterial({ color: 0x220000, roughness: 1.0 });
+  const _signXs = [-64, -44, -24, -4, 16, 36, 56, 76];
+  _signXs.forEach(sx => {
+    const g = new THREE.Group();
+    g.position.set(sx, 0, 73 + (Math.random()-0.5)*3);
+    // Post
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 3.2, 8), _signPost);
+    post.position.y = 1.6; g.add(post);
+    // Board
+    const board = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.1, 0.12), _signBoard);
+    board.position.y = 3.5; g.add(board);
+    // Red X bar (cross — two thin boxes)
+    const bar1 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.18, 0.14), _signText);
+    bar1.position.set(0, 3.5, 0.01); bar1.rotation.z = 0.6; g.add(bar1);
+    const bar2 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.18, 0.14), _signText);
+    bar2.position.set(0, 3.5, 0.01); bar2.rotation.z = -0.6; g.add(bar2);
+    // Skull dot eyes + nose
+    [[-0.35, 3.72], [0.35, 3.72]].forEach(([ex, ey]) => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), _signText);
+      eye.position.set(ex, ey, 0.07); g.add(eye);
+    });
+    // Slight bob — store ref
+    g.userData.bobPhase = Math.random() * Math.PI * 2;
+    scene.add(g);
+    _l2Currents.push({ mesh: g, speed: 0, ox: sx, oz: g.position.z, sign: true, phase: g.userData.bobPhase });
+  });
+
   // North beach
   buildBeachL2();
 }
@@ -581,6 +611,12 @@ function updateL2Enemies(dt) {
 
   // Water currents — drift then wrap
   _l2Currents.forEach(cur => {
+    if (cur.sign) {
+      // Signs bob gently in place
+      cur.mesh.position.y = Math.sin(Date.now() / 900 + cur.phase) * 0.08;
+      cur.mesh.rotation.z = Math.sin(Date.now() / 1100 + cur.phase) * 0.06;
+      return;
+    }
     if (cur.danger) {
       // Danger currents flow southward (toward kill border)
       cur.mesh.position.z += cur.speed * dt;
