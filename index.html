@@ -98,7 +98,7 @@
       <button id="introSkinHuman"  onclick="introSelectSkin('human')"  onpointerdown="event.stopPropagation()" style="background:transparent;border:2px solid #3a9a3a;color:#aaffaa;font-family:monospace;font-size:14px;padding:10px 24px;cursor:pointer;border-radius:6px;letter-spacing:1px">🧍 HUMAN</button>
     </div>
 
-    <div style="font-size:15px;color:#aee8ff;letter-spacing:3px;animation:pulse 1.2s ease-in-out infinite">PRESS ANY KEY TO START</div>
+    <div style="font-size:15px;color:#aee8ff;letter-spacing:3px;animation:pulse 1.2s ease-in-out infinite">← → / D-PAD SELECT &nbsp;·&nbsp; ENTER / A START</div>
   </div>
 
   <style>
@@ -129,6 +129,14 @@
     // Highlight whichever skin is saved
     introSelectSkin(localStorage.getItem('playerSkin') || 'normal');
 
+    const _introSkins = ['normal', 'evil', 'human'];
+    let _introIdx = Math.max(0, _introSkins.indexOf(localStorage.getItem('playerSkin') || 'normal'));
+    function introNav(dir) {
+      _introIdx = (_introIdx + dir + _introSkins.length) % _introSkins.length;
+      introSelectSkin(_introSkins[_introIdx]);
+    }
+    window.introNav = introNav;
+
     // BGM — defined here so it's ready before game.js loads
     const bgm = window.bgm = new Audio('sounds/Cowboy%20Bebop%20-%20Opening%20Tank.mp3');
     bgm.loop   = false;
@@ -156,7 +164,14 @@
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
     } else {
-      window.addEventListener('keydown', dismissIntro, { once: true });
+      function _introKeydown(e) {
+        if (document.getElementById('introScreen')?.style.display === 'none') { window.removeEventListener('keydown', _introKeydown); return; }
+        if (e.key === 'ArrowLeft'  || e.key === 'a') { introNav(-1); return; }
+        if (e.key === 'ArrowRight' || e.key === 'd') { introNav(1);  return; }
+        dismissIntro();
+        window.removeEventListener('keydown', _introKeydown);
+      }
+      window.addEventListener('keydown', _introKeydown);
       window.addEventListener('pointerdown', dismissIntro, { once: true });
     }
     setTimeout(() => { document.getElementById('ui').style.opacity = '0'; }, 3000);

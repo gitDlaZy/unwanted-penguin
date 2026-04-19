@@ -4496,10 +4496,17 @@ function pollGamepad() {
     return;
   }
 
-  // Any button — dismiss intro screen
-  if (gp.buttons.some(b => b.pressed) && document.getElementById('introScreen')?.style.display !== 'none') {
-    const intro = document.getElementById('introScreen');
-    if (intro) intro.style.display = 'none';
+  // Intro screen — D-pad navigates skins, any face/start button dismisses
+  if (document.getElementById('introScreen')?.style.display !== 'none') {
+    if (pressed(14)) window.introNav?.(-1);
+    if (pressed(15)) window.introNav?.(1);
+    if (pressed(0) || pressed(1) || pressed(2) || pressed(3) || pressed(9)) {
+      const intro = document.getElementById('introScreen');
+      if (intro) intro.style.display = 'none';
+      window.bgm?.play().catch(() => {});
+    }
+    gp.buttons.forEach((b, i) => { _gpPrev[i] = b.pressed; });
+    return;
   }
 
   // Any button — resume after tome pick
