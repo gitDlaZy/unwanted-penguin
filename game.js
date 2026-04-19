@@ -2484,9 +2484,14 @@ function showDeathScreen() {
                font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
         🧍 HUMAN</button>
     </div>
-    <button id="retryBtn"
-      style="margin-top:8px;background:transparent;border:2px solid #44aaff55;color:#aee8ff;
-             font-family:monospace;font-size:18px;padding:10px 36px;cursor:pointer;letter-spacing:3px">RETRY</button>
+    <div style="display:flex;gap:12px;margin-top:8px">
+      <button id="retryBtn"
+        style="background:transparent;border:2px solid #44aaff55;color:#aee8ff;
+               font-family:monospace;font-size:18px;padding:10px 36px;cursor:pointer;letter-spacing:3px">RETRY</button>
+      <button id="howToBtn"
+        style="background:transparent;border:2px solid #44aaff33;color:#aee8ff88;
+               font-family:monospace;font-size:13px;padding:10px 18px;cursor:pointer;letter-spacing:2px">HOW TO PLAY</button>
+    </div>
     <div style="position:fixed;top:16px;right:20px;text-align:right;font-family:monospace;font-size:11px;color:#aee8ff66;line-height:1.8;pointer-events:none">
       Special thanks to<br>Hommienommie<br>Deveh<br>Shaggy<br>EhdMusic
     </div>
@@ -2531,6 +2536,10 @@ function showDeathScreen() {
     });
   });
   document.getElementById('retryBtn').addEventListener('click', () => { location.href = location.pathname + '?v=' + Date.now(); });
+  document.getElementById('howToBtn').addEventListener('click', () => {
+    const el = document.getElementById('introScreen');
+    if (el) { el.style.display = 'flex'; }
+  });
   document.getElementById('refreshBtn').addEventListener('click', () => {
     const el = document.getElementById('scoreboardEl');
     if (el) el.innerHTML = '<div style="opacity:0.4;font-size:13px">Refreshing...</div>';
@@ -3849,8 +3858,9 @@ function pollGamepad() {
   if (!goingRight) { delete keys['d']; _gpPrev._stickRight = false; }
 
   // Any button — dismiss intro screen
-  if (gp.buttons.some(b => b.pressed) && document.getElementById('introScreen')) {
-    document.getElementById('introScreen').remove();
+  if (gp.buttons.some(b => b.pressed) && document.getElementById('introScreen')?.style.display !== 'none') {
+    const intro = document.getElementById('introScreen');
+    if (intro) intro.style.display = 'none';
   }
 
   // Any button — resume after tome pick
