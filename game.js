@@ -4036,7 +4036,7 @@ function saveProgressAndUnlockPortal() {
     level: playerLevel,
     pendingTomes,
     skin: localStorage.getItem('playerSkin') || 'normal',
-    activeSkinVal: activeSkin,
+    activeSkinVal: selectedSkin,
   };
   sessionStorage.setItem('levelProgress', JSON.stringify(save));
   portalUnlocked = true;
