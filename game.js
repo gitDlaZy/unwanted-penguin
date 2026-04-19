@@ -698,7 +698,7 @@ const playerStats = {
   shieldDmgTimer:  0,    // seconds since last shield damage (regen blocked for 30s)
   evasion:         0,
   lifesteal:       0,
-  moveSpeed:       1.1,
+  moveSpeed:       1.05,
   pickupRadius:    0.7,
   knockback:       0,
   cursed:          0,
