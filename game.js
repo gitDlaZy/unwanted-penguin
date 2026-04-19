@@ -346,6 +346,11 @@ const L2_KILL_BORDER  = 100;  // z > this → die
 const L2_NORTH_LIMIT  = -115; // z < this → can't go further north
 let   _l2JellySlowTimer = 0;
 const _l2SharkAlertEl = { style: { display: '' } }; // removed shark alert
+let   _ghostPirate     = null;   // { mesh, hp, state, timers… }
+const _ghostBullets    = [];
+let   _rustyKeyMesh    = null;
+let   _hasRustyKey     = false;
+let   _chestOpened     = false;
 const _l2ClueEl = (() => {
   const el = document.createElement('div');
   el.style.cssText = 'display:none;position:fixed;bottom:50px;left:50%;transform:translateX(-50%);background:rgba(10,5,0,0.88);border:2px solid #aa8833;border-radius:10px;padding:14px 28px;font-family:monospace;font-size:15px;color:#f0d080;text-shadow:0 0 6px #aa7700;pointer-events:none;z-index:9999;text-align:center;max-width:460px';
@@ -444,7 +449,8 @@ if (CURRENT_LEVEL === 2) {
   const _jTentMat = new THREE.MeshStandardMaterial({ color: 0xaabbff, emissive: 0x3355ff, emissiveIntensity: 0.5, transparent: true, opacity: 0.4 });
   for (let i = 0; i < 28; i++) {
     let jx, jz, tries = 0;
-    do { jx = (Math.random()-0.5)*140; jz = (Math.random()-0.5)*140; tries++; } while (_l2OnIce(jx,jz) && tries < 20);
+    do { jx = (Math.random()-0.5)*140; jz = (Math.random()-0.5)*140; tries++; }
+    while ((_l2OnIce(jx,jz) || Math.hypot(jx-35,jz-25)<9 || Math.hypot(jx+64,jz-50)<10) && tries < 30);
     const jg = new THREE.Group();
     const bell = new THREE.Mesh(new THREE.SphereGeometry(0.32,8,6), _jBodyMat); bell.scale.y=0.65; jg.add(bell);
     for(let t=0;t<6;t++){ const a=(t/6)*Math.PI*2; const tent=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.01,0.5+Math.random()*0.4,4),_jTentMat); tent.position.set(Math.cos(a)*0.15,-0.35,Math.sin(a)*0.15); jg.add(tent); }
@@ -457,7 +463,7 @@ if (CURRENT_LEVEL === 2) {
   for (let i = 0; i < 14; i++) {
     let sx, sz, tries = 0;
     do { sx=(Math.random()-0.5)*140; sz=(Math.random()-0.5)*120; tries++; }
-    while (_l2OnIce(sx, sz) && tries < 30);
+    while ((_l2OnIce(sx,sz) || Math.hypot(sx-35,sz-25)<9 || Math.hypot(sx+64,sz-50)<10) && tries < 30);
     const sg = buildShark();
     sg.position.set(sx, 0.12, sz);
     scene.add(sg);
@@ -474,7 +480,9 @@ if (CURRENT_LEVEL === 2) {
   // Orcas — 3 large predators, stronger than sharks
   for (let i = 0; i < 3; i++) {
     const o = buildOrca();
-    o.position.set((Math.random()-0.5)*90, 0.18, (Math.random()-0.5)*60);
+    let ox, oz; do { ox=(Math.random()-0.5)*90; oz=(Math.random()-0.5)*60; }
+    while (Math.hypot(ox-35,oz-25)<9 || Math.hypot(ox+64,oz-50)<10);
+    o.position.set(ox, 0.18, oz);
     scene.add(o);
     _l2Orcas.push({ mesh: o, hp: 280, speed: 4.5 + Math.random(), chasing: false,
       patrolAngle: Math.random() * Math.PI * 2 });
@@ -531,6 +539,42 @@ if (CURRENT_LEVEL === 2) {
     scene.add(g);
     _l2Currents.push({ mesh: g, speed: 0, ox: sx, oz: g.position.z, sign: true, phase: g.userData.bobPhase });
   });
+
+  // Ghost pirate island at (-64, 50) — sandy 15×15 platform
+  const _pirateIslandMat = new THREE.MeshStandardMaterial({ color: 0xd4aa70, roughness: 1.0 });
+  const _pirateIsland = new THREE.Mesh(new THREE.CylinderGeometry(9, 8.2, 0.4, 14), _pirateIslandMat);
+  _pirateIsland.position.set(-64, 0.2, 50);
+  scene.add(_pirateIsland);
+  for (let i = 0; i < 4; i++) {
+    const dune = new THREE.Mesh(new THREE.SphereGeometry(0.9+Math.random()*0.6,6,4), _pirateIslandMat);
+    dune.scale.y = 0.45;
+    dune.position.set(-64+(Math.random()-0.5)*13, 0.5, 50+(Math.random()-0.5)*13);
+    scene.add(dune);
+  }
+  _l2IcePlatforms.push({ x: -64, z: 50, r: 9 });
+
+  // Locked chest at (-63, -100)
+  (() => {
+    const g = new THREE.Group();
+    const chestMat = new THREE.MeshStandardMaterial({ color: 0x6b3a10, roughness: 0.9 });
+    const goldMat  = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xaa8800, emissiveIntensity: 0.5 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.2,0.7,0.8), chestMat); body.position.y=0.35; g.add(body);
+    const lid  = new THREE.Mesh(new THREE.BoxGeometry(1.2,0.38,0.8), new THREE.MeshStandardMaterial({color:0x5a3008,roughness:0.9})); lid.position.set(0,0.89,0); g.add(lid);
+    const b1   = new THREE.Mesh(new THREE.BoxGeometry(1.22,0.08,0.82), goldMat); b1.position.set(0,0.3,0); g.add(b1);
+    const b2   = b1.clone(); b2.position.set(0,0.6,0); g.add(b2);
+    const lock = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.22,0.1), goldMat); lock.position.set(0,0.55,0.42); g.add(lock);
+    g.position.set(-63, 0, -100);
+    scene.add(g);
+    const glow = new THREE.PointLight(0xffaa00, 1.0, 10);
+    glow.position.set(-63, 2, -100);
+    scene.add(glow);
+    // Store for animation and interaction
+    window._l2ChestGroup = g;
+    window._l2ChestGlow  = glow;
+  })();
+
+  // Spawn ghost pirate on the island
+  spawnGhostPirate();
 
   // North beach
   buildBeachL2();
@@ -657,6 +701,9 @@ function updateL2Enemies(dt) {
   let showInteract = '';
   if (_l2Bottle && !_bottlePopupOpen && !_shipPopupOpen) {
     if (Math.hypot(px - _l2Bottle.x, pz - _l2Bottle.z) < 3.5) showInteract = 'E — Read bottle';
+  }
+  if (!showInteract && !_chestOpened && Math.hypot(px+63,pz+100)<3.5) {
+    showInteract = _hasRustyKey ? 'E — Open chest' : 'E — Locked chest (need rusty key)';
   }
   if (!showInteract && !_shipPopupOpen && !_bottlePopupOpen) {
     for (const ship of _l2Ships) {
@@ -1296,6 +1343,128 @@ function buildBottle() {
 
   g.rotation.z = 0.35;
   return g;
+}
+
+function buildGhostPirate() {
+  const g = new THREE.Group();
+  const ghostMat = new THREE.MeshStandardMaterial({ color: 0xaaccee, emissive: 0x3366aa, emissiveIntensity: 0.7, transparent: true, opacity: 0.78, roughness: 0.6 });
+  const hatMat   = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.9 });
+  const swordMat = new THREE.MeshStandardMaterial({ color: 0xccddee, emissive: 0x4488aa, emissiveIntensity: 0.4, roughness: 0.3, metalness: 0.8 });
+  // Body
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.45,1.1,8), ghostMat); body.position.y=0.6; g.add(body);
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38,8,7), ghostMat); head.position.y=1.45; g.add(head);
+  // Pirate hat brim + crown
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,0.08,10), hatMat); brim.position.y=1.76; g.add(brim);
+  const crown= new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.38,0.52,8), hatMat); crown.position.y=2.05; g.add(crown);
+  // Arms
+  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.72,6), ghostMat); armL.position.set(-0.55,0.9,0); armL.rotation.z=0.7; g.add(armL);
+  const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.72,6), ghostMat); armR.position.set( 0.55,0.9,0); armR.rotation.z=-0.7; g.add(armR);
+  // Sword on right arm
+  const blade= new THREE.Mesh(new THREE.BoxGeometry(0.07,0.85,0.04), swordMat); blade.position.set(0.95,0.55,0); g.add(blade);
+  const guard= new THREE.Mesh(new THREE.BoxGeometry(0.3,0.07,0.07), swordMat); guard.position.set(0.95,0.97,0); g.add(guard);
+  // Eye glow
+  [[-0.12,1.48],[0.12,1.48]].forEach(([ex,ey]) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06,5,5), new THREE.MeshBasicMaterial({color:0xff2200}));
+    eye.position.set(ex,ey,0.35); g.add(eye);
+  });
+  return g;
+}
+
+function spawnGhostPirate() {
+  const mesh = buildGhostPirate();
+  mesh.position.set(-64, 0, 50);
+  scene.add(mesh);
+  _ghostPirate = { mesh, hp: 220, maxHp: 220, speed: 5,
+    shootTimer: 3.0, bombTimer: 7.0, swordTimer: 0,
+    chasing: false };
+}
+
+function updateGhostPirate(dt) {
+  if (!_ghostPirate || playerState.dead) return;
+  const gp = _ghostPirate;
+  const px = player.position.x, pz = player.position.z;
+  const dx = px - gp.mesh.position.x, dz = pz - gp.mesh.position.z;
+  const dist = Math.hypot(dx, dz);
+
+  gp.chasing = dist < 22;
+  if (gp.chasing && dist > 1.4) {
+    const spd = gp.speed;
+    const nx = gp.mesh.position.x + (dx/dist)*spd*dt;
+    const nz = gp.mesh.position.z + (dz/dist)*spd*dt;
+    // Stay on island and land only
+    if (_l2OnIce(nx, nz)) { gp.mesh.position.x = nx; gp.mesh.position.z = nz; }
+    gp.mesh.rotation.y = Math.atan2(-dx, -dz);
+  }
+
+  // Ghost bob
+  gp.mesh.position.y = Math.sin(Date.now()/500)*0.12;
+
+  // Sword melee
+  if (gp.swordTimer > 0) gp.swordTimer -= dt;
+  if (dist < 1.6 && gp.swordTimer <= 0 && playerState.iframes <= 0) {
+    damagePlayer(18);
+    gp.swordTimer = 0.9;
+  }
+
+  // Bullet shoot
+  if (gp.chasing) {
+    gp.shootTimer -= dt;
+    if (gp.shootTimer <= 0) {
+      gp.shootTimer = 2.5 + Math.random();
+      if (dist > 0.1) {
+        const speed = 9;
+        const bMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.18, 6, 6),
+          new THREE.MeshBasicMaterial({ color: 0x44ffcc })
+        );
+        bMesh.position.set(gp.mesh.position.x + dx/dist*1.2, 0.7, gp.mesh.position.z + dz/dist*1.2);
+        scene.add(bMesh);
+        _ghostBullets.push({ mesh: bMesh, vx: dx/dist*speed, vz: dz/dist*speed, life: 5 });
+      }
+    }
+    // Bomb throw
+    gp.bombTimer -= dt;
+    if (gp.bombTimer <= 0) {
+      gp.bombTimer = 8 + Math.random()*4;
+      // Aim slightly ahead of player
+      dropBomb(px + (Math.random()-0.5)*3, pz + (Math.random()-0.5)*3, 5);
+    }
+  }
+
+  // Update bullets
+  for (let i = _ghostBullets.length - 1; i >= 0; i--) {
+    const b = _ghostBullets[i];
+    b.mesh.position.x += b.vx * dt;
+    b.mesh.position.z += b.vz * dt;
+    b.life -= dt;
+    const bdx = b.mesh.position.x - px, bdz = b.mesh.position.z - pz;
+    if (bdx*bdx + bdz*bdz < 0.5 && playerState.iframes <= 0) {
+      damagePlayer(20);
+      scene.remove(b.mesh); _ghostBullets.splice(i, 1);
+    } else if (b.life <= 0) {
+      scene.remove(b.mesh); _ghostBullets.splice(i, 1);
+    }
+  }
+
+  // Rusty key pickup
+  if (_rustyKeyMesh && !_hasRustyKey) {
+    if (Math.hypot(px - _rustyKeyMesh.position.x, pz - _rustyKeyMesh.position.z) < 1.8) {
+      scene.remove(_rustyKeyMesh); _rustyKeyMesh = null;
+      _hasRustyKey = true;
+      // Brief on-screen message
+      const el = document.createElement('div');
+      el.style.cssText = 'position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:24px;color:#ffd700;text-shadow:0 0 12px #ffaa00;pointer-events:none;z-index:9999';
+      el.textContent = '🗝 Rusty Key obtained!';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 2500);
+    }
+  }
+
+  // Pulse chest glow
+  if (window._l2ChestGlow) {
+    window._l2ChestGlow.intensity = 0.7 + Math.sin(Date.now()/600)*0.4;
+  }
 }
 
 function buildBeachL2() {
@@ -2845,6 +3014,34 @@ function updateSnowballs(dt) {
             break;
           }
         }
+      }
+    }
+
+    // Ghost pirate hit
+    if (!hit && CURRENT_LEVEL === 2 && _ghostPirate) {
+      if (Math.hypot(s.mesh.position.x - _ghostPirate.mesh.position.x, s.mesh.position.z - _ghostPirate.mesh.position.z) < 1.8 * playerStats.projSize) {
+        const isCrit = Math.random() < playerStats.critChance;
+        _ghostPirate.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+        spawnImpact(s.mesh.position.x, 0.8, s.mesh.position.z, isCrit);
+        if (_ghostPirate.hp <= 0) {
+          // Death — drop rusty key
+          const keyMesh = new THREE.Group();
+          const keyShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.6,8), new THREE.MeshStandardMaterial({color:0xaa7700,emissive:0x664400,emissiveIntensity:0.6,roughness:0.4,metalness:0.7}));
+          keyShaft.rotation.z = Math.PI/2; keyMesh.add(keyShaft);
+          const keyHead = new THREE.Mesh(new THREE.TorusGeometry(0.14,0.04,6,10), new THREE.MeshStandardMaterial({color:0xffcc00,emissive:0xaa8800,emissiveIntensity:0.8}));
+          keyHead.position.x = 0.38; keyMesh.add(keyHead);
+          const keyGlow = new THREE.PointLight(0xffcc00, 1.2, 5);
+          keyMesh.add(keyGlow);
+          keyMesh.position.set(_ghostPirate.mesh.position.x, 0.5, _ghostPirate.mesh.position.z);
+          scene.add(keyMesh);
+          _rustyKeyMesh = keyMesh;
+          scene.remove(_ghostPirate.mesh);
+          _ghostBullets.forEach(b => scene.remove(b.mesh));
+          _ghostBullets.length = 0;
+          killCount++; spawnXpOrb(_ghostPirate.mesh.position.x, _ghostPirate.mesh.position.z, 10); updateHUD();
+          _ghostPirate = null;
+        }
+        if (!s.boomerang) hit = true;
       }
     }
 
@@ -4473,6 +4670,29 @@ window.addEventListener('keydown', e => {
     else if (_l2Bottle && Math.hypot(px-_l2Bottle.x,pz-_l2Bottle.z)<3.5) {
       document.getElementById('_bottleText').textContent = 'Brave traveller — a key lies hidden in these waters. Find it, and the ancient chest aboard the wreck shall open. The cold depths hide what the warm world forgot.';
       _bottlePopup.style.display='block'; _bottlePopupOpen=true;
+    } else if (!_chestOpened && Math.hypot(px+63,pz+100)<3.5) {
+      if (_hasRustyKey) {
+        _chestOpened = true;
+        if (window._l2ChestGroup) {
+          // Open lid visually
+          const lid = window._l2ChestGroup.children[1];
+          if (lid) lid.rotation.x = -Math.PI/2;
+          if (window._l2ChestGlow) window._l2ChestGlow.color.set(0xffffff);
+        }
+        playerState.hp = Math.min(playerState.maxHp, playerState.hp + playerState.maxHp * 0.5);
+        updateHUD();
+        const el = document.createElement('div');
+        el.style.cssText = 'position:fixed;top:36%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:22px;color:#ffd700;text-shadow:0 0 16px #ffaa00;pointer-events:none;z-index:9999;text-align:center';
+        el.innerHTML = '💰 Ancient chest opened!<br><span style="font-size:16px;color:#aaffaa">+50% HP restored</span>';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 3000);
+      } else {
+        const el = document.createElement('div');
+        el.style.cssText = 'position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:18px;color:#ff8844;text-shadow:0 0 8px #ff4400;pointer-events:none;z-index:9999';
+        el.textContent = '🔒 This chest is locked. You need a rusty key.';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 2000);
+      }
     } else {
       for (const ship of _l2Ships) {
         if (Math.hypot(px-ship.position.x,pz-ship.position.z)<5.5) {
@@ -5013,6 +5233,7 @@ function update(dt) {
   }
   updateXpOrbs(dt);
   updateL2Enemies(dt);
+  if (CURRENT_LEVEL === 2) updateGhostPirate(dt);
   updateSnowballs(dt);
   updateNomOrbs(dt);
   updateBombs(dt);
