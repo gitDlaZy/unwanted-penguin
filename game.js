@@ -1593,7 +1593,7 @@ function triggerLevel1End() {
     const textEl = document.getElementById('spooksDialogueText');
     let idx = 0;
     function showNextLine() {
-      if (idx >= lines.length) { dialogue.style.display = 'none'; return; }
+      if (idx >= lines.length) { dialogue.style.display = 'none'; movementLockout = 0; return; }
       textEl.textContent = lines[idx++];
       dialogue.style.display = 'block';
       setTimeout(showNextLine, 4000);
