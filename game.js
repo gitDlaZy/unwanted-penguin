@@ -220,7 +220,7 @@ function isInWater(x, z) {
 // ── Dark Portal ───────────────────────────────────────────────────────────────
 
 const portalGroup = new THREE.Group();
-portalGroup.position.set(35, 0, 18);
+portalGroup.position.set(55, 0, 80);
 
 // Obsidian/cracked stone material
 const _darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.85, metalness: 0.3 });
