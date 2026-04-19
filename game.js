@@ -3554,6 +3554,10 @@ deathScreen.style.cssText = `
 document.body.appendChild(deathScreen);
 
 function showDeathScreen() {
+  if (window.bgm) { window.bgm.pause(); window.bgm.currentTime = 0; }
+  const _nootSfx = new Audio('sounds/Pingu%20-%20Noot%20Noot%20Sound%20Effect.mp3');
+  _nootSfx.volume = parseFloat(localStorage.getItem('bgmVolume') ?? '0.4');
+  _nootSfx.play().catch(() => {});
   deathScreen.innerHTML = `
     <div style="font-size:46px;font-weight:bold;letter-spacing:6px;text-shadow:0 0 30px #00aaff">YOU FROZE</div>
     <div style="font-size:15px;opacity:0.5">☠ ${killCount} kills &nbsp;|&nbsp; Level ${playerLevel}</div>
