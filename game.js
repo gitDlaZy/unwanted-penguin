@@ -2442,7 +2442,6 @@ function renderScoreboard(scores) {
         <td style="padding:4px 10px">Name</td>
         <td style="padding:4px 10px">Kills</td>
         <td style="padding:4px 10px">Lvl</td>
-        <td style="padding:4px 10px">Date</td>
       </tr>
       ${scores.map((s, i) => `
         <tr style="background:${i===0?'rgba(255,220,50,0.07)':''}">
@@ -2450,7 +2449,6 @@ function renderScoreboard(scores) {
           <td style="padding:4px 10px;color:${i===0?'#ffee44':'#aee8ff'};font-weight:${i===0?'bold':'normal'}">${s.name}</td>
           <td style="padding:4px 10px;color:#ff8888">☠ ${s.kills}</td>
           <td style="padding:4px 10px;color:#ffcc44">${s.level}</td>
-          <td style="padding:4px 10px;opacity:0.4">${s.date}</td>
         </tr>`).join('')}
     </table>`;
 }
