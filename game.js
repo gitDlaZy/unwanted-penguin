@@ -1044,10 +1044,10 @@ function buildWizardCat() {
   // Big eyes — white outline, black inner
   [-0.16, 0.16].forEach(x => {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 10), white);
-    eye.position.set(x, 1.36, 0.33); eye.scale.set(1, 1.2, 0.9);
+    eye.position.set(x, 1.36, 0.30); eye.scale.set(1, 1.2, 0.7);
     g.add(eye);
     const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), black);
-    pupil.position.set(x, 1.36, 0.39);
+    pupil.position.set(x, 1.36, 0.35);
     g.add(pupil);
   });
 
@@ -1080,12 +1080,12 @@ function buildWizardCat() {
   // Cat ears — added after hat so they render on top, lpurple outer + pink inner
   [-0.38, 0.38].forEach(x => {
     const tilt = x > 0 ? -0.55 : 0.55;
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.58, 6), lpurple);
-    ear.position.set(x, 2.08, 0.0);
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.065, 0.29, 6), lpurple);
+    ear.position.set(x, 2.06, 0.0);
     ear.rotation.z = tilt;
     g.add(ear);
-    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.35, 6), pink);
-    innerEar.position.set(x * 1.02, 2.1, 0.01);
+    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.175, 6), pink);
+    innerEar.position.set(x * 1.01, 2.07, 0.01);
     innerEar.rotation.z = tilt;
     g.add(innerEar);
   });
