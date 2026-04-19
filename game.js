@@ -427,6 +427,7 @@ function buildEvilPenguin() {
 
 function buildHumanPlayer() {
   const g = new THREE.Group();
+  g.rotation.y = Math.PI;
   const skin   = new THREE.MeshStandardMaterial({ color: 0xffcc99, roughness: 0.8 });
   const shirt  = new THREE.MeshStandardMaterial({ color: 0x3a9a3a, roughness: 0.8 });
   const pants  = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 });
