@@ -4059,6 +4059,7 @@ const _debugActions = [
   { label: '🌀  Spawn Boss Now',        fn: () => { if (!boss) spawnBoss(player.position.x + 15, player.position.z); } },
   { label: '🐱  Trigger Level 1 End',  fn: () => { triggerLevel1End(); } },
   { label: () => _godMode ? '🛡  God Mode  [ON]' : '🛡  God Mode  [OFF]', fn: () => { _godMode = !_godMode; setGodModeVisual(_godMode); }, noClose: true },
+  { label: '🌊  Go to Level 2',           fn: () => { saveProgressAndUnlockPortal(); sessionStorage.setItem('bgmAutoStart','1'); setTimeout(() => { window.location.href = 'level2.html'; }, 100); } },
 ];
 
 function buildDebugList() {
