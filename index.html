@@ -142,16 +142,12 @@
     function dismissIntro() {
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
-      sessionStorage.setItem('introShown', '1');
       bgm.play().catch(() => {});
     }
 
     if (sessionStorage.getItem('bgmAutoStart')) {
       sessionStorage.removeItem('bgmAutoStart');
       bgm.play().catch(() => {});
-    }
-
-    if (sessionStorage.getItem('introShown')) {
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
     } else {
