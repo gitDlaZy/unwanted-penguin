@@ -3724,6 +3724,25 @@ const _debugOverlay = (() => {
 })();
 
 let _godMode = false;
+const _godOrigColors = new Map();
+function setGodModeVisual(on) {
+  penguinMesh.traverse(obj => {
+    if (!obj.isMesh) return;
+    const m = obj.material;
+    if (!m) return;
+    if (on) {
+      _godOrigColors.set(obj.uuid, { color: m.color.getHex(), emissive: m.emissive?.getHex() ?? 0, emissiveIntensity: m.emissiveIntensity ?? 0, metalness: m.metalness ?? 0 });
+      m.color.setHex(0xffd700);
+      if (m.emissive) m.emissive.setHex(0xffaa00);
+      m.emissiveIntensity = 0.8;
+      m.metalness = 0.9;
+    } else {
+      const orig = _godOrigColors.get(obj.uuid);
+      if (orig) { m.color.setHex(orig.color); if (m.emissive) m.emissive.setHex(orig.emissive); m.emissiveIntensity = orig.emissiveIntensity; m.metalness = orig.metalness; }
+    }
+    m.needsUpdate = true;
+  });
+}
 const _debugActions = [
   { label: '💀  Kill Boss',            fn: () => { if (boss) { boss.hp = 1; } } },
   { label: '⚡  Instant Level Up',     fn: () => { queueTome(); openPendingTome(); } },
@@ -3733,7 +3752,7 @@ const _debugActions = [
   { label: '☠  Kill All Enemies',      fn: () => { seals.forEach(s => s.hp = 0); } },
   { label: '🌀  Spawn Boss Now',        fn: () => { if (!boss) spawnBoss(player.position.x + 15, player.position.z); } },
   { label: '🐱  Trigger Level 1 End',  fn: () => { triggerLevel1End(); } },
-  { label: () => _godMode ? '🛡  God Mode  [ON]' : '🛡  God Mode  [OFF]', fn: () => { _godMode = !_godMode; }, noClose: true },
+  { label: () => _godMode ? '🛡  God Mode  [ON]' : '🛡  God Mode  [OFF]', fn: () => { _godMode = !_godMode; setGodModeVisual(_godMode); }, noClose: true },
 ];
 
 function buildDebugList() {
