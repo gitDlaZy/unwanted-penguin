@@ -3937,13 +3937,40 @@ const _floodLights = [-1, 0, 1].map(i => {
 });
 
 function _setEffectOpacity(t) {
-  // t = 0..1
-  const eased = Math.min(1, t * 1.4);
-  _auraRings.forEach(r => { r.visible = true; r.material.opacity = eased * 0.85; });
-  _ghosts.forEach(g => { g.visible = true; g.userData.mat.opacity = eased * 0.55; });
-  _matterOrbs.forEach(o => { o.visible = true; o.userData.mat.opacity = eased * 0.75; });
-  _floodLights.forEach((l, i) => { l.intensity = eased * (4 + i * 1.5); });
-  scene.fog.color.setRGB(eased * 0.25, 0, eased * 0.35 + (1 - eased) * 0.1);
+  // t = 0..1 — effect is immediately visible at t=0 and grows larger + brighter over 2s
+  const base = 0.35;                       // minimum visibility from frame 1
+  const full = Math.min(1, t);
+  const opacity = base + (1 - base) * full; // 0.35 → 1.0
+
+  // Rings: visible immediately, scale up over time
+  _auraRings.forEach((r, i) => {
+    r.visible = true;
+    r.material.opacity = opacity * 0.88;
+    const s = 1.0 + full * (0.6 + i * 0.2); // grow 60–100% larger
+    r.scale.setScalar(s);
+  });
+
+  // Ghosts: appear quickly, fade in fully over 2s
+  _ghosts.forEach(g => {
+    g.visible = true;
+    g.userData.mat.opacity = opacity * 0.6;
+    const s = 0.8 + full * 0.5;
+    g.scale.setScalar(s);
+  });
+
+  // Black matter: start small and grow
+  _matterOrbs.forEach(o => {
+    o.visible = true;
+    o.userData.mat.opacity = opacity * 0.8;
+    const s = 0.5 + full * 1.2; // grows from 0.5x to 1.7x
+    o.scale.setScalar(s);
+  });
+
+  // Flood lights: immediate dim glow → blinding by end
+  _floodLights.forEach((l, i) => { l.intensity = (1 + full * 5) * (1 + i * 0.8); });
+
+  // Fog: shifts purple from the start
+  scene.fog.color.setRGB(0.05 + full * 0.22, 0, 0.08 + full * 0.3);
 }
 
 function _clearEffect() {
