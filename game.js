@@ -618,7 +618,7 @@ function updateL2Enemies(dt) {
   // Swimming animation — lay on belly, gentle wag
   if (inWater && !playerState.dead) {
     const t = Date.now() / 500;
-    penguinMesh.rotation.x += (Math.PI / 2 - penguinMesh.rotation.x) * 0.12; // smoothly tip onto belly
+    penguinMesh.rotation.x += (-Math.PI / 2 - penguinMesh.rotation.x) * 0.12; // smoothly tip onto belly
     penguinMesh.rotation.z = Math.sin(t) * 0.12; // side-to-side wag
     player.position.y = Math.sin(t * 1.2) * 0.07;
   } else if (!playerState.dead) {
