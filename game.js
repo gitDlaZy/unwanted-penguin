@@ -2465,7 +2465,6 @@ deathScreen.style.cssText = `
 document.body.appendChild(deathScreen);
 
 function showDeathScreen() {
-  if (window.bgm) { window.bgm.currentTime = 0; window.bgm.play().catch(() => {}); }
   deathScreen.innerHTML = `
     <div style="font-size:46px;font-weight:bold;letter-spacing:6px;text-shadow:0 0 30px #00aaff">YOU FROZE</div>
     <div style="font-size:15px;opacity:0.5">☠ ${killCount} kills &nbsp;|&nbsp; Level ${playerLevel}</div>
@@ -2551,7 +2550,7 @@ function showDeathScreen() {
       Object.entries(_skins).forEach(([k,[i,b]]) => document.getElementById(i).style.background = k===key ? b : 'transparent');
     });
   });
-  document.getElementById('retryBtn').addEventListener('click', () => { location.href = location.pathname + '?v=' + Date.now(); });
+  document.getElementById('retryBtn').addEventListener('click', () => { sessionStorage.setItem('bgmAutoStart','1'); location.href = location.pathname + '?v=' + Date.now(); });
   document.getElementById('howToBtn').addEventListener('click', () => {
     const el = document.getElementById('introScreen');
     if (el) { el.style.display = 'flex'; }
@@ -3954,6 +3953,7 @@ function pollGamepad() {
 
   // Start / Options / Plus — retry when dead
   if (pressed(9) && playerState.dead) {
+    sessionStorage.setItem('bgmAutoStart','1');
     location.href = location.pathname + '?v=' + Date.now();
   }
 

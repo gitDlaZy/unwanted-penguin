@@ -145,6 +145,11 @@
       sessionStorage.setItem('introShown', '1');
     }
 
+    if (sessionStorage.getItem('bgmAutoStart')) {
+      sessionStorage.removeItem('bgmAutoStart');
+      bgm.play().catch(() => {});
+    }
+
     if (sessionStorage.getItem('introShown')) {
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
