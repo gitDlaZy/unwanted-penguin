@@ -3309,6 +3309,7 @@ function updateHumans(dt) {
 
 spawnHumans();
 ensureShaggyRing(); // player starts with 1 shaggy charge
+spawnMapItem(31, 10); // single tome on the map
 
 
 // ── Touch Controls ───────────────────────────────────────────────────────────
@@ -3518,7 +3519,6 @@ window.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   if (e.key.toLowerCase() === 'o') openPendingTome();
   if (e.key.toLowerCase() === 'l') activatePowerUpBtn();
-  if (e.key.toLowerCase() === 't' && !playerState.dead) queueTome();
   if (choosingPowerUp) {
     if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft')  { puSelectedIdx = 0; puHighlight(); }
     if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') { puSelectedIdx = 1; puHighlight(); }
