@@ -3981,31 +3981,33 @@ function _clearEffect() {
   scene.fog.color.setHex(0x050d1a);
 }
 
-function checkPortalEntry() {
-  if (!portalUnlocked || playerState.dead || _portalTransitioning) return;
+function checkPortalEntry(dt) {
+  if (playerState.dead || _portalTransitioning) return;
   const dx = player.position.x - portalGroup.position.x;
   const dz = player.position.z - portalGroup.position.z;
   const inside = Math.hypot(dx, dz) < 2.2;
 
   if (!inside) {
     if (_portalEffectActive) { _clearEffect(); _portalEffectActive = false; }
-    _portalStandTimer = 0;
+    _portalStandTimer = Math.max(0, _portalStandTimer - dt * 2);
     return;
   }
 
-  _portalStandTimer += 0.016; // approx dt — updated in loop
+  // Effect always plays when inside — no unlock required
+  _portalStandTimer += dt;
   _portalEffectActive = true;
   const t = Math.min(1, _portalStandTimer / 2.0);
   _setEffectOpacity(t);
 
-  // Animate aura rings
   const now = Date.now();
+
+  // Spin aura rings
   _auraRings.forEach((r, i) => {
     r.rotation.x += 0.03 * (i % 2 === 0 ? 1 : -1);
     r.rotation.z += 0.02 * (i + 1);
   });
 
-  // Swirl ghosts inward as t increases
+  // Swirl ghosts inward
   _ghosts.forEach(g => {
     g.userData.angle += 0.008;
     const r = g.userData.radius * (1 - t * 0.4);
@@ -4019,16 +4021,16 @@ function checkPortalEntry() {
 
   // Swirl black matter around player
   _matterOrbs.forEach(o => {
-    o.userData.angle += o.userData.speed * 0.016;
-    const r = o.userData.radius;
+    o.userData.angle += o.userData.speed * dt;
     o.position.set(
-      player.position.x + Math.cos(o.userData.angle) * r,
+      player.position.x + Math.cos(o.userData.angle) * o.userData.radius,
       player.position.y + 1.5 + o.userData.yOff + Math.sin(now / 500 + o.userData.angle) * 0.5,
-      player.position.z + Math.sin(o.userData.angle) * r
+      player.position.z + Math.sin(o.userData.angle) * o.userData.radius
     );
   });
 
-  if (_portalStandTimer >= 2.0 && !_portalTransitioning) {
+  // Transition only if unlocked (boss defeated)
+  if (portalUnlocked && _portalStandTimer >= 2.0 && !_portalTransitioning) {
     _portalTransitioning = true;
     movementLockout = Infinity;
     setTimeout(() => {
@@ -4036,15 +4038,6 @@ function checkPortalEntry() {
       window.location.href = 'level2.html';
     }, 800);
   }
-}
-
-// Allow checkPortalEntry to use real dt — patch timer in loop
-function _tickPortalTimer(dt) {
-  if (!portalUnlocked || playerState.dead || _portalTransitioning) return;
-  const dx = player.position.x - portalGroup.position.x;
-  const dz = player.position.z - portalGroup.position.z;
-  if (Math.hypot(dx, dz) < 2.2) _portalStandTimer += dt;
-  else _portalStandTimer = Math.max(0, _portalStandTimer - dt * 2);
 }
 
 window.addEventListener('keydown', e => {
@@ -4370,8 +4363,7 @@ function loop() {
     d.rotation.z += 0.04;
   });
   if (_godMode) { _godRing.rotation.z += 0.04; _godRingMat.opacity = 0.4 + 0.2 * Math.sin(Date.now() / 300); }
-  _tickPortalTimer(dt);
-  checkPortalEntry();
+  checkPortalEntry(dt);
   renderer.render(scene, camera);
 }
 loop();
