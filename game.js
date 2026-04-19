@@ -4459,7 +4459,7 @@ window.addEventListener('keydown', e => {
     const px = player.position.x, pz = player.position.z;
     if (_bottlePopupOpen || _shipPopupOpen) { _bottlePopup.style.display='none'; _shipPopup.style.display='none'; _bottlePopupOpen=false; _shipPopupOpen=false; }
     else if (_l2Bottle && Math.hypot(px-_l2Bottle.x,pz-_l2Bottle.z)<3.5) {
-      document.getElementById('_bottleText').textContent = 'Brave traveller — the orca guards the ancient chest. Seek the three glowing coral pillars and strike them in order. The cold water hides what the warm world forgot.';
+      document.getElementById('_bottleText').textContent = 'Brave traveller — a key lies hidden in these waters. Find it, and the ancient chest aboard the wreck shall open. The cold depths hide what the warm world forgot.';
       _bottlePopup.style.display='block'; _bottlePopupOpen=true;
     } else {
       for (const ship of _l2Ships) {
@@ -4810,9 +4810,9 @@ function update(dt) {
     if (CURRENT_LEVEL === 2) player.position.z += playerVel.z * dt;
     else player.position.z = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.z + playerVel.z * dt));
   } else {
-    let dx = movementLockout > 0 ? 0 : touchInput.dx;
-    let dz = movementLockout > 0 ? 0 : touchInput.dz;
-    if (movementLockout <= 0) {
+    let dx = (movementLockout > 0 || _sharkDragging) ? 0 : touchInput.dx;
+    let dz = (movementLockout > 0 || _sharkDragging) ? 0 : touchInput.dz;
+    if (movementLockout <= 0 && !_sharkDragging) {
       if (keys['w'] || keys['arrowup'])    dz -= 1;
       if (keys['s'] || keys['arrowdown'])  dz += 1;
       if (keys['a'] || keys['arrowleft'])  dx -= 1;
@@ -4858,7 +4858,7 @@ function update(dt) {
       // Rotate offset into ship-local space
       const lx =  dx * Math.cos(ry) - dz * Math.sin(ry);
       const lz =  dx * Math.sin(ry) + dz * Math.cos(ry);
-      const hx = 5.4, hz = 2.8;
+      const hx = 5.0, hz = 2.5;
       if (Math.abs(lx) < hx && Math.abs(lz) < hz) {
         // Push out along shortest axis
         const ox = hx - Math.abs(lx), oz = hz - Math.abs(lz);
