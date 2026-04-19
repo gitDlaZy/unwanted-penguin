@@ -1631,7 +1631,7 @@ const playerStats = Object.assign({
   damage: 1.0, critChance: 0, attackRate: 1.0, weaponCooldown: 1.0,
   projCount: 1, projExtraChance: 0, projSize: 1.0, projSpeed: 1.0,
   maxShield: 0, shield: 0, shieldRecharge: 0, shieldDmgTimer: 0,
-  evasion: 0, lifesteal: 0, moveSpeed: 1.0, pickupRadius: 0.7,
+  evasion: 0, lifesteal: 0, moveSpeed: 1.05, pickupRadius: 0.7,
   knockback: 0, cursed: 0, boomerang: false, iframeDuration: 1.0, shaggyStacks: 0, gustOfWind: 0,
 }, _levelSave?.stats ?? {});
 
@@ -1669,7 +1669,7 @@ const TOME_DEFS = [
   { id:'evasion',    name:'Evasion Tome',          emoji:'🌀',  color:'#44ffaa', desc:'+10% dodge chance',         apply: s => { s.evasion    = Math.min(0.7, s.evasion+0.1); } },
   { id:'bloody',     name:'Bloody Tome',           emoji:'🩸',  color:'#ff4466', desc:'+20% lifesteal on hit',     apply: s => { s.lifesteal  = Math.min(1, s.lifesteal+0.2); } },
   { id:'hp',         name:'HP Tome',               emoji:'💙',  color:'#2266ff', desc:'+25 max HP',                apply: s => { s.maxShield += 1; s.shield = s.maxShield; playerState.maxHp+=25; playerState.hp+=25; updateHUD(); } },
-  { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+5% movement speed. "You obtained ADHD!"', apply: s => { s.moveSpeed *= 1.05; showAdhdMsg(); } },
+  { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+1.5% movement speed. "You obtained ADHD!"', apply: s => { s.moveSpeed *= 1.015; showAdhdMsg(); } },
   { id:'attraction', name:'Attraction Tome',       emoji:'🧲',  color:'#ffaa44', desc:'+1 pickup radius',          apply: s => { s.pickupRadius += 1; } },
   { id:'knockback',  name:'Knockback Tome',        emoji:'💥',  color:'#ff8844', desc:'+0.75 knockback on hit',    apply: s => { s.knockback  += 0.75; } },
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'+25% spawn rate, +30% enemy HP', apply:s => { s.cursed += 1; } },
