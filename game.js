@@ -217,27 +217,66 @@ function isInWater(x, z) {
 
 // ── Portal ────────────────────────────────────────────────────────────────────
 
+// ── Mage Portal ───────────────────────────────────────────────────────────────
+
 const portalGroup = new THREE.Group();
-portalGroup.position.set(56, 0, 80);
+portalGroup.position.set(35, 0, 18);
 
-// Outer ring
-const portalRingGeo = new THREE.TorusGeometry(1.6, 0.18, 16, 48);
-const portalRingMat = new THREE.MeshStandardMaterial({ color: 0xaa44ff, emissive: 0x6600cc, emissiveIntensity: 1.2, roughness: 0.2, metalness: 0.5 });
-const portalRing = new THREE.Mesh(portalRingGeo, portalRingMat);
-portalRing.rotation.x = Math.PI / 2;
-portalGroup.add(portalRing);
+const _stoneMat  = new THREE.MeshStandardMaterial({ color: 0x6677, roughness: 0.95, metalness: 0.1 });
+const _runeMat   = new THREE.MeshStandardMaterial({ color: 0x6633ff, emissive: 0x4400cc, emissiveIntensity: 1.4, roughness: 0.3 });
 
-// Inner swirl disc
-const portalDiscGeo = new THREE.CircleGeometry(1.42, 48);
-const portalDiscMat = new THREE.MeshStandardMaterial({ color: 0x3300aa, emissive: 0x5500ff, emissiveIntensity: 0.9, transparent: true, opacity: 0.72, side: THREE.DoubleSide });
-const portalDisc = new THREE.Mesh(portalDiscGeo, portalDiscMat);
-portalDisc.rotation.x = Math.PI / 2;
+// Stone arch — two pillars + curved top (half-torus)
+const pillarGeo  = new THREE.CylinderGeometry(0.22, 0.26, 4.2, 8);
+const pillarL    = new THREE.Mesh(pillarGeo, _stoneMat);
+const pillarR    = new THREE.Mesh(pillarGeo, _stoneMat);
+pillarL.position.set(-1.3, 2.1, 0);
+pillarR.position.set( 1.3, 2.1, 0);
+portalGroup.add(pillarL, pillarR);
+
+// Arch top — half torus
+const archGeo  = new THREE.TorusGeometry(1.3, 0.22, 8, 24, Math.PI);
+const arch     = new THREE.Mesh(archGeo, _stoneMat);
+arch.position.set(0, 4.2, 0);
+arch.rotation.z = Math.PI; // flat side down
+portalGroup.add(arch);
+
+// Rune blocks along pillars
+[-1.5, 0.5, 2.5].forEach(y => {
+  [-1.3, 1.3].forEach(x => {
+    const r = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), _runeMat);
+    r.position.set(x, y + 1.1, 0.24);
+    portalGroup.add(r);
+  });
+});
+
+// Energy disc — vertical, two layers for depth
+const portalDiscMat = new THREE.MeshStandardMaterial({ color: 0x2200aa, emissive: 0x5500ff, emissiveIntensity: 1.1, transparent: true, opacity: 0.78, side: THREE.DoubleSide });
+const portalDisc    = new THREE.Mesh(new THREE.CircleGeometry(1.28, 64), portalDiscMat);
+portalDisc.position.z = 0.01;
 portalGroup.add(portalDisc);
 
+// Shimmer layer — slightly larger, contrasting hue
+const shimmerMat  = new THREE.MeshStandardMaterial({ color: 0x0033ff, emissive: 0x0066ff, emissiveIntensity: 0.7, transparent: true, opacity: 0.32, side: THREE.DoubleSide });
+const portalShimmer = new THREE.Mesh(new THREE.CircleGeometry(1.28, 32), shimmerMat);
+portalShimmer.position.z = -0.01;
+portalGroup.add(portalShimmer);
+
+// Outer ring frame
+const portalRingMat = new THREE.MeshStandardMaterial({ color: 0x8844ff, emissive: 0x6600cc, emissiveIntensity: 1.5, roughness: 0.2, metalness: 0.6 });
+const portalRing    = new THREE.Mesh(new THREE.TorusGeometry(1.28, 0.1, 12, 48), portalRingMat);
+portalGroup.add(portalRing);
+
 // Glow light
-const portalLight = new THREE.PointLight(0xaa44ff, 2.5, 12);
-portalLight.position.set(0, 1, 0);
+const portalLight = new THREE.PointLight(0x6633ff, 3.5, 18);
+portalLight.position.set(0, 2.1, 0.5);
 portalGroup.add(portalLight);
+
+// Base stones
+[-0.9, 0, 0.9].forEach(x => {
+  const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5), _stoneMat);
+  b.position.set(x, 0.09, 0);
+  portalGroup.add(b);
+});
 
 scene.add(portalGroup);
 
@@ -4079,8 +4118,9 @@ function loop() {
   pollGamepad();
   update(dt);
   if (spooksNPC) spooksNPC.position.y = 0.30 + 0.18 * Math.sin(Date.now() / 500);
-  portalDisc.rotation.z += 0.012;
-  portalLight.intensity = 2.0 + 0.6 * Math.sin(Date.now() / 400);
+  portalDisc.rotation.z    += 0.018;
+  portalShimmer.rotation.z -= 0.009;
+  portalLight.intensity = 3.0 + 0.8 * Math.sin(Date.now() / 350);
   if (_godMode) { _godRing.rotation.z += 0.04; _godRingMat.opacity = 0.4 + 0.2 * Math.sin(Date.now() / 300); }
   renderer.render(scene, camera);
 }
