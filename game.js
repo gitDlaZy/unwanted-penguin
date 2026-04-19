@@ -42,9 +42,9 @@ document.body.appendChild(renderer.domElement);
 
 // ── Lighting ──────────────────────────────────────────────────────────────────
 
-scene.add(new THREE.AmbientLight(0x2255aa, 0.6));
+scene.add(new THREE.AmbientLight(0x3366bb, 1.1));
 
-const sun = new THREE.DirectionalLight(0xaaddff, 1.4);
+const sun = new THREE.DirectionalLight(0xccddff, 2.2);
 sun.position.set(15, 30, 10);
 sun.castShadow = true;
 sun.shadow.mapSize.set(1024, 1024);
@@ -435,13 +435,8 @@ if (CURRENT_LEVEL === 2) {
   }
 
   // Sharks
-  const _shMat = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.7 });
-  const _shFin = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.75 });
   for (let i = 0; i < 5; i++) {
-    const sg = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.08,1.6,6),_shMat); body.rotation.z=Math.PI/2; sg.add(body);
-    const fin  = new THREE.Mesh(new THREE.ConeGeometry(0.14,0.42,4),_shFin); fin.position.set(0,0.32,0); fin.rotation.z=0.15; sg.add(fin);
-    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.18,0.38,4),_shFin); tail.position.set(-0.85,0.12,0); tail.rotation.z=Math.PI/2; sg.add(tail);
+    const sg = buildShark();
     sg.position.set((Math.random()-0.5)*80, 0.12, (Math.random()-0.5)*80);
     scene.add(sg);
     const sw1 = _l2Ships[Math.floor(Math.random()*_l2Ships.length)];
@@ -871,6 +866,68 @@ function buildWizardCat() {
   });
 
   return g;
+}
+
+function buildShark() {
+  const sg = new THREE.Group();
+  const bodyMat  = new THREE.MeshStandardMaterial({ color: 0x2d5566, roughness: 0.55, metalness: 0.1 });
+  const bellyMat = new THREE.MeshStandardMaterial({ color: 0xcce8f0, roughness: 0.5 });
+  const finMat   = new THREE.MeshStandardMaterial({ color: 0x1e4455, roughness: 0.6 });
+  const eyeMat   = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+  // Torpedo body
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 7), bodyMat);
+  body.scale.set(3.0, 0.85, 1.0);
+  sg.add(body);
+
+  // Snout
+  const snout = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.45, 6), bodyMat);
+  snout.rotation.z = -Math.PI / 2;
+  snout.position.set(0.82, -0.04, 0);
+  sg.add(snout);
+
+  // Belly — lighter underside
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 5), bellyMat);
+  belly.scale.set(2.6, 0.38, 0.85);
+  belly.position.set(0.05, -0.1, 0);
+  sg.add(belly);
+
+  // Dorsal fin — tall and prominent
+  const dorsal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.55, 0.06), finMat);
+  dorsal.position.set(0.1, 0.38, 0);
+  dorsal.rotation.z = 0.12;
+  sg.add(dorsal);
+
+  // Tail — forked upper and lower lobe
+  const tailUp = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.07, 0.07), finMat);
+  tailUp.position.set(-0.8, 0.18, 0);
+  tailUp.rotation.z = -0.5;
+  sg.add(tailUp);
+  const tailDn = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.06, 0.06), finMat);
+  tailDn.position.set(-0.8, -0.08, 0);
+  tailDn.rotation.z = 0.4;
+  sg.add(tailDn);
+
+  // Pectoral fins — swept back on each side
+  const pecGeo = new THREE.BoxGeometry(0.52, 0.05, 0.26);
+  const lFin = new THREE.Mesh(pecGeo, finMat);
+  lFin.position.set(0.18, -0.1, 0.32);
+  lFin.rotation.z = -0.25; lFin.rotation.y = -0.3;
+  sg.add(lFin);
+  const rFin = new THREE.Mesh(pecGeo, finMat);
+  rFin.position.set(0.18, -0.1, -0.32);
+  rFin.rotation.z = -0.25; rFin.rotation.y = 0.3;
+  sg.add(rFin);
+
+  // Eyes
+  const lEye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), eyeMat);
+  lEye.position.set(0.6, 0.08, 0.19);
+  sg.add(lEye);
+  const rEye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), eyeMat);
+  rEye.position.set(0.6, 0.08, -0.19);
+  sg.add(rEye);
+
+  return sg;
 }
 
 function buildSeal() {
@@ -4177,6 +4234,7 @@ function checkPortalEntry(dt) {
   // Effect always plays when inside — no unlock required
   _portalStandTimer += dt;
   _portalEffectActive = true;
+  playerState.iframes = Math.max(playerState.iframes, 0.2); // invulnerable during 2s portal wait
   const t = Math.min(1, _portalStandTimer / 2.0);
   _setEffectOpacity(t);
 
