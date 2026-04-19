@@ -441,18 +441,21 @@ if (CURRENT_LEVEL === 2) {
     _l2Jellyfish.push({ mesh: jg, x: jx, z: jz, angle: Math.random()*Math.PI*2, speed: 0.3+Math.random()*0.2 });
   }
 
-  // Sharks
-  for (let i = 0; i < 5; i++) {
+  // Sharks — spread across the whole water area, idle in lazy circles
+  for (let i = 0; i < 14; i++) {
+    let sx, sz, tries = 0;
+    do { sx=(Math.random()-0.5)*140; sz=(Math.random()-0.5)*120; tries++; }
+    while (_l2OnIce(sx, sz) && tries < 30);
     const sg = buildShark();
-    sg.position.set((Math.random()-0.5)*80, 0.12, (Math.random()-0.5)*80);
+    sg.position.set(sx, 0.12, sz);
     scene.add(sg);
-    const sw1 = _l2Ships[Math.floor(Math.random()*_l2Ships.length)];
-    const sw2 = _l2Ships[Math.floor(Math.random()*_l2Ships.length)];
     _l2Sharks.push({
       mesh: sg,
-      patrolA: new THREE.Vector3(sw1.position.x+(Math.random()-0.5)*12, 0.12, sw1.position.z+(Math.random()-0.5)*12),
-      patrolB: new THREE.Vector3(sw2.position.x+(Math.random()-0.5)*12, 0.12, sw2.position.z+(Math.random()-0.5)*12),
-      target: 0, speed: 5.5+Math.random()*2, hp: 120,
+      idleX: sx, idleZ: sz,           // centre of idle circle
+      idleAngle: Math.random()*Math.PI*2,
+      idleRadius: 4 + Math.random()*6,
+      speed: 5.5 + Math.random()*2, hp: 120,
+      chasing: false,
     });
   }
 
@@ -546,23 +549,33 @@ function updateL2Enemies(dt) {
   _l2Sharks.forEach(sh => {
     const pdx = px - sh.mesh.position.x, pdz = pz - sh.mesh.position.z;
     const pdist = Math.hypot(pdx, pdz);
-    sh.chasing = inWater && pdist < 18;
-    let tx, tz, spd;
-    if (sh.chasing) { tx=px; tz=pz; spd=sh.speed; }
-    else {
-      const pt=sh.target===0?sh.patrolA:sh.patrolB; tx=pt.x; tz=pt.z; spd=3.5;
-      if(Math.hypot(sh.mesh.position.x-tx,sh.mesh.position.z-tz)<2) sh.target^=1;
+    sh.chasing = inWater && pdist < 20;
+
+    let nx, nz;
+    if (sh.chasing) {
+      const sdx=pdx, sdz=pdz, sdist=pdist;
+      if (sdist > 0.5) {
+        nx = sh.mesh.position.x + (sdx/sdist)*sh.speed*dt;
+        nz = sh.mesh.position.z + (sdz/sdist)*sh.speed*dt;
+      }
+      sh.mesh.rotation.y = Math.atan2(-(pz - sh.mesh.position.z), px - sh.mesh.position.x);
+    } else {
+      // Lazy idle circle around spawn point
+      sh.idleAngle += 0.35 * dt;
+      const tx = sh.idleX + Math.cos(sh.idleAngle) * sh.idleRadius;
+      const tz = sh.idleZ + Math.sin(sh.idleAngle) * sh.idleRadius;
+      const sdx=tx-sh.mesh.position.x, sdz=tz-sh.mesh.position.z, sdist=Math.hypot(sdx,sdz);
+      if (sdist > 0.3) {
+        nx = sh.mesh.position.x + (sdx/sdist)*2.5*dt;
+        nz = sh.mesh.position.z + (sdz/sdist)*2.5*dt;
+      }
+      sh.mesh.rotation.y = Math.atan2(-(tz - sh.mesh.position.z), tx - sh.mesh.position.x);
     }
-    const sdx=tx-sh.mesh.position.x, sdz=tz-sh.mesh.position.z, sdist=Math.hypot(sdx,sdz);
-    if (sdist > 0.5) {
-      const nx = sh.mesh.position.x + (sdx/sdist)*spd*dt;
-      const nz = sh.mesh.position.z + (sdz/sdist)*spd*dt;
-      // Sharks stay in water — don't move onto ice/beach
-      if (!_l2OnIce(nx, nz)) { sh.mesh.position.x = nx; sh.mesh.position.z = nz; }
-    }
-    sh.mesh.rotation.y = Math.atan2(-(pz - sh.mesh.position.z), px - sh.mesh.position.x);
+
+    if (nx !== undefined && !_l2OnIce(nx, nz)) { sh.mesh.position.x = nx; sh.mesh.position.z = nz; }
     sh.mesh.position.y = 0.12 + Math.sin(Date.now()/600+sh.mesh.position.x)*0.04;
-    // Bite → start drag instead of instant damage
+
+    // Bite → start drag
     if (sh.chasing && pdist < 1.2 && playerState.iframes <= 0 && !_sharkDragging) {
       _sharkDragging = true; _dragShark = sh; _dragBreakCount = 0;
     }
