@@ -331,13 +331,7 @@ const _l2IcePlatforms = []; // { x, z, r }
 const _l2Jellyfish = [];
 const _l2Sharks = [];
 let   _l2JellySlowTimer = 0;
-const _l2SharkAlertEl = (() => {
-  const el = document.createElement('div');
-  el.style.cssText = 'display:none;position:fixed;top:45%;left:50%;transform:translate(-50%,-50%);font-family:monospace;font-size:32px;color:#ff3300;text-shadow:0 0 16px #ff0000;pointer-events:none;z-index:9999';
-  el.textContent = '🦈 SHARK!';
-  document.body.appendChild(el);
-  return el;
-})();
+const _l2SharkAlertEl = { style: { display: '' } }; // removed shark alert
 const _l2ClueEl = (() => {
   const el = document.createElement('div');
   el.style.cssText = 'display:none;position:fixed;bottom:50px;left:50%;transform:translateX(-50%);background:rgba(10,5,0,0.88);border:2px solid #aa8833;border-radius:10px;padding:14px 28px;font-family:monospace;font-size:15px;color:#f0d080;text-shadow:0 0 6px #aa7700;pointer-events:none;z-index:9999;text-align:center;max-width:460px';
