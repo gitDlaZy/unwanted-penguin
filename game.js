@@ -405,7 +405,7 @@ function buildHumanPlayer() {
   const g = new THREE.Group();
   g.rotation.y = Math.PI;
   const skin    = new THREE.MeshStandardMaterial({ color: 0xffcc99, roughness: 0.7 });
-  const shirt   = new THREE.MeshStandardMaterial({ color: 0x3a9a3a, roughness: 0.8 });
+  const shirt   = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
   const pants   = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 });
   const gunMat  = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4, metalness: 0.8 });
   const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9 });
@@ -427,6 +427,20 @@ function buildHumanPlayer() {
   chest.position.y = 1.2; g.add(chest);
   const waist = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.3), shirt);
   waist.position.y = 0.98; g.add(waist);
+
+  // Penguin logo on chest
+  const logoWhite  = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 });
+  const logoOrange = new THREE.MeshStandardMaterial({ color: 0xff8800, roughness: 0.8 });
+  const logoBlack  = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.8 });
+  // Body
+  const pb = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8), logoBlack);
+  pb.scale.set(1, 1.3, 0.5); pb.position.set(-0.1, 1.22, -0.175); g.add(pb);
+  // Belly
+  const pby = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 8), logoWhite);
+  pby.scale.set(1, 1.2, 0.6); pby.position.set(-0.1, 1.20, -0.183); g.add(pby);
+  // Beak
+  const pbk = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.04, 6), logoOrange);
+  pbk.rotation.x = Math.PI / 2; pbk.position.set(-0.1, 1.305, -0.182); g.add(pbk);
 
   // Neck
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.16, 8), skin);
