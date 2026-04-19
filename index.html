@@ -93,9 +93,9 @@
 
     <div style="font-size:13px;color:#44aaff;letter-spacing:2px;margin-bottom:14px">CHOOSE YOUR CHARACTER</div>
     <div style="display:flex;gap:16px;margin-bottom:28px" id="skinButtons">
-      <button id="introSkinNormal" onclick="introSelectSkin('normal')" style="background:#1a3a5a;border:2px solid #44aaff;color:#aee8ff;font-family:monospace;font-size:14px;padding:10px 24px;cursor:pointer;border-radius:6px;letter-spacing:1px">🐧 CLASSIC</button>
-      <button id="introSkinEvil"   onclick="introSelectSkin('evil')"   style="background:transparent;border:2px solid #ff4444;color:#ffaaaa;font-family:monospace;font-size:14px;padding:10px 24px;cursor:pointer;border-radius:6px;letter-spacing:1px">😈 EVIL</button>
-      <button id="introSkinHuman"  onclick="introSelectSkin('human')"  style="background:transparent;border:2px solid #3a9a3a;color:#aaffaa;font-family:monospace;font-size:14px;padding:10px 24px;cursor:pointer;border-radius:6px;letter-spacing:1px">🧍 HUMAN</button>
+      <button id="introSkinNormal" onclick="introSelectSkin('normal')" onpointerdown="event.stopPropagation()" style="background:#1a3a5a;border:2px solid #44aaff;color:#aee8ff;font-family:monospace;font-size:14px;padding:10px 24px;cursor:pointer;border-radius:6px;letter-spacing:1px">🐧 CLASSIC</button>
+      <button id="introSkinEvil"   onclick="introSelectSkin('evil')"   onpointerdown="event.stopPropagation()" style="background:transparent;border:2px solid #ff4444;color:#ffaaaa;font-family:monospace;font-size:14px;padding:10px 24px;cursor:pointer;border-radius:6px;letter-spacing:1px">😈 EVIL</button>
+      <button id="introSkinHuman"  onclick="introSelectSkin('human')"  onpointerdown="event.stopPropagation()" style="background:transparent;border:2px solid #3a9a3a;color:#aaffaa;font-family:monospace;font-size:14px;padding:10px 24px;cursor:pointer;border-radius:6px;letter-spacing:1px">🧍 HUMAN</button>
     </div>
 
     <div style="font-size:15px;color:#aee8ff;letter-spacing:3px;animation:pulse 1.2s ease-in-out infinite">PRESS ANY KEY TO START</div>
@@ -109,8 +109,13 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script>
-    // Preselect classic on load
+    // Preselect classic on load; strip any wizard-cheat skin from sessionStorage
     if (!localStorage.getItem('playerSkin')) localStorage.setItem('playerSkin', 'normal');
+    const _existingSave = JSON.parse(sessionStorage.getItem('levelProgress') || 'null');
+    if (_existingSave?.activeSkinVal === 'wizard') {
+      _existingSave.activeSkinVal = localStorage.getItem('playerSkin') || 'normal';
+      sessionStorage.setItem('levelProgress', JSON.stringify(_existingSave));
+    }
 
     const _skinColors = { normal:'#1a3a5a', evil:'#3a1a1a', human:'#1a3a1a' };
     const _skinBorders = { normal:'#44aaff', evil:'#ff4444', human:'#3a9a3a' };
