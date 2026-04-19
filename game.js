@@ -3669,8 +3669,8 @@ window.addEventListener('keydown', e => {
     penguinMesh.add(buildWizardCat());
     activeSkin = 'wizard';
   }
-  // Ctrl+Shift+Numpad6+Numpad7 → debug menu
-  if (e.ctrlKey && e.shiftKey && keys['6'] && keys['7'] && (e.code === 'Numpad6' || e.code === 'Numpad7')) { e.preventDefault(); toggleDebugMenu(); }
+  // Ctrl+Shift+6+7 → debug menu
+  if (e.ctrlKey && e.shiftKey && keys['6'] && keys['7'] && (e.code === 'Digit6' || e.code === 'Digit7')) { e.preventDefault(); toggleDebugMenu(); }
   const typing = document.activeElement?.id === 'nameInput';
   if (!typing) resumeGame();
 });
@@ -3687,7 +3687,7 @@ const _debugOverlay = (() => {
     <div style="background:#0a0f1e;border:2px solid #44aaff;border-radius:12px;padding:24px 36px;font-family:monospace;color:#aee8ff;min-width:320px">
       <div style="font-size:18px;letter-spacing:3px;color:#44aaff;margin-bottom:18px;text-align:center">⚙ DEBUG MENU</div>
       <div id="_dbgList" style="display:flex;flex-direction:column;gap:10px"></div>
-      <div style="margin-top:18px;font-size:11px;color:#446688;text-align:center">Ctrl+Shift+Num6+Num7 or ESC to close</div>
+      <div style="margin-top:18px;font-size:11px;color:#446688;text-align:center">Ctrl+Shift+6+7 or ESC to close</div>
     </div>`;
   document.body.appendChild(el);
   el.addEventListener('click', e => { if (e.target === el) closeDebugMenu(); });
