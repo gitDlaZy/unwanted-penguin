@@ -140,16 +140,16 @@
     // ── Audio system ─────────────────────────────────────────────────────────────
     const _vol = parseFloat(localStorage.getItem('bgmVolume') ?? '0.4');
 
-    const _introTrack = new Audio('sounds/Gavel%20Penguin%20Intro.mp3');
+    const _introTrack = new Audio('sounds/BGM/Gavel%20Penguin%20Intro.mp3');
     _introTrack.loop   = true;
     _introTrack.volume = _vol;
 
     const _playlist = [
-      'sounds/Gavel%20Penguin.mp3',
-      'sounds/Penguin%20Glitch-Quest%20Adventure.mp3',
-      'sounds/Penguin%20Glitch-Quest.mp3',
-      'sounds/Penguin%20Glockspiel.mp3',
-      'sounds/Penguin%20Glockspiel2.mp3',
+      'sounds/BGM/Gavel%20Penguin.mp3',
+      'sounds/BGM/Penguin%20Glitch-Quest%20Adventure.mp3',
+      'sounds/BGM/Penguin%20Glitch-Quest.mp3',
+      'sounds/BGM/Penguin%20Glockspiel.mp3',
+      'sounds/BGM/Penguin%20Glockspiel2.mp3',
     ];
     let _trackIdx = 0, _shuffled = [];
     function _shufflePlaylist() { _shuffled = _playlist.slice().sort(() => Math.random() - 0.5); _trackIdx = 0; }
