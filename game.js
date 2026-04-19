@@ -1559,7 +1559,7 @@ function triggerLevel1End() {
       'Hello myauw fellow traveler',
       'Thanks for killing Krilly *purr*',
       'You pleasantly suprised me',
-      '.... pssst,',
+      '.... pssst',
       'I\'ve found a portal somewhere near the water',
       'No clue where it leads, maybe you should check it out',
       'Good luck traveler!',
