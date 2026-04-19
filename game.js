@@ -3931,15 +3931,15 @@ function pollGamepad() {
 
   // On-screen keyboard navigation
   if (oskOpen) {
-    const maxCol = OSK_KEYS[oskRow].filter(k => k).length - 1;
-    if (pressed(12)) { oskRow = Math.max(0, oskRow - 1); renderOSK(); }            // D-up
-    if (pressed(13)) { oskRow = Math.min(OSK_KEYS.length-1, oskRow+1); renderOSK(); } // D-down
-    if (pressed(14)) { oskCol = Math.max(0, oskCol - 1); renderOSK(); }            // D-left
-    if (pressed(15)) { const rowLen = OSK_KEYS[oskRow].filter(k=>k).length; oskCol = Math.min(rowLen-1, oskCol+1); renderOSK(); } // D-right
-    if (pressed(0))  oskConfirm();   // A — select key
-    if (pressed(1))  { const input = document.getElementById('nameInput'); if(input) input.value=input.value.slice(0,-1); renderOSK(); } // B — backspace
-    if (pressed(9))  closeOSK();     // Start — confirm
-    return; // block other gamepad actions while OSK is open
+    if (pressed(12)) { oskRow = Math.max(0, oskRow - 1); renderOSK(); }
+    if (pressed(13)) { oskRow = Math.min(OSK_KEYS.length-1, oskRow+1); renderOSK(); }
+    if (pressed(14)) { oskCol = Math.max(0, oskCol - 1); renderOSK(); }
+    if (pressed(15)) { const rowLen = OSK_KEYS[oskRow].filter(k=>k).length; oskCol = Math.min(rowLen-1, oskCol+1); renderOSK(); }
+    if (pressed(0))  oskConfirm();
+    if (pressed(1))  { const input = document.getElementById('nameInput'); if(input) input.value=input.value.slice(0,-1); renderOSK(); }
+    if (pressed(9))  closeOSK();
+    gp.buttons.forEach((b, i) => { _gpPrev[i] = b.pressed; }); // must update before return
+    return;
   }
 
   // Any button — dismiss intro screen
