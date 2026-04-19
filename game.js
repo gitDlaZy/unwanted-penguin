@@ -336,6 +336,14 @@ const _l2Crabs    = [];
 const _l2Currents = [];
 let   _l2Bottle   = null;
 const _l2BeachPirates = [];
+// Shark drag state
+let _sharkDragging  = false;
+let _dragShark      = null;
+let _dragBreakCount = 0;
+const DRAG_BREAKS_NEEDED = 6; // jump presses to escape
+const L2_SOUTH_DANGER = 75;   // z > this → strong current toward death
+const L2_KILL_BORDER  = 100;  // z > this → die
+const L2_NORTH_LIMIT  = -115; // z < this → can't go further north
 let   _l2JellySlowTimer = 0;
 const _l2SharkAlertEl = { style: { display: '' } }; // removed shark alert
 const _l2ClueEl = (() => {
@@ -499,13 +507,24 @@ function updateL2Enemies(dt) {
     const pdist = Math.hypot(pdx, pdz);
     sh.chasing = inWater && pdist < 18;
     let tx, tz, spd;
-    if (sh.chasing) { tx=px; tz=pz; spd=sh.speed; if(pdist<18) sharkNear=true; }
-    else { const pt=sh.target===0?sh.patrolA:sh.patrolB; tx=pt.x; tz=pt.z; spd=3.5; if(Math.hypot(sh.mesh.position.x-tx,sh.mesh.position.z-tz)<2) sh.target^=1; }
+    if (sh.chasing) { tx=px; tz=pz; spd=sh.speed; }
+    else {
+      const pt=sh.target===0?sh.patrolA:sh.patrolB; tx=pt.x; tz=pt.z; spd=3.5;
+      if(Math.hypot(sh.mesh.position.x-tx,sh.mesh.position.z-tz)<2) sh.target^=1;
+    }
     const sdx=tx-sh.mesh.position.x, sdz=tz-sh.mesh.position.z, sdist=Math.hypot(sdx,sdz);
-    if(sdist>0.5){ sh.mesh.position.x+=(sdx/sdist)*spd*dt; sh.mesh.position.z+=(sdz/sdist)*spd*dt; }
+    if (sdist > 0.5) {
+      const nx = sh.mesh.position.x + (sdx/sdist)*spd*dt;
+      const nz = sh.mesh.position.z + (sdz/sdist)*spd*dt;
+      // Sharks stay in water — don't move onto ice/beach
+      if (!_l2OnIce(nx, nz)) { sh.mesh.position.x = nx; sh.mesh.position.z = nz; }
+    }
     sh.mesh.rotation.y = Math.atan2(-(pz - sh.mesh.position.z), px - sh.mesh.position.x);
-    sh.mesh.position.y=0.12+Math.sin(Date.now()/600+sh.mesh.position.x)*0.04;
-    if(sh.chasing && pdist<1.2 && playerState.iframes<=0) damagePlayer(35);
+    sh.mesh.position.y = 0.12 + Math.sin(Date.now()/600+sh.mesh.position.x)*0.04;
+    // Bite → start drag instead of instant damage
+    if (sh.chasing && pdist < 1.2 && playerState.iframes <= 0 && !_sharkDragging) {
+      _sharkDragging = true; _dragShark = sh; _dragBreakCount = 0;
+    }
   });
   _l2SharkAlertEl.style.display = sharkNear ? 'block' : 'none';
 
@@ -517,19 +536,21 @@ function updateL2Enemies(dt) {
   if(nearClue){ document.getElementById('_l2ClueText').textContent=nearClue; _l2ClueEl.style.display='block'; }
   else _l2ClueEl.style.display='none';
 
-  // Orcas
+  // Orcas — water only
   _l2Orcas.forEach(o => {
     const odx = px - o.mesh.position.x, odz = pz - o.mesh.position.z;
     const odist = Math.hypot(odx, odz);
     o.chasing = inWater && odist < 24;
     if (o.chasing) {
-      o.mesh.position.x += (odx/odist) * o.speed * dt;
-      o.mesh.position.z += (odz/odist) * o.speed * dt;
+      const nx = o.mesh.position.x + (odx/odist) * o.speed * dt;
+      const nz = o.mesh.position.z + (odz/odist) * o.speed * dt;
+      if (!_l2OnIce(nx, nz)) { o.mesh.position.x = nx; o.mesh.position.z = nz; }
       if (odist < 1.6 && playerState.iframes <= 0) damagePlayer(55);
     } else {
       o.patrolAngle += 0.3 * dt;
-      o.mesh.position.x += Math.cos(o.patrolAngle) * 2.5 * dt;
-      o.mesh.position.z += Math.sin(o.patrolAngle) * 2.5 * dt;
+      const nx = o.mesh.position.x + Math.cos(o.patrolAngle) * 2.5 * dt;
+      const nz = o.mesh.position.z + Math.sin(o.patrolAngle) * 2.5 * dt;
+      if (!_l2OnIce(nx, nz)) { o.mesh.position.x = nx; o.mesh.position.z = nz; }
     }
     o.mesh.rotation.y = Math.atan2(-(pz - o.mesh.position.z), px - o.mesh.position.x);
     o.mesh.position.y = 0.18 + Math.sin(Date.now() / 700 + o.patrolAngle) * 0.05;
@@ -541,8 +562,8 @@ function updateL2Enemies(dt) {
     if (c.timer <= 0) { c.angle = Math.random() * Math.PI * 2; c.timer = 1.5 + Math.random() * 2; }
     c.mesh.position.x += Math.cos(c.angle) * c.speed * dt;
     c.mesh.position.z += Math.sin(c.angle) * c.speed * dt;
-    c.mesh.position.x = Math.max(-38, Math.min(38, c.mesh.position.x));
-    c.mesh.position.z = Math.max(-87, Math.min(-62, c.mesh.position.z));
+    c.mesh.position.x = Math.max(-68, Math.min(68, c.mesh.position.x));
+    c.mesh.position.z = Math.max(-113, Math.min(-65, c.mesh.position.z));
     c.mesh.rotation.y = c.angle;
     c.mesh.position.y = 0.05 + Math.abs(Math.sin(Date.now() / 200 + c.angle)) * 0.02;
   });
@@ -566,6 +587,45 @@ function updateL2Enemies(dt) {
   }
   _interactPrompt.style.display = showInteract ? 'block' : 'none';
   if (showInteract) _interactPrompt.textContent = showInteract;
+
+  // Shark drag — pull toward south, 10% HP/sec, break with jump spam
+  if (_sharkDragging && _dragShark) {
+    if (!playerState.dead) {
+      _dragHUD.style.display = 'block';
+      _dragHUD.textContent = `🦈 DRAGGING! SPAM JUMP TO ESCAPE (${_dragBreakCount}/${DRAG_BREAKS_NEEDED})`;
+      player.position.z += 5.5 * dt;
+      player.position.x += (_dragShark.mesh.position.x - player.position.x) * 0.3 * dt;
+      _dragShark.mesh.position.x = player.position.x;
+      _dragShark.mesh.position.z = player.position.z + 0.9;
+      if (playerState.iframes <= 0) playerState.hp = Math.max(1, playerState.hp - playerState.maxHp * 0.10 * dt);
+      updateHUD();
+      if (_dragBreakCount >= DRAG_BREAKS_NEEDED) { _sharkDragging = false; _dragShark = null; playerState.iframes = 1.5; _dragHUD.style.display = 'none'; }
+    } else { _sharkDragging = false; _dragShark = null; _dragHUD.style.display = 'none'; }
+  } else { _dragHUD.style.display = 'none'; }
+
+  // North wall (can't go past beach)
+  if (player.position.z < L2_NORTH_LIMIT) player.position.z = L2_NORTH_LIMIT;
+
+  // South current — drag toward border
+  if (player.position.z > L2_SOUTH_DANGER && !_l2OnIce(px, pz)) {
+    const strength = Math.min(1, (player.position.z - L2_SOUTH_DANGER) / 20) * 6;
+    player.position.z += strength * dt;
+  }
+
+  // Border death
+  if (player.position.z > L2_KILL_BORDER && !playerState.dead) killPlayer();
+
+  // Swimming animation — bob and roll in water
+  if (inWater && !playerState.dead) {
+    const t = Date.now() / 400;
+    penguinMesh.rotation.z = Math.sin(t) * 0.18;
+    penguinMesh.rotation.x = Math.sin(t * 0.7) * 0.1;
+    player.position.y = Math.sin(t * 1.1) * 0.08;
+  } else if (!playerState.dead) {
+    penguinMesh.rotation.z += (-penguinMesh.rotation.z) * 0.2;
+    penguinMesh.rotation.x += (-penguinMesh.rotation.x) * 0.2;
+    player.position.y = 0;
+  }
 }
 
 // ── Falling Snow ──────────────────────────────────────────────────────────────
@@ -1026,6 +1086,13 @@ const _interactPrompt = (() => {
   return el;
 })();
 let _shipPopupOpen = false, _bottlePopupOpen = false;
+const _dragHUD = (() => {
+  const el = document.createElement('div');
+  el.style.cssText = 'display:none;position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:18px;color:#ff4422;text-shadow:0 0 12px #ff2200;pointer-events:none;z-index:9999;text-align:center;letter-spacing:2px';
+  el.textContent = '🦈 DRAGGING! SPAM JUMP TO ESCAPE';
+  document.body.appendChild(el);
+  return el;
+})();
 
 function buildOrca() {
   const g = new THREE.Group();
@@ -1159,29 +1226,31 @@ function buildBeachL2() {
   const sandMat  = new THREE.MeshStandardMaterial({ color: 0xd4b06a, roughness: 0.95 });
   const waterLineMat = new THREE.MeshStandardMaterial({ color: 0x4499bb, transparent: true, opacity: 0.45, roughness: 0.1 });
 
-  // Main sand plane
-  const sand = new THREE.Mesh(new THREE.PlaneGeometry(80, 28), sandMat);
+  // Main sand plane — wide and deep
+  const sand = new THREE.Mesh(new THREE.PlaneGeometry(140, 55), sandMat);
   sand.rotation.x = -Math.PI / 2;
-  sand.position.set(0, 0.01, -74);
+  sand.position.set(0, 0.01, -88);
   scene.add(sand);
-  _l2IcePlatforms.push({ x: 0, z: -74, r: 40 });
+  _l2IcePlatforms.push({ x:  0,  z: -88, r: 70 });
+  _l2IcePlatforms.push({ x: -50, z: -88, r: 30 });
+  _l2IcePlatforms.push({ x:  50, z: -88, r: 30 });
 
   // Shallow water edge
-  const shallows = new THREE.Mesh(new THREE.PlaneGeometry(80, 8), waterLineMat);
+  const shallows = new THREE.Mesh(new THREE.PlaneGeometry(140, 12), waterLineMat);
   shallows.rotation.x = -Math.PI / 2;
-  shallows.position.set(0, 0.02, -59);
+  shallows.position.set(0, 0.02, -63);
   scene.add(shallows);
 
   // Sand dunes
-  for (let i = 0; i < 10; i++) {
-    const dune = new THREE.Mesh(new THREE.SphereGeometry(1.8 + Math.random() * 0.8, 8, 5), sandMat);
+  for (let i = 0; i < 18; i++) {
+    const dune = new THREE.Mesh(new THREE.SphereGeometry(1.8 + Math.random() * 1.2, 8, 5), sandMat);
     dune.scale.y = 0.28;
-    dune.position.set((Math.random() - 0.5) * 70, 0.18, -70 - Math.random() * 14);
+    dune.position.set((Math.random() - 0.5) * 120, 0.18, -72 - Math.random() * 30);
     scene.add(dune);
   }
 
   // Pirates (3 static figures using buildHuman with pirate palette — just placed standing)
-  const _piratePoses = [[-18, -72], [0, -76], [22, -73]];
+  const _piratePoses = [[-30, -80], [-10, -85], [24, -78], [44, -90], [-50, -86]];
   _piratePoses.forEach(([px, pz]) => {
     const p = buildHumanPlayer();
     p.scale.setScalar(0.9);
@@ -1198,12 +1267,12 @@ function buildBeachL2() {
   _l2Bottle = { mesh: bot, x: 8, z: -67 };
 
   // Crabs
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 10; i++) {
     const c = buildCrab();
-    const cx = (Math.random() - 0.5) * 60;
-    const cz = -63 - Math.random() * 16;
+    const cx = (Math.random() - 0.5) * 110;
+    const cz = -66 - Math.random() * 42;
     c.position.set(cx, 0.05, cz);
-    c.scale.setScalar(0.8 + Math.random() * 0.4);
+    c.scale.setScalar(0.7 + Math.random() * 0.5);
     scene.add(c);
     _l2Crabs.push({ mesh: c, angle: Math.random() * Math.PI * 2, timer: Math.random() * 3, speed: 0.6 + Math.random() * 0.5 });
   }
@@ -4655,7 +4724,8 @@ function update(dt) {
   // Player movement — preserve air momentum during post-tome lockout
   if (movementLockout > 0 && playerY > 0 && (playerVel.x !== 0 || playerVel.z !== 0)) {
     player.position.x = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.x + playerVel.x * dt));
-    player.position.z = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.z + playerVel.z * dt));
+    if (CURRENT_LEVEL === 2) player.position.z += playerVel.z * dt;
+    else player.position.z = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.z + playerVel.z * dt));
   } else {
     let dx = movementLockout > 0 ? 0 : touchInput.dx;
     let dz = movementLockout > 0 ? 0 : touchInput.dz;
@@ -4676,7 +4746,8 @@ function update(dt) {
       const effSpeed = SPEED * stormSlow * playerStats.moveSpeed * stunMult * airMult * (onSnow ? 0.7 : onWater ? 1.2 : 1.0);
       document.getElementById('ui').style.color = onWater ? '#44ffcc' : '#aee8ff';
       player.position.x = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.x + dx * effSpeed * dt));
-      player.position.z = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.z + dz * effSpeed * dt));
+      if (CURRENT_LEVEL === 2) player.position.z += dz * effSpeed * dt;
+      else player.position.z = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.z + dz * effSpeed * dt));
       player.rotation.y = Math.atan2(-dx, -dz);
       playerVel.set(dx * effSpeed, 0, dz * effSpeed);
     } else {
@@ -4698,6 +4769,7 @@ function update(dt) {
   // Jump (P)
   const wantsJump = keys['p'] || touchInput.jump;
   const justPressed = wantsJump && !jumpPressed;
+  if (justPressed && _sharkDragging) _dragBreakCount++;
   if (justPressed) {
     if (playerY === 0) {
       playerVY    = JUMP_FORCE;
