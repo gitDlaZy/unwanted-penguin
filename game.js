@@ -480,7 +480,8 @@ function updateL2Enemies(dt) {
     if (sh.chasing) { tx=px; tz=pz; spd=sh.speed; if(pdist<18) sharkNear=true; }
     else { const pt=sh.target===0?sh.patrolA:sh.patrolB; tx=pt.x; tz=pt.z; spd=3.5; if(Math.hypot(sh.mesh.position.x-tx,sh.mesh.position.z-tz)<2) sh.target^=1; }
     const sdx=tx-sh.mesh.position.x, sdz=tz-sh.mesh.position.z, sdist=Math.hypot(sdx,sdz);
-    if(sdist>0.5){ sh.mesh.position.x+=(sdx/sdist)*spd*dt; sh.mesh.position.z+=(sdz/sdist)*spd*dt; sh.mesh.rotation.y=Math.atan2(-sdz,sdx)-Math.PI/2; }
+    if(sdist>0.5){ sh.mesh.position.x+=(sdx/sdist)*spd*dt; sh.mesh.position.z+=(sdz/sdist)*spd*dt; }
+    sh.mesh.rotation.y = Math.atan2(-(pz - sh.mesh.position.z), px - sh.mesh.position.x);
     sh.mesh.position.y=0.12+Math.sin(Date.now()/600+sh.mesh.position.x)*0.04;
     if(sh.chasing && pdist<1.2 && playerState.iframes<=0) damagePlayer(35);
   });
@@ -2884,7 +2885,7 @@ function showDeathScreen() {
       Object.entries(_skins).forEach(([k,[i,b]]) => document.getElementById(i).style.background = k===key ? b : 'transparent');
     });
   });
-  document.getElementById('retryBtn').addEventListener('click', () => { sessionStorage.setItem('bgmAutoStart','1'); location.href = location.pathname + '?v=' + Date.now(); });
+  document.getElementById('retryBtn').addEventListener('click', () => { sessionStorage.removeItem('levelProgress'); sessionStorage.setItem('bgmAutoStart','1'); location.href = 'index.html?v=' + Date.now(); });
   document.getElementById('howToBtn').addEventListener('click', () => {
     const el = document.getElementById('introScreen');
     if (el) { el.style.display = 'flex'; }
@@ -2962,7 +2963,7 @@ function closeOSK() {
 
 window.addEventListener('keydown', e => {
   const typingName = document.activeElement && document.activeElement.id === 'nameInput';
-  if ((e.code === 'Space' || e.key === 'r') && playerState.dead && !typingName) location.href = location.pathname + '?v=' + Date.now();
+  if ((e.code === 'Space' || e.key === 'r') && playerState.dead && !typingName) { sessionStorage.removeItem('levelProgress'); location.href = 'index.html?v=' + Date.now(); }
 });
 
 function triggerShaggy() {
@@ -4570,10 +4571,11 @@ function pollGamepad() {
   // Any button — resume after tome pick
   if (waitingToResume && gp.buttons.some(b => b.pressed)) resumeGame();
 
-  // Start / Options / Plus — retry when dead
+  // Start / Options / Plus — retry when dead (always back to level 1)
   if (pressed(9) && playerState.dead) {
+    sessionStorage.removeItem('levelProgress');
     sessionStorage.setItem('bgmAutoStart','1');
-    location.href = location.pathname + '?v=' + Date.now();
+    location.href = 'index.html?v=' + Date.now();
   }
 
   gp.buttons.forEach((b, i) => { _gpPrev[i] = b.pressed; });
