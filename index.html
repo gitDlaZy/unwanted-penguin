@@ -162,9 +162,9 @@
 
     const _gameTrack = window.bgm = new Audio();
     _gameTrack.volume = _vol;
+    let _introStarted = false;
     function _loadNextTrack() {
-      _gameTrack.src = _shuffled[_trackIdx];
-      _gameTrack.load();
+      _gameTrack.src = _shuffled[_trackIdx]; // no load() — just set src and play
       _gameTrack.play().catch(() => {});
     }
     _gameTrack.addEventListener('ended', () => {
@@ -188,8 +188,8 @@
     function dismissIntro() {
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
-      // Fade out intro, start game playlist
       _introTrack.pause();
+      _introTrack.currentTime = 0;
       _loadNextTrack();
     }
 
@@ -199,9 +199,10 @@
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
     } else {
-      // Play intro track immediately on page load
-      _introTrack.play().catch(() => {});
+      // Intro track starts on first user interaction (browsers block autoplay before that)
+      function _startIntro() { if (!_introStarted) { _introStarted = true; _introTrack.play().catch(() => {}); } }
       function _introKeydown(e) {
+        _startIntro();
         if (document.getElementById('introScreen')?.style.display === 'none') { window.removeEventListener('keydown', _introKeydown); return; }
         if (e.key === 'ArrowLeft'  || e.key === 'a') { introNav(-1); return; }
         if (e.key === 'ArrowRight' || e.key === 'd') { introNav(1);  return; }
@@ -209,7 +210,7 @@
         window.removeEventListener('keydown', _introKeydown);
       }
       window.addEventListener('keydown', _introKeydown);
-      window.addEventListener('pointerdown', dismissIntro, { once: true });
+      window.addEventListener('pointerdown', () => { _startIntro(); dismissIntro(); }, { once: true });
     }
     setTimeout(() => { document.getElementById('ui').style.opacity = '0'; }, 3000);
     const s = document.createElement('script');
