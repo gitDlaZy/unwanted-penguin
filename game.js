@@ -3654,7 +3654,9 @@ levelBtn.addEventListener('touchstart', e => {
 // ── Input ─────────────────────────────────────────────────────────────────────
 
 const keys = {};
+const keyCodes = {}; // tracks physical key codes, unaffected by modifier keys
 window.addEventListener('keydown', e => {
+  keyCodes[e.code] = true;
   keys[e.key.toLowerCase()] = true;
   if (e.key.toLowerCase() === 'o') openPendingTome();
   if (e.key.toLowerCase() === 'l') activatePowerUpBtn();
@@ -3669,12 +3671,12 @@ window.addEventListener('keydown', e => {
     penguinMesh.add(buildWizardCat());
     activeSkin = 'wizard';
   }
-  // Ctrl+Shift+6+7 → debug menu
-  if (e.ctrlKey && e.shiftKey && keys['6'] && keys['7'] && (e.code === 'Digit6' || e.code === 'Digit7')) { e.preventDefault(); toggleDebugMenu(); }
+  // Ctrl+Shift+6+7 → debug menu (use keyCodes — Shift changes e.key value)
+  if (e.ctrlKey && e.shiftKey && keyCodes['Digit6'] && keyCodes['Digit7'] && (e.code === 'Digit6' || e.code === 'Digit7')) { e.preventDefault(); toggleDebugMenu(); }
   const typing = document.activeElement?.id === 'nameInput';
   if (!typing) resumeGame();
 });
-window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; keyCodes[e.code] = false; });
 
 // ── Debug Menu ────────────────────────────────────────────────────────────────
 
