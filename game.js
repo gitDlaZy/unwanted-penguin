@@ -1663,7 +1663,7 @@ function triggerLevel1End() {
     const textEl = document.getElementById('spooksDialogueText');
     let idx = 0;
     function showNextLine() {
-      if (idx >= lines.length) { dialogue.style.display = 'none'; movementLockout = 0; return; }
+      if (idx >= lines.length) { dialogue.style.display = 'none'; movementLockout = 0; saveProgressAndUnlockPortal(); return; }
       textEl.textContent = lines[idx++];
       dialogue.style.display = 'block';
       setTimeout(showNextLine, 4000);
@@ -3841,6 +3841,43 @@ function toggleDebugMenu() { _debugOpen ? closeDebugMenu() : openDebugMenu(); }
 function openDebugMenu()  { buildDebugList(); _debugOverlay.style.display = 'flex'; _debugOpen = true; }
 function closeDebugMenu() { _debugOverlay.style.display = 'none'; _debugOpen = false; }
 
+// ── Level Progress Save / Portal Transition ───────────────────────────────────
+
+let portalUnlocked = false;
+
+function saveProgressAndUnlockPortal() {
+  const save = {
+    hp: playerState.hp, maxHp: playerState.maxHp,
+    shaggyCharges: playerState.shaggyCharges, shaggyMaxCharges: playerState.shaggyMaxCharges,
+    stats: { ...playerStats },
+    tomeStacks: { ...tomeStacks },
+    weapons: [...equippedWeapons],
+    level: playerLevel,
+    pendingTomes,
+    skin: localStorage.getItem('playerSkin') || 'normal',
+    activeSkinVal: activeSkin,
+  };
+  sessionStorage.setItem('levelProgress', JSON.stringify(save));
+  portalUnlocked = true;
+
+  // Show hint
+  const hint = document.createElement('div');
+  hint.id = 'portalHint';
+  hint.style.cssText = 'position:fixed;bottom:140px;left:50%;transform:translateX(-50%);font-family:monospace;font-size:16px;color:#cc88ff;text-shadow:0 0 10px #8844ff;pointer-events:none;z-index:9999;text-align:center;animation:pulse 1.2s ease-in-out infinite';
+  hint.textContent = '⬆ Enter the portal to continue to Level 2';
+  document.body.appendChild(hint);
+}
+
+function checkPortalEntry() {
+  if (!portalUnlocked || playerState.dead) return;
+  const dx = player.position.x - portalGroup.position.x;
+  const dz = player.position.z - portalGroup.position.z;
+  if (Math.hypot(dx, dz) < 2.2) {
+    sessionStorage.setItem('bgmAutoStart', '1');
+    window.location.href = 'level2.html';
+  }
+}
+
 window.addEventListener('keydown', e => {
   if (_debugOpen && e.key === 'Escape') { closeDebugMenu(); e.preventDefault(); }
 }, true);
@@ -4164,6 +4201,7 @@ function loop() {
     d.rotation.z += 0.04;
   });
   if (_godMode) { _godRing.rotation.z += 0.04; _godRingMat.opacity = 0.4 + 0.2 * Math.sin(Date.now() / 300); }
+  checkPortalEntry();
   renderer.render(scene, camera);
 }
 loop();
