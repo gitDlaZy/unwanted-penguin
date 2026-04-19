@@ -3460,7 +3460,7 @@ function updateStorm(dt) {
 
   if (stormActive) {
     stormTimer -= dt;
-    stormSlow   = 0.85;
+    stormSlow   = 0.90;
     if (stormTimer <= 0) {
       stormActive   = false;
       stormSlow     = 1.0;
