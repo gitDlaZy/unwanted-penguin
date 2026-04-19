@@ -1,5 +1,6 @@
 // Unwanted Penguin — shared engine for all levels
 const CURRENT_LEVEL = window.CURRENT_LEVEL || 1;
+const _levelSave    = JSON.parse(sessionStorage.getItem('levelProgress') || 'null');
 
 
 // ── Renderer ──────────────────────────────────────────────────────────────────
@@ -964,7 +965,6 @@ player.position.set(35, 0, 25);
 scene.add(player);
 
 // Restore progress from Level 1 if entering Level 2
-const _levelSave = JSON.parse(sessionStorage.getItem('levelProgress') || 'null');
 const playerState = {
   hp:               _levelSave?.hp              ?? 100,
   maxHp:            _levelSave?.maxHp           ?? 100,
