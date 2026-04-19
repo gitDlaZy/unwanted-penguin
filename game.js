@@ -3868,14 +3868,156 @@ function saveProgressAndUnlockPortal() {
   document.body.appendChild(hint);
 }
 
+let _portalStandTimer  = 0;
+let _portalEffectActive = false;
+let _portalTransitioning = false;
+
+// Ghost silhouettes + black matter particles — built once, hidden until effect
+const _ghostMat   = new THREE.MeshStandardMaterial({ color: 0x110022, emissive: 0x440066, emissiveIntensity: 1.2, transparent: true, opacity: 0, roughness: 0.8 });
+const _matterMat  = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x220033, emissiveIntensity: 1.0, transparent: true, opacity: 0 });
+const _portalAuraMat = new THREE.MeshStandardMaterial({ color: 0x8800ff, emissive: 0xaa00ff, emissiveIntensity: 2.0, transparent: true, opacity: 0, roughness: 0.1 });
+
+// 3 orbiting purple rings around player
+const _auraRings = [1.0, 1.5, 2.0].map((r, i) => {
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.06, 8, 32), _portalAuraMat.clone());
+  ring.rotation.x = (i / 3) * Math.PI;
+  ring.visible = false;
+  player.add(ring);
+  return ring;
+});
+
+// Ghost people — thin dark humanoid shapes around the scene
+const _ghosts = [];
+for (let i = 0; i < 14; i++) {
+  const g = new THREE.Group();
+  const gm = _ghostMat.clone();
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 6), gm);
+  head.position.y = 1.85;
+  g.add(head);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 1.4, 6), gm);
+  body.position.y = 1.0;
+  g.add(body);
+  const angle = (i / 14) * Math.PI * 2;
+  const radius = 15 + Math.random() * 25;
+  g.position.set(
+    player.position.x + Math.cos(angle) * radius,
+    0,
+    player.position.z + Math.sin(angle) * radius
+  );
+  g.userData.angle = angle;
+  g.userData.radius = radius;
+  g.userData.mat = gm;
+  g.visible = false;
+  scene.add(g);
+  _ghosts.push(g);
+}
+
+// Black matter swirl — ring of dark orbs orbiting scene center
+const _matterOrbs = [];
+for (let i = 0; i < 24; i++) {
+  const mm = _matterMat.clone();
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.18 + Math.random() * 0.22, 6, 6), mm);
+  const a = (i / 24) * Math.PI * 2;
+  orb.userData.angle  = a;
+  orb.userData.radius = 8 + Math.random() * 6;
+  orb.userData.yOff   = (Math.random() - 0.5) * 4;
+  orb.userData.speed  = 0.8 + Math.random() * 0.6;
+  orb.userData.mat    = mm;
+  orb.visible = false;
+  scene.add(orb);
+  _matterOrbs.push(orb);
+}
+
+// Extra purple flood lights that activate during effect
+const _floodLights = [-1, 0, 1].map(i => {
+  const l = new THREE.PointLight(0x8800ff, 0, 60);
+  l.position.set(i * 20, 8, i * 15);
+  scene.add(l);
+  return l;
+});
+
+function _setEffectOpacity(t) {
+  // t = 0..1
+  const eased = Math.min(1, t * 1.4);
+  _auraRings.forEach(r => { r.visible = true; r.material.opacity = eased * 0.85; });
+  _ghosts.forEach(g => { g.visible = true; g.userData.mat.opacity = eased * 0.55; });
+  _matterOrbs.forEach(o => { o.visible = true; o.userData.mat.opacity = eased * 0.75; });
+  _floodLights.forEach((l, i) => { l.intensity = eased * (4 + i * 1.5); });
+  scene.fog.color.setRGB(eased * 0.25, 0, eased * 0.35 + (1 - eased) * 0.1);
+}
+
+function _clearEffect() {
+  _auraRings.forEach(r => { r.visible = false; });
+  _ghosts.forEach(g => { g.visible = false; });
+  _matterOrbs.forEach(o => { o.visible = false; });
+  _floodLights.forEach(l => { l.intensity = 0; });
+  scene.fog.color.setHex(0x050d1a);
+}
+
 function checkPortalEntry() {
-  if (!portalUnlocked || playerState.dead) return;
+  if (!portalUnlocked || playerState.dead || _portalTransitioning) return;
   const dx = player.position.x - portalGroup.position.x;
   const dz = player.position.z - portalGroup.position.z;
-  if (Math.hypot(dx, dz) < 2.2) {
-    sessionStorage.setItem('bgmAutoStart', '1');
-    window.location.href = 'level2.html';
+  const inside = Math.hypot(dx, dz) < 2.2;
+
+  if (!inside) {
+    if (_portalEffectActive) { _clearEffect(); _portalEffectActive = false; }
+    _portalStandTimer = 0;
+    return;
   }
+
+  _portalStandTimer += 0.016; // approx dt — updated in loop
+  _portalEffectActive = true;
+  const t = Math.min(1, _portalStandTimer / 2.0);
+  _setEffectOpacity(t);
+
+  // Animate aura rings
+  const now = Date.now();
+  _auraRings.forEach((r, i) => {
+    r.rotation.x += 0.03 * (i % 2 === 0 ? 1 : -1);
+    r.rotation.z += 0.02 * (i + 1);
+  });
+
+  // Swirl ghosts inward as t increases
+  _ghosts.forEach(g => {
+    g.userData.angle += 0.008;
+    const r = g.userData.radius * (1 - t * 0.4);
+    g.position.set(
+      portalGroup.position.x + Math.cos(g.userData.angle) * r,
+      Math.sin(now / 800 + g.userData.angle) * 0.3,
+      portalGroup.position.z + Math.sin(g.userData.angle) * r
+    );
+    g.rotation.y = -g.userData.angle;
+  });
+
+  // Swirl black matter around player
+  _matterOrbs.forEach(o => {
+    o.userData.angle += o.userData.speed * 0.016;
+    const r = o.userData.radius;
+    o.position.set(
+      player.position.x + Math.cos(o.userData.angle) * r,
+      player.position.y + 1.5 + o.userData.yOff + Math.sin(now / 500 + o.userData.angle) * 0.5,
+      player.position.z + Math.sin(o.userData.angle) * r
+    );
+  });
+
+  if (_portalStandTimer >= 2.0 && !_portalTransitioning) {
+    _portalTransitioning = true;
+    movementLockout = Infinity;
+    setTimeout(() => {
+      sessionStorage.setItem('bgmAutoStart', '1');
+      window.location.href = 'level2.html';
+    }, 800);
+  }
+}
+
+// Allow checkPortalEntry to use real dt — patch timer in loop
+function _tickPortalTimer(dt) {
+  if (!portalUnlocked || playerState.dead || _portalTransitioning) return;
+  const dx = player.position.x - portalGroup.position.x;
+  const dz = player.position.z - portalGroup.position.z;
+  if (Math.hypot(dx, dz) < 2.2) _portalStandTimer += dt;
+  else _portalStandTimer = Math.max(0, _portalStandTimer - dt * 2);
 }
 
 window.addEventListener('keydown', e => {
@@ -4201,6 +4343,7 @@ function loop() {
     d.rotation.z += 0.04;
   });
   if (_godMode) { _godRing.rotation.z += 0.04; _godRingMat.opacity = 0.4 + 0.2 * Math.sin(Date.now() / 300); }
+  _tickPortalTimer(dt);
   checkPortalEntry();
   renderer.render(scene, camera);
 }
