@@ -1,7 +1,7 @@
 // FrostBite — Ice arena, Penguin, Leopard Seals, Skuas
 
 // ── BGM ───────────────────────────────────────────────────────────────────────
-const bgm = new Audio('sounds/Cowboy Bebop - Opening Tank.mp3');
+const bgm = new Audio('sounds/Cowboy%20Bebop%20-%20Opening%20Tank.mp3');
 bgm.loop   = true;
 bgm.volume = parseFloat(localStorage.getItem('bgmVolume') ?? '0.5');
 
@@ -425,6 +425,36 @@ function buildEvilPenguin() {
   return g;
 }
 
+function buildHumanPlayer() {
+  const g = new THREE.Group();
+  const skin   = new THREE.MeshStandardMaterial({ color: 0xffcc99, roughness: 0.8 });
+  const shirt  = new THREE.MeshStandardMaterial({ color: 0x3a9a3a, roughness: 0.8 });
+  const pants  = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 });
+  const gunMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4, metalness: 0.8 });
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9 });
+
+  [-0.15, 0.15].forEach(x => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 0.28), pants);
+    leg.position.set(x, 0.55, 0); g.add(leg);
+  });
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.75, 0.38), shirt);
+  torso.position.y = 1.1; torso.castShadow = true; g.add(torso);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.38), skin);
+  head.position.y = 1.72; g.add(head);
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 0.24), shirt);
+  armL.position.set(-0.42, 1.08, 0); g.add(armL);
+  const armR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.48, 0.24), shirt);
+  armR.position.set(0.42, 1.3, 0.14); armR.rotation.x = -0.65; g.add(armR);
+
+  // Rifle — barrel + stock
+  const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.9), gunMat);
+  barrel.position.set(0.42, 1.38, -0.52); g.add(barrel);
+  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.18, 0.32), woodMat);
+  stock.position.set(0.42, 1.24, -0.08); g.add(stock);
+
+  return g;
+}
+
 function buildWizardCat() {
   const g = new THREE.Group();
   const purple     = new THREE.MeshStandardMaterial({ color: 0x7b3fa0, roughness: 0.8 });
@@ -617,7 +647,7 @@ const penguinMesh = new THREE.Group();
 penguinMesh.rotation.y = Math.PI;
 player.add(penguinMesh);
 
-const builtModel = selectedSkin === 'evil' ? buildEvilPenguin() : selectedSkin === 'wizard' ? buildWizardCat() : buildPenguin();
+const builtModel = selectedSkin === 'evil' ? buildEvilPenguin() : selectedSkin === 'wizard' ? buildWizardCat() : selectedSkin === 'human' ? buildHumanPlayer() : buildPenguin();
 penguinMesh.add(builtModel);
 player.position.set(35, 0, 25);
 scene.add(player);
@@ -1536,19 +1566,23 @@ function triggerLevel1End() {
 }
 
 function spawnSeal(hpScale = 1) {
-  const angle = Math.random() * Math.PI * 2;
+  let angle, sx, sz, tries = 0;
+  do { angle = Math.random() * Math.PI * 2; sx = Math.cos(angle) * 88; sz = Math.sin(angle) * 88; tries++; }
+  while (tries < 10 && (sx-player.position.x)**2 + (sz-player.position.z)**2 < 400);
   const elite = Math.random() < 0.05;
   const mesh = elite ? buildPolarBear() : buildSeal();
   if (!elite) mesh.scale.setScalar(0.8);
-  mesh.position.set(Math.cos(angle) * 88, 0, Math.sin(angle) * 88);
+  mesh.position.set(sx, 0, sz);
   scene.add(mesh);
   enemies.push({ mesh, type: 'seal', hp: Math.round((elite ? 100 : 30) * hpScale), elite });
 }
 
 function spawnSkua(hpScale = 1) {
-  const angle = Math.random() * Math.PI * 2;
+  let angle, sx, sz, tries = 0;
+  do { angle = Math.random() * Math.PI * 2; sx = Math.cos(angle) * 140; sz = Math.sin(angle) * 140; tries++; }
+  while (tries < 10 && (sx-player.position.x)**2 + (sz-player.position.z)**2 < 400);
   const mesh = buildSkua();
-  mesh.position.set(Math.cos(angle) * 140, 7, Math.sin(angle) * 140);
+  mesh.position.set(sx, 7, sz);
   const elite = Math.random() < 0.05;
   if (elite) makeElite(mesh);
   scene.add(mesh);
@@ -1612,8 +1646,8 @@ function updateEnemies(dt) {
     timerHUDEl.textContent = `⏱ ${Math.floor(remaining / 60)}:${String(secs).padStart(2,'0')}`;
   }
 
-  // Pressure hits floor at ~2 min (k=60), lower floor = denser spawns; cursed stacks each add 25% spawn rate
-  const pressure = Math.max(0.08, Math.exp(-gameTime / 60)) * Math.pow(0.75, playerStats.cursed);
+  // Pressure ramps gradually over 5 min (k=150), floors at 0.1; cursed stacks each add 25% spawn rate
+  const pressure = Math.max(0.1, Math.exp(-gameTime / 150)) * Math.pow(0.75, playerStats.cursed);
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
   const hpScale = (gameTime >= 120 ? Math.pow(1.002, gameTime - 120) : 1) * Math.pow(1.3, playerStats.cursed);
@@ -1850,9 +1884,15 @@ function fireSingleSnowball(target) {
   const dir = new THREE.Vector3(tx / len, 0, tz / len);
   const speed  = SNOWBALL_SPEED * playerStats.projSpeed;
   const radius = 0.18 * playerStats.projSize;
+  const isWizard = selectedSkin === 'wizard';
   const mesh = new THREE.Mesh(
     new THREE.SphereGeometry(radius, 8, 8),
-    new THREE.MeshStandardMaterial({ color: 0xeef8ff, emissive: 0x88ccff, emissiveIntensity: 0.6, roughness: 0.3 })
+    new THREE.MeshStandardMaterial({
+      color:             isWizard ? 0xcc44ff : 0xeef8ff,
+      emissive:          isWizard ? 0x9900ff : 0x88ccff,
+      emissiveIntensity: isWizard ? 1.2 : 0.6,
+      roughness: 0.3
+    })
   );
   mesh.position.copy(player.position);
   mesh.position.y = 1.0;
@@ -1962,10 +2002,8 @@ function updateSnowballs(dt) {
         for (let ti = boss.teleportThresholds.length - 1; ti >= 0; ti--) {
           if (hpPct <= boss.teleportThresholds[ti]) {
             boss.teleportThresholds.splice(ti, 1);
-            const angle = Math.random() * Math.PI * 2;
-            const r = 10 + Math.random() * 15;
-            const tx = Math.max(-88, Math.min(88, player.position.x + Math.cos(angle) * r));
-            const tz = Math.max(-88, Math.min(88, player.position.z + Math.sin(angle) * r));
+            const tx = (Math.random() - 0.5) * 140;
+            const tz = (Math.random() - 0.5) * 140;
             boss.mesh.position.set(tx, 0, tz);
             spawnGust(boss.mesh.position.x, boss.mesh.position.z);
             break;
@@ -2423,13 +2461,17 @@ function showDeathScreen() {
     <div id="scoreboardEl" style="min-height:60px"><div style="opacity:0.4;font-size:13px">Loading scores...</div></div>
     <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
       <button id="skinNormal"
-        style="background:${localStorage.getItem('playerSkin')==='evil'||localStorage.getItem('playerSkin')==='wizard'?'transparent':'#1a3a5a'};border:2px solid #44aaff;color:#aee8ff;
+        style="background:${localStorage.getItem('playerSkin')==='normal'||!localStorage.getItem('playerSkin')?'#1a3a5a':'transparent'};border:2px solid #44aaff;color:#aee8ff;
                font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
         🐧 CLASSIC</button>
       <button id="skinEvil"
         style="background:${localStorage.getItem('playerSkin')==='evil'?'#3a1a1a':'transparent'};border:2px solid #ff4444;color:#ffaaaa;
                font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
         😈 EVIL</button>
+      <button id="skinHuman"
+        style="background:${localStorage.getItem('playerSkin')==='human'?'#1a3a1a':'transparent'};border:2px solid #3a9a3a;color:#aaffaa;
+               font-family:monospace;font-size:12px;padding:6px 14px;cursor:pointer;border-radius:4px;letter-spacing:1px">
+        🧍 HUMAN</button>
     </div>
     <button id="retryBtn"
       style="margin-top:8px;background:transparent;border:2px solid #44aaff55;color:#aee8ff;
@@ -2470,7 +2512,7 @@ function showDeathScreen() {
 
   submit.addEventListener('click', doSubmit);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSubmit(); } });
-  const _skins = { normal:['skinNormal','#1a3a5a'], evil:['skinEvil','#3a1a1a'] };
+  const _skins = { normal:['skinNormal','#1a3a5a'], evil:['skinEvil','#3a1a1a'], human:['skinHuman','#1a3a1a'] };
   Object.entries(_skins).forEach(([key,[id,bg]]) => {
     document.getElementById(id).addEventListener('click', () => {
       localStorage.setItem('playerSkin', key);
@@ -2823,7 +2865,7 @@ function updateItems(dt) {
 
 // ── XP System ─────────────────────────────────────────────────────────────────
 
-let playerLevel = 20;
+let playerLevel = 1;
 let playerXP    = 0;
 let killCount   = 0;
 

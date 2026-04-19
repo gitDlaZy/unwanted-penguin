@@ -59,10 +59,10 @@
         <div style="line-height:2;font-size:13px;color:#88bbdd">
           <b>WASD / Arrows</b> — Move<br>
           <b>P</b> — Jump<br>
+          <b>P</b> on landing — Speed jump<br>
           <b>O</b> — Open tome<br>
           <b>L</b> — Activate power-up<br>
-          <b>A / D</b> — Navigate choices<br>
-          <b>6 + 7</b> — Secret skin 🐱
+          <b>A / D</b> — Navigate choices
         </div>
       </div>
 
@@ -86,14 +86,18 @@
           Collect <b>XP orbs</b> to level up<br>
           Choose <b>tome upgrades</b> each level<br>
           Elites drop <b>item tomes</b> on death<br>
-          <b>Spooks</b> appears after Krilly falls
+          Something awaits after Krilly falls…
         </div>
       </div>
 
     </div>
 
-    <div style="font-size:13px;color:#336688;letter-spacing:1px;margin-bottom:6px">CHARACTERS: 🐧 Classic &nbsp;|&nbsp; 😈 Evil &nbsp;|&nbsp; 🐱 Spooks (secret)</div>
-    <div style="font-size:11px;color:#224455;margin-bottom:28px">Music: Cowboy Bebop — Tank</div>
+    <div style="font-size:13px;color:#44aaff;letter-spacing:2px;margin-bottom:14px">CHOOSE YOUR CHARACTER</div>
+    <div style="display:flex;gap:16px;margin-bottom:28px" id="skinButtons">
+      <button id="introSkinNormal" onclick="introSelectSkin('normal')" style="background:#1a3a5a;border:2px solid #44aaff;color:#aee8ff;font-family:monospace;font-size:14px;padding:10px 24px;cursor:pointer;border-radius:6px;letter-spacing:1px">🐧 CLASSIC</button>
+      <button id="introSkinEvil"   onclick="introSelectSkin('evil')"   style="background:transparent;border:2px solid #ff4444;color:#ffaaaa;font-family:monospace;font-size:14px;padding:10px 24px;cursor:pointer;border-radius:6px;letter-spacing:1px">😈 EVIL</button>
+      <button id="introSkinHuman"  onclick="introSelectSkin('human')"  style="background:transparent;border:2px solid #3a9a3a;color:#aaffaa;font-family:monospace;font-size:14px;padding:10px 24px;cursor:pointer;border-radius:6px;letter-spacing:1px">🧍 HUMAN</button>
+    </div>
 
     <div style="font-size:15px;color:#aee8ff;letter-spacing:3px;animation:pulse 1.2s ease-in-out infinite">PRESS ANY KEY TO START</div>
   </div>
@@ -106,6 +110,21 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script>
+    // Preselect classic on load
+    if (!localStorage.getItem('playerSkin')) localStorage.setItem('playerSkin', 'normal');
+
+    const _skinColors = { normal:'#1a3a5a', evil:'#3a1a1a', human:'#1a3a1a' };
+    const _skinBorders = { normal:'#44aaff', evil:'#ff4444', human:'#3a9a3a' };
+    function introSelectSkin(skin) {
+      localStorage.setItem('playerSkin', skin);
+      ['normal','evil','human'].forEach(s => {
+        const btn = document.getElementById('introSkin' + s.charAt(0).toUpperCase() + s.slice(1));
+        if (btn) btn.style.background = s === skin ? _skinColors[s] : 'transparent';
+      });
+    }
+    // Highlight whichever skin is saved
+    introSelectSkin(localStorage.getItem('playerSkin') || 'normal');
+
     function dismissIntro() {
       const el = document.getElementById('introScreen');
       if (el) el.remove();
