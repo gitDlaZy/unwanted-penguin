@@ -5084,7 +5084,7 @@ window.addEventListener('keydown', e => {
 
 // ── Game Loop ─────────────────────────────────────────────────────────────────
 
-const SPEED      = 7.9;
+const SPEED      = 8.4;
 const CAM_OFFSET = new THREE.Vector3(0, 14, 13);
 
 let lastTime = performance.now();
