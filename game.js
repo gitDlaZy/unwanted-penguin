@@ -597,7 +597,7 @@ function updateL2Enemies(dt) {
       if (Math.hypot(px-j.mesh.position.x, pz-j.mesh.position.z) < 0.7) {
         damagePlayer(8); _l2JellySlowTimer = 2.0;
         playerStats.moveSpeed = Math.max(0.3, playerStats.moveSpeed * 0.8); // 20% slow
-        setTimeout(() => { playerStats.moveSpeed = (_levelSave?.stats?.moveSpeed ?? 1.05); }, 2000);
+        setTimeout(() => { playerStats.moveSpeed = (_levelSave?.stats?.moveSpeed ?? 1.02); }, 2000);
       }
     }
   });
@@ -1630,7 +1630,7 @@ const playerStats = Object.assign({
   damage: 1.0, critChance: 0, attackRate: 1.0, weaponCooldown: 1.0,
   projCount: 1, projExtraChance: 0, projSize: 1.0, projSpeed: 1.0,
   maxShield: 0, shield: 0, shieldRecharge: 0, shieldDmgTimer: 0,
-  evasion: 0, lifesteal: 0, moveSpeed: 1.05, pickupRadius: 0.7,
+  evasion: 0, lifesteal: 0, moveSpeed: 1.02, pickupRadius: 0.7,
   knockback: 0, cursed: 0, boomerang: false, iframeDuration: 1.0, shaggyStacks: 0,
 }, _levelSave?.stats ?? {});
 
@@ -1667,7 +1667,7 @@ const TOME_DEFS = [
   { id:'evasion',    name:'Evasion Tome',          emoji:'🌀',  color:'#44ffaa', desc:'+10% dodge chance',         apply: s => { s.evasion    = Math.min(0.7, s.evasion+0.1); } },
   { id:'bloody',     name:'Bloody Tome',           emoji:'🩸',  color:'#ff4466', desc:'+20% lifesteal on hit',     apply: s => { s.lifesteal  = Math.min(1, s.lifesteal+0.2); } },
   { id:'hp',         name:'HP Tome',               emoji:'💙',  color:'#2266ff', desc:'+25 max HP',                apply: s => { s.maxShield += 1; s.shield = s.maxShield; playerState.maxHp+=25; playerState.hp+=25; updateHUD(); } },
-  { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+4% movement speed. "You obtained ADHD!"', apply: s => { s.moveSpeed *= 1.04; showAdhdMsg(); } },
+  { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+3% movement speed. "You obtained ADHD!"', apply: s => { s.moveSpeed *= 1.03; showAdhdMsg(); } },
   { id:'attraction', name:'Attraction Tome',       emoji:'🧲',  color:'#ffaa44', desc:'+1 pickup radius',          apply: s => { s.pickupRadius += 1; } },
   { id:'knockback',  name:'Knockback Tome',        emoji:'💥',  color:'#ff8844', desc:'+1.5 knockback on hit',     apply: s => { s.knockback  += 1.5; } },
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'+25% spawn rate, +30% enemy HP', apply:s => { s.cursed += 1; } },
@@ -3185,7 +3185,7 @@ const playerVel = new THREE.Vector3(); // xz velocity, updated each frame
 const GRAVITY    = -22;
 const JUMP_FORCE =  9;
 let jumpPressed      = false;
-let _airBoost        = false; // active during jump after a perfect landing
+let _perfectStreak   = 0;     // consecutive perfect landings (0–5), drives speed boost
 let _jumpBuffer      = 0;     // counts down after P pressed — landing within window = perfect
 let _perfectCooldown = 0;     // prevents chaining perfect jumps by spamming
 let _jumpSpammed     = false; // true if P pressed more than once this airtime
@@ -5057,7 +5057,7 @@ function update(dt) {
       const onSnow  = playerY < 0.3 && isOnSnowPatch(player.position.x, player.position.z);
       const onWater = playerY < 0.3 && isInWater(player.position.x, player.position.z);
       const stunMult = playerPhotoStun > 0 ? 0.35 : 1.0;
-      const airMult  = (_airBoost && playerY > 0) ? 1.1 : 1.0;
+      const airMult  = playerY > 0 ? 1 + _perfectStreak * 0.01 : 1.0;
       const effSpeed = SPEED * stormSlow * playerStats.moveSpeed * stunMult * airMult * (onSnow ? 0.7 : onWater ? 1.2 : 1.0);
       document.getElementById('ui').style.color = onWater ? '#44ffcc' : '#aee8ff';
       player.position.x = Math.max(-ARENA+1, Math.min(ARENA-1, player.position.x + dx * effSpeed * dt));
@@ -5132,12 +5132,12 @@ function update(dt) {
       if (_jumpBuffer > 0 && _perfectCooldown <= 0) {
         // Perfect landing — jump again immediately with air boost
         playerVY  = JUMP_FORCE;
-        _airBoost = true;
+        _perfectStreak = Math.min(_perfectStreak + 1, 5);
         _jumpBuffer = 0;
         _perfectCooldown = 0.6; // must wait 0.6s before next perfect jump
         spawnGust(player.position.x, player.position.z);
       } else {
-        _airBoost = false;
+        _perfectStreak = 0;
       }
     }
   }
