@@ -615,15 +615,15 @@ function updateL2Enemies(dt) {
   // Border death
   if (player.position.z > L2_KILL_BORDER && !playerState.dead) killPlayer();
 
-  // Swimming animation — bob and roll in water
+  // Swimming animation — lay on belly, gentle wag
   if (inWater && !playerState.dead) {
-    const t = Date.now() / 400;
-    penguinMesh.rotation.z = Math.sin(t) * 0.18;
-    penguinMesh.rotation.x = Math.sin(t * 0.7) * 0.1;
-    player.position.y = Math.sin(t * 1.1) * 0.08;
+    const t = Date.now() / 500;
+    penguinMesh.rotation.x += (Math.PI / 2 - penguinMesh.rotation.x) * 0.12; // smoothly tip onto belly
+    penguinMesh.rotation.z = Math.sin(t) * 0.12; // side-to-side wag
+    player.position.y = Math.sin(t * 1.2) * 0.07;
   } else if (!playerState.dead) {
-    penguinMesh.rotation.z += (-penguinMesh.rotation.z) * 0.2;
-    penguinMesh.rotation.x += (-penguinMesh.rotation.x) * 0.2;
+    penguinMesh.rotation.x += (0 - penguinMesh.rotation.x) * 0.15; // stand back up
+    penguinMesh.rotation.z += (0 - penguinMesh.rotation.z) * 0.15;
     player.position.y = 0;
   }
 }
