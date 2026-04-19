@@ -666,6 +666,7 @@ function buildSkua() {
 // Wrapper group controls position/rotation; model inside is pre-rotated 180°
 const player = new THREE.Group();
 const selectedSkin = localStorage.getItem('playerSkin') || 'normal';
+let activeSkin = selectedSkin;
 
 // Placeholder mesh shown until FBX loads
 const penguinMesh = new THREE.Group();
@@ -1909,7 +1910,7 @@ function fireSingleSnowball(target) {
   const dir = new THREE.Vector3(tx / len, 0, tz / len);
   const speed  = SNOWBALL_SPEED * playerStats.projSpeed;
   const radius = 0.18 * playerStats.projSize;
-  const isWizard = selectedSkin === 'wizard';
+  const isWizard = activeSkin === 'wizard';
   const mesh = new THREE.Mesh(
     new THREE.SphereGeometry(radius, 8, 8),
     new THREE.MeshStandardMaterial({
@@ -3604,6 +3605,7 @@ window.addEventListener('keydown', e => {
   if ((e.key === '6' || e.key === '7') && keys['6'] && keys['7'] && !playerState.dead) {
     penguinMesh.clear();
     penguinMesh.add(buildWizardCat());
+    activeSkin = 'wizard';
   }
   const typing = document.activeElement?.id === 'nameInput';
   if (!typing) resumeGame();
