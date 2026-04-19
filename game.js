@@ -434,44 +434,52 @@ function buildHumanPlayer() {
   const gunMat  = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4, metalness: 0.8 });
   const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9 });
   const black   = new THREE.MeshStandardMaterial({ color: 0x111111 });
-  const brown   = new THREE.MeshStandardMaterial({ color: 0x5a3010, roughness: 0.8 }); // hair
+  const blonde  = new THREE.MeshStandardMaterial({ color: 0xf0d050, roughness: 0.8 });
 
   // Legs
   [-0.15, 0.15].forEach(x => {
     const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.7, 8), pants);
     leg.position.set(x, 0.55, 0); g.add(leg);
-    // Shoe
     const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.28), black);
     shoe.position.set(x, 0.17, -0.04); g.add(shoe);
   });
 
-  // Torso — slightly tapered
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.75, 10), shirt);
-  torso.position.y = 1.1; torso.castShadow = true; g.add(torso);
+  // Torso — wide shoulders, narrow waist (human silhouette)
+  const shoulders = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.2, 0.36), shirt);
+  shoulders.position.y = 1.42; g.add(shoulders);
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.28, 0.34), shirt);
+  chest.position.y = 1.2; g.add(chest);
+  const waist = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.3), shirt);
+  waist.position.y = 0.98; g.add(waist);
 
   // Neck
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.18, 8), skin);
-  neck.position.y = 1.53; g.add(neck);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.16, 8), skin);
+  neck.position.y = 1.56; g.add(neck);
 
-  // Head — round sphere, slightly elongated
+  // Head — round sphere
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 12), skin);
-  head.scale.set(1.0, 1.1, 1.0); head.position.y = 1.78; g.add(head);
+  head.scale.set(1.0, 1.12, 1.0); head.position.y = 1.82; g.add(head);
 
-  // Hair — flat cap on top
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.23, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.45), brown);
-  hair.position.y = 1.88; g.add(hair);
+  // Hair — blonde dome
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.235, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.48), blonde);
+  hair.position.y = 1.90; g.add(hair);
+  // Side hair strands for volume
+  [-0.18, 0.18].forEach(x => {
+    const strand = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), blonde);
+    strand.scale.set(0.6, 1.0, 0.7); strand.position.set(x, 1.84, 0.02); g.add(strand);
+  });
 
   // Eyes
   [-0.08, 0.08].forEach(x => {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), black);
-    eye.position.set(x, 1.80, -0.19); g.add(eye);
+    eye.position.set(x, 1.84, -0.2); g.add(eye);
   });
 
-  // Arms — cylinders
-  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.6, 8), shirt);
-  armL.position.set(-0.38, 1.1, 0); g.add(armL);
+  // Arms — cylinders off shoulders
+  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.62, 8), shirt);
+  armL.position.set(-0.42, 1.18, 0); g.add(armL);
   const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.5, 8), shirt);
-  armR.position.set(0.38, 1.28, 0.12); armR.rotation.x = -0.65; g.add(armR);
+  armR.position.set(0.42, 1.32, 0.12); armR.rotation.x = -0.65; g.add(armR);
 
   // Rifle — barrel + stock
   const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 8), gunMat);
