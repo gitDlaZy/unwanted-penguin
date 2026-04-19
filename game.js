@@ -1705,8 +1705,8 @@ function updateEnemies(dt) {
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
   const hpScale = (gameTime >= 120 ? Math.pow(1.002, gameTime - 120) : 1) * Math.pow(1.3, playerStats.cursed);
-  if (!bossDefeated && sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (0.9 + Math.random() * 0.5) * pressure; }
-  if (!bossDefeated && skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
+  if (!bossDefeated && !_spawnsDisabled && sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (0.9 + Math.random() * 0.5) * pressure; }
+  if (!bossDefeated && !_spawnsDisabled && skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
 
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
@@ -3724,6 +3724,7 @@ const _debugOverlay = (() => {
 })();
 
 let _godMode = false;
+let _spawnsDisabled = false;
 const _godLight = new THREE.PointLight(0xffd700, 0, 6);
 _godLight.position.set(0, 1, 0);
 player.add(_godLight);
@@ -3745,6 +3746,7 @@ const _debugActions = [
   { label: '⏩  Skip to Boss (4:55)',   fn: () => { gameTime = 295; } },
   { label: '❤️  Full Heal',            fn: () => { playerState.hp = playerState.maxHp; updateHUD(); } },
   { label: '☠  Kill All Enemies',      fn: () => { seals.forEach(s => s.hp = 0); } },
+  { label: () => _spawnsDisabled ? '🚫  Spawns  [OFF]' : '🚫  Spawns  [ON]', fn: () => { _spawnsDisabled = !_spawnsDisabled; seals.forEach(s => s.hp = 0); }, noClose: true },
   { label: '🌀  Spawn Boss Now',        fn: () => { if (!boss) spawnBoss(player.position.x + 15, player.position.z); } },
   { label: '🐱  Trigger Level 1 End',  fn: () => { triggerLevel1End(); } },
   { label: () => _godMode ? '🛡  God Mode  [ON]' : '🛡  God Mode  [OFF]', fn: () => { _godMode = !_godMode; setGodModeVisual(_godMode); }, noClose: true },
