@@ -2887,19 +2887,18 @@ const SNOWBALL_SPEED = 23.4;
 const SNOWBALL_DAMAGE = 10;
 
 function findNearestEnemy() {
+  // Always prioritise Krilly when in range
+  if (boss) {
+    const bdx = boss.mesh.position.x - player.position.x;
+    const bdz = boss.mesh.position.z - player.position.z;
+    if (bdx*bdx + bdz*bdz <= 400) return boss; // 20-unit radius
+  }
   let nearest = null, bestDist = Infinity;
   for (const e of enemies) {
     const dx = e.mesh.position.x - player.position.x;
     const dz = e.mesh.position.z - player.position.z;
     const d = dx*dx + dz*dz;
     if (d < bestDist) { bestDist = d; nearest = e; }
-  }
-  // Prefer boss if it's closer
-  if (boss) {
-    const bdx = boss.mesh.position.x - player.position.x;
-    const bdz = boss.mesh.position.z - player.position.z;
-    const bd = bdx*bdx + bdz*bdz;
-    if (bd < bestDist) nearest = boss;
   }
   return nearest;
 }
