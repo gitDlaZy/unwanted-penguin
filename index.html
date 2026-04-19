@@ -139,21 +139,15 @@
       localStorage.setItem('bgmVolume', bgm.volume);
     });
 
-    function startMusic() { bgm.play().catch(() => {}); }
-
     function dismissIntro() {
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
       sessionStorage.setItem('introShown', '1');
-      startMusic();
     }
 
     if (sessionStorage.getItem('introShown')) {
-      // Intro already seen — hide it immediately, wait for first gesture to play music
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
-      window.addEventListener('keydown', startMusic, { once: true });
-      window.addEventListener('pointerdown', startMusic, { once: true });
     } else {
       window.addEventListener('keydown', dismissIntro, { once: true });
       window.addEventListener('pointerdown', dismissIntro, { once: true });

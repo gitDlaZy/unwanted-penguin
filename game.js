@@ -2465,6 +2465,7 @@ deathScreen.style.cssText = `
 document.body.appendChild(deathScreen);
 
 function showDeathScreen() {
+  if (window.bgm) { window.bgm.currentTime = 0; window.bgm.play().catch(() => {}); }
   deathScreen.innerHTML = `
     <div style="font-size:46px;font-weight:bold;letter-spacing:6px;text-shadow:0 0 30px #00aaff">YOU FROZE</div>
     <div style="font-size:15px;opacity:0.5">☠ ${killCount} kills &nbsp;|&nbsp; Level ${playerLevel}</div>
