@@ -3795,6 +3795,9 @@ function pollGamepad() {
   if (!goingLeft)  { delete keys['a']; _gpPrev._stickLeft  = false; }
   if (!goingRight) { delete keys['d']; _gpPrev._stickRight = false; }
 
+  // Any button — resume after tome pick
+  if (waitingToResume && gp.buttons.some(b => b.pressed)) resumeGame();
+
   // Start / Options / Plus — retry when dead
   if (pressed(9) && playerState.dead) {
     location.href = location.pathname + '?v=' + Date.now();
