@@ -428,30 +428,56 @@ function buildEvilPenguin() {
 function buildHumanPlayer() {
   const g = new THREE.Group();
   g.rotation.y = Math.PI;
-  const skin   = new THREE.MeshStandardMaterial({ color: 0xffcc99, roughness: 0.8 });
-  const shirt  = new THREE.MeshStandardMaterial({ color: 0x3a9a3a, roughness: 0.8 });
-  const pants  = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 });
-  const gunMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4, metalness: 0.8 });
+  const skin    = new THREE.MeshStandardMaterial({ color: 0xffcc99, roughness: 0.7 });
+  const shirt   = new THREE.MeshStandardMaterial({ color: 0x3a9a3a, roughness: 0.8 });
+  const pants   = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 });
+  const gunMat  = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4, metalness: 0.8 });
   const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9 });
+  const black   = new THREE.MeshStandardMaterial({ color: 0x111111 });
+  const brown   = new THREE.MeshStandardMaterial({ color: 0x5a3010, roughness: 0.8 }); // hair
 
+  // Legs
   [-0.15, 0.15].forEach(x => {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 0.28), pants);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.7, 8), pants);
     leg.position.set(x, 0.55, 0); g.add(leg);
+    // Shoe
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.28), black);
+    shoe.position.set(x, 0.17, -0.04); g.add(shoe);
   });
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.75, 0.38), shirt);
+
+  // Torso — slightly tapered
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.75, 10), shirt);
   torso.position.y = 1.1; torso.castShadow = true; g.add(torso);
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.38), skin);
-  head.position.y = 1.72; g.add(head);
-  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 0.24), shirt);
-  armL.position.set(-0.42, 1.08, 0); g.add(armL);
-  const armR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.48, 0.24), shirt);
-  armR.position.set(0.42, 1.3, 0.14); armR.rotation.x = -0.65; g.add(armR);
+
+  // Neck
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.18, 8), skin);
+  neck.position.y = 1.53; g.add(neck);
+
+  // Head — round sphere, slightly elongated
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 12), skin);
+  head.scale.set(1.0, 1.1, 1.0); head.position.y = 1.78; g.add(head);
+
+  // Hair — flat cap on top
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.23, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.45), brown);
+  hair.position.y = 1.88; g.add(hair);
+
+  // Eyes
+  [-0.08, 0.08].forEach(x => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), black);
+    eye.position.set(x, 1.80, -0.19); g.add(eye);
+  });
+
+  // Arms — cylinders
+  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.6, 8), shirt);
+  armL.position.set(-0.38, 1.1, 0); g.add(armL);
+  const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.5, 8), shirt);
+  armR.position.set(0.38, 1.28, 0.12); armR.rotation.x = -0.65; g.add(armR);
 
   // Rifle — barrel + stock
-  const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.9), gunMat);
-  barrel.position.set(0.42, 1.38, -0.52); g.add(barrel);
-  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.18, 0.32), woodMat);
-  stock.position.set(0.42, 1.24, -0.08); g.add(stock);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 8), gunMat);
+  barrel.rotation.x = Math.PI / 2; barrel.position.set(0.38, 1.38, -0.48); g.add(barrel);
+  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.16, 0.3), woodMat);
+  stock.position.set(0.38, 1.22, -0.06); g.add(stock);
 
   return g;
 }
