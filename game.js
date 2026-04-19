@@ -2564,6 +2564,68 @@ function showDeathScreen() {
   });
 }
 
+// ── On-Screen Keyboard (controller name entry) ────────────────────────────────
+const OSK_KEYS = [
+  ['A','B','C','D','E','F','G'],
+  ['H','I','J','K','L','M','N'],
+  ['O','P','Q','R','S','T','U'],
+  ['V','W','X','Y','Z','0','1'],
+  ['2','3','4','5','6','7','8'],
+  ['9',' ','⌫','✓','','',''],
+];
+let oskOpen = false, oskRow = 0, oskCol = 0;
+
+const oskOverlay = document.createElement('div');
+oskOverlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,8,24,0.92);z-index:20000;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;gap:10px';
+document.body.appendChild(oskOverlay);
+
+function renderOSK() {
+  const input = document.getElementById('nameInput');
+  const cur = input ? input.value : '';
+  let html = `<div style="font-size:13px;color:#44aaff;letter-spacing:2px;margin-bottom:6px">ENTER NAME</div>`;
+  html += `<div style="font-size:22px;color:#aee8ff;background:rgba(0,20,50,0.8);border:1px solid #44aaff;padding:8px 20px;border-radius:4px;min-width:200px;text-align:center;margin-bottom:10px">${cur || '&nbsp;'}</div>`;
+  html += `<div style="display:flex;flex-direction:column;gap:6px">`;
+  OSK_KEYS.forEach((row, r) => {
+    html += `<div style="display:flex;gap:6px">`;
+    row.forEach((k, c) => {
+      if (!k) { html += `<div style="width:44px"></div>`; return; }
+      const sel = r === oskRow && c === oskCol;
+      const w = (k === '⌫' || k === '✓') ? '52px' : k === ' ' ? '52px' : '44px';
+      html += `<div style="width:${w};height:44px;display:flex;align-items:center;justify-content:center;
+        background:${sel ? '#1a4a8a' : 'rgba(0,20,50,0.7)'};
+        border:2px solid ${sel ? '#44aaff' : '#1a3a5a'};
+        border-radius:6px;font-size:${k==='⌫'||k==='✓'?'18px':'15px'};color:#aee8ff;cursor:pointer"
+        onclick="oskTap(${r},${c})">${k === ' ' ? 'SPC' : k}</div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div><div style="font-size:11px;color:#336688;margin-top:10px">D-pad navigate · A select · B backspace · Start confirm</div>`;
+  oskOverlay.innerHTML = html;
+}
+
+function oskTap(r, c) { oskRow = r; oskCol = c; oskConfirm(); }
+
+function oskConfirm() {
+  const k = OSK_KEYS[oskRow][oskCol];
+  const input = document.getElementById('nameInput');
+  if (!input) return;
+  if (k === '✓') { closeOSK(); return; }
+  if (k === '⌫') { input.value = input.value.slice(0, -1); }
+  else if (input.value.length < 16) { input.value += k; }
+  renderOSK();
+}
+
+function showOSK() {
+  oskOpen = true; oskRow = 0; oskCol = 0;
+  oskOverlay.style.display = 'flex';
+  renderOSK();
+}
+
+function closeOSK() {
+  oskOpen = false;
+  oskOverlay.style.display = 'none';
+}
+
 window.addEventListener('keydown', e => {
   const typingName = document.activeElement && document.activeElement.id === 'nameInput';
   if ((e.code === 'Space' || e.key === 'r') && playerState.dead && !typingName) location.href = location.pathname + '?v=' + Date.now();
@@ -3857,13 +3919,7 @@ function pollGamepad() {
   if (pressed(2)) activatePowerUpBtn();
 
   // Y / Triangle / X(Switch) — enter name on death screen
-  if (pressed(3) && playerState.dead) {
-    const input = document.getElementById('nameInput');
-    if (input) {
-      const name = prompt('Enter your name:', input.value || '');
-      if (name !== null) input.value = name;
-    }
-  }
+  if (pressed(3) && playerState.dead) showOSK();
 
   // D-pad left/right + left stick — navigate tome and power-up choices
   const goingLeft  = btn(14) || ax < -DEAD_ZONE;
@@ -3872,6 +3928,19 @@ function pollGamepad() {
   if (pressed(15) || (goingRight && !_gpPrev._stickRight)) { keys['d'] = true;  _gpPrev._stickRight = true; }
   if (!goingLeft)  { delete keys['a']; _gpPrev._stickLeft  = false; }
   if (!goingRight) { delete keys['d']; _gpPrev._stickRight = false; }
+
+  // On-screen keyboard navigation
+  if (oskOpen) {
+    const maxCol = OSK_KEYS[oskRow].filter(k => k).length - 1;
+    if (pressed(12)) { oskRow = Math.max(0, oskRow - 1); renderOSK(); }            // D-up
+    if (pressed(13)) { oskRow = Math.min(OSK_KEYS.length-1, oskRow+1); renderOSK(); } // D-down
+    if (pressed(14)) { oskCol = Math.max(0, oskCol - 1); renderOSK(); }            // D-left
+    if (pressed(15)) { const rowLen = OSK_KEYS[oskRow].filter(k=>k).length; oskCol = Math.min(rowLen-1, oskCol+1); renderOSK(); } // D-right
+    if (pressed(0))  oskConfirm();   // A — select key
+    if (pressed(1))  { const input = document.getElementById('nameInput'); if(input) input.value=input.value.slice(0,-1); renderOSK(); } // B — backspace
+    if (pressed(9))  closeOSK();     // Start — confirm
+    return; // block other gamepad actions while OSK is open
+  }
 
   // Any button — dismiss intro screen
   if (gp.buttons.some(b => b.pressed) && document.getElementById('introScreen')?.style.display !== 'none') {
