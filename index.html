@@ -143,6 +143,7 @@
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
       sessionStorage.setItem('introShown', '1');
+      bgm.play().catch(() => {});
     }
 
     if (sessionStorage.getItem('bgmAutoStart')) {
