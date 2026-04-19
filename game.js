@@ -215,6 +215,32 @@ function isInWater(x, z) {
   return Math.hypot(x - WATER_CX, z - WATER_CZ) < WATER_R;
 }
 
+// ── Portal ────────────────────────────────────────────────────────────────────
+
+const portalGroup = new THREE.Group();
+portalGroup.position.set(56, 0, 81);
+
+// Outer ring
+const portalRingGeo = new THREE.TorusGeometry(1.6, 0.18, 16, 48);
+const portalRingMat = new THREE.MeshStandardMaterial({ color: 0xaa44ff, emissive: 0x6600cc, emissiveIntensity: 1.2, roughness: 0.2, metalness: 0.5 });
+const portalRing = new THREE.Mesh(portalRingGeo, portalRingMat);
+portalRing.rotation.x = Math.PI / 2;
+portalGroup.add(portalRing);
+
+// Inner swirl disc
+const portalDiscGeo = new THREE.CircleGeometry(1.42, 48);
+const portalDiscMat = new THREE.MeshStandardMaterial({ color: 0x3300aa, emissive: 0x5500ff, emissiveIntensity: 0.9, transparent: true, opacity: 0.72, side: THREE.DoubleSide });
+const portalDisc = new THREE.Mesh(portalDiscGeo, portalDiscMat);
+portalDisc.rotation.x = Math.PI / 2;
+portalGroup.add(portalDisc);
+
+// Glow light
+const portalLight = new THREE.PointLight(0xaa44ff, 2.5, 12);
+portalLight.position.set(0, 1, 0);
+portalGroup.add(portalLight);
+
+scene.add(portalGroup);
+
 // ── Falling Snow ──────────────────────────────────────────────────────────────
 
 const SNOW_COUNT = 200;
@@ -1559,7 +1585,7 @@ function triggerLevel1End() {
       'Hello myauw fellow traveler',
       'Thanks for killing Krilly *purr*',
       'You pleasantly suprised me',
-      '.... pssst',
+      '....pssst',
       'I\'ve found a portal somewhere near the water',
       'No clue where it leads, maybe you should check it out',
       'Good luck traveler!',
@@ -4033,6 +4059,8 @@ function loop() {
   pollGamepad();
   update(dt);
   if (spooksNPC) spooksNPC.position.y = 0.30 + 0.18 * Math.sin(Date.now() / 500);
+  portalDisc.rotation.z += 0.012;
+  portalLight.intensity = 2.0 + 0.6 * Math.sin(Date.now() / 400);
   renderer.render(scene, camera);
 }
 loop();
