@@ -1632,7 +1632,7 @@ const playerStats = Object.assign({
   projCount: 1, projExtraChance: 0, projSize: 1.0, projSpeed: 1.0,
   maxShield: 0, shield: 0, shieldRecharge: 0, shieldDmgTimer: 0,
   evasion: 0, lifesteal: 0, moveSpeed: 1.0, pickupRadius: 0.7,
-  knockback: 0, cursed: 0, boomerang: false, iframeDuration: 1.0, shaggyStacks: 0,
+  knockback: 0, cursed: 0, boomerang: false, iframeDuration: 1.0, shaggyStacks: 0, gustOfWind: 0,
 }, _levelSave?.stats ?? {});
 
 const tomeStacks = Object.assign({}, _levelSave?.tomeStacks ?? {});
@@ -1685,6 +1685,7 @@ const TOME_DEFS = [
     playerState.shaggyRechargeTimer = 0;
     ensureShaggyRing();
   }},
+  { id:'gust_of_wind', name:'Gust of Wind', emoji:'💨', color:'#88ffcc', desc:'Perfect jumps drop a gust on landing — deals 10 dmg in 2-unit radius after 0.3s.', apply: s => { s.gustOfWind += 1; } },
 ];
 
 // ── Weapons ───────────────────────────────────────────────────────────────────
@@ -3216,13 +3217,16 @@ function updateExplosions(dt) {
   }
 }
 
-function spawnGust(x, z) {
+function spawnGust(x, z, dealsDamage = false) {
   for (let i = 0; i < 1; i++) {
-    const mesh = new THREE.Mesh(_gustGeo, _gustMat.clone());
+    const mat = _gustMat.clone();
+    if (dealsDamage) mat.color.setHex(0x88ffcc); // teal tint for player gusts
+    const mesh = new THREE.Mesh(_gustGeo, mat);
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.set(x + (Math.random() - 0.5) * 0.4, 0.05, z + (Math.random() - 0.5) * 0.4);
     scene.add(mesh);
-    _gustFX.push({ mesh, timer: 0.3 + i * 0.07, duration: 0.3 + i * 0.07, delay: i * 0.04 });
+    _gustFX.push({ mesh, timer: 0.3 + i * 0.07, duration: 0.3 + i * 0.07, delay: i * 0.04,
+                   dmgPending: dealsDamage ? 0.3 : -1, ox: x, oz: z });
   }
 }
 
@@ -3231,6 +3235,21 @@ function updateGusts(dt) {
     const g = _gustFX[i];
     g.delay -= dt;
     if (g.delay > 0) continue;
+    // Damage trigger after 0.3s
+    if (g.dmgPending > 0) {
+      g.dmgPending -= dt;
+      if (g.dmgPending <= 0) {
+        g.dmgPending = -1;
+        const GUST_DMG = 10 * playerStats.damage;
+        const GUST_R2  = 4; // radius² = 2²
+        for (const e of enemies) {
+          const dx = e.mesh.position.x - g.ox, dz = e.mesh.position.z - g.oz;
+          if (dx*dx + dz*dz <= GUST_R2) {
+            e.hp -= GUST_DMG;
+          }
+        }
+      }
+    }
     g.timer -= dt;
     const t = 1 - g.timer / g.duration;
     g.mesh.scale.setScalar(1 + t * 1.25);
@@ -5225,7 +5244,7 @@ function update(dt) {
         _perfectStreak = Math.min(_perfectStreak + 1, 5);
         _jumpBuffer = 0;
         _perfectCooldown = 0.6; // must wait 0.6s before next perfect jump
-        spawnGust(player.position.x, player.position.z);
+        spawnGust(player.position.x, player.position.z, playerStats.gustOfWind > 0);
       } else {
         _perfectStreak = 0;
       }
