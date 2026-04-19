@@ -1067,18 +1067,6 @@ function buildWizardCat() {
     });
   });
 
-  // Cat ears — poke through the hat sides just above the brim
-  [-0.27, 0.27].forEach(x => {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.63, 6), dpurple);
-    ear.position.set(x, 2.02, 0.0);
-    ear.rotation.z = x > 0 ? -0.35 : 0.35;
-    g.add(ear);
-    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.0825, 0.39, 6), lpurple);
-    innerEar.position.set(x, 2.02, 0.02);
-    innerEar.rotation.z = x > 0 ? -0.35 : 0.35;
-    g.add(innerEar);
-  });
-
   // Hat brim — flat disc
   const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.06, 16), dpurple);
   brim.position.set(0, 1.74, 0);
@@ -1088,6 +1076,19 @@ function buildWizardCat() {
   const hat = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.1, 16), dpurple);
   hat.position.set(0, 2.35, 0);
   g.add(hat);
+
+  // Cat ears — added after hat so they render on top, lpurple outer + pink inner
+  [-0.38, 0.38].forEach(x => {
+    const tilt = x > 0 ? -0.55 : 0.55;
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.58, 6), lpurple);
+    ear.position.set(x, 2.08, 0.0);
+    ear.rotation.z = tilt;
+    g.add(ear);
+    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.35, 6), pink);
+    innerEar.position.set(x * 1.02, 2.1, 0.01);
+    innerEar.rotation.z = tilt;
+    g.add(innerEar);
+  });
 
   // Gold star on hat
   const star = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), gold);
