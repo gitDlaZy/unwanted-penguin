@@ -140,12 +140,10 @@
     // ── Audio system ─────────────────────────────────────────────────────────────
     const _vol = parseFloat(localStorage.getItem('bgmVolume') ?? '0.4');
 
-    // Intro track — plays on champ select screen
     const _introTrack = new Audio('sounds/Gavel%20Penguin%20Intro.mp3');
     _introTrack.loop   = true;
     _introTrack.volume = _vol;
 
-    // Game playlist — shuffled, plays sequentially then reshuffles
     const _playlist = [
       'sounds/Gavel%20Penguin.mp3',
       'sounds/Penguin%20Glitch-Quest%20Adventure.mp3',
@@ -154,64 +152,70 @@
       'sounds/Penguin%20Glockspiel2.mp3',
     ];
     let _trackIdx = 0, _shuffled = [];
-    function _shufflePlaylist() {
-      _shuffled = _playlist.slice().sort(() => Math.random() - 0.5);
-      _trackIdx = 0;
-    }
+    function _shufflePlaylist() { _shuffled = _playlist.slice().sort(() => Math.random() - 0.5); _trackIdx = 0; }
     _shufflePlaylist();
 
     const _gameTrack = window.bgm = new Audio();
     _gameTrack.volume = _vol;
-    let _introStarted = false;
-    function _loadNextTrack() {
-      _gameTrack.src = _shuffled[_trackIdx]; // no load() — just set src and play
-      _gameTrack.play().catch(() => {});
-    }
     _gameTrack.addEventListener('ended', () => {
-      _trackIdx++;
-      if (_trackIdx >= _shuffled.length) _shufflePlaylist();
-      _loadNextTrack();
+      _trackIdx = (_trackIdx + 1) % _shuffled.length;
+      if (_trackIdx === 0) _shufflePlaylist();
+      _gameTrack.src = _shuffled[_trackIdx];
+      _gameTrack.play().catch(() => {});
     });
 
-    // Volume slider controls both tracks
+    // Volume slider
     const volWrap = document.createElement('div');
     volWrap.style.cssText = 'position:fixed;bottom:16px;right:16px;display:flex;align-items:center;gap:6px;font-family:monospace;font-size:12px;color:#668899;pointer-events:auto;z-index:50';
     volWrap.innerHTML = `🎵 <input id="volSlider" type="range" min="0" max="1" step="0.05" value="${_vol}" style="width:72px;accent-color:#44aaff;cursor:pointer">`;
     document.body.appendChild(volWrap);
     document.getElementById('volSlider').addEventListener('input', e => {
       const v = parseFloat(e.target.value);
-      _introTrack.volume = v;
-      _gameTrack.volume  = v;
+      _introTrack.volume = v; _gameTrack.volume = v;
       localStorage.setItem('bgmVolume', v);
     });
 
+    let _audioUnlocked = false;
+    const _autoStart = !!sessionStorage.getItem('bgmAutoStart');
+    if (_autoStart) sessionStorage.removeItem('bgmAutoStart');
+
+    function _startGameMusic() {
+      _gameTrack.src = _shuffled[_trackIdx];
+      _gameTrack.play().catch(() => {});
+    }
+    function _unlockAudio() {
+      if (_audioUnlocked) return;
+      _audioUnlocked = true;
+      if (_autoStart) {
+        // Came from retry / level transition — skip intro screen, play game music
+        const el = document.getElementById('introScreen');
+        if (el) el.style.display = 'none';
+        _startGameMusic();
+      } else {
+        // Fresh load — play intro track on champ select
+        _introTrack.play().catch(() => {});
+      }
+    }
     function dismissIntro() {
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
-      _introTrack.pause();
-      _introTrack.currentTime = 0;
-      _loadNextTrack();
+      _introTrack.pause(); _introTrack.currentTime = 0;
+      _startGameMusic();
     }
 
-    if (sessionStorage.getItem('bgmAutoStart')) {
-      sessionStorage.removeItem('bgmAutoStart');
-      _loadNextTrack();
-      const el = document.getElementById('introScreen');
-      if (el) el.style.display = 'none';
-    } else {
-      // Intro track starts on first user interaction (browsers block autoplay before that)
-      function _startIntro() { if (!_introStarted) { _introStarted = true; _introTrack.play().catch(() => {}); } }
-      function _introKeydown(e) {
-        _startIntro();
-        if (document.getElementById('introScreen')?.style.display === 'none') { window.removeEventListener('keydown', _introKeydown); return; }
-        if (e.key === 'ArrowLeft'  || e.key === 'a') { introNav(-1); return; }
-        if (e.key === 'ArrowRight' || e.key === 'd') { introNav(1);  return; }
-        dismissIntro();
-        window.removeEventListener('keydown', _introKeydown);
-      }
-      window.addEventListener('keydown', _introKeydown);
-      window.addEventListener('pointerdown', () => { _startIntro(); dismissIntro(); }, { once: true });
+    // Unlock on first interaction (any key, click, or touch)
+    function _introKeydown(e) {
+      _unlockAudio();
+      if (document.getElementById('introScreen')?.style.display === 'none') { window.removeEventListener('keydown', _introKeydown); return; }
+      if (e.key === 'ArrowLeft'  || e.key === 'a') { introNav(-1); return; }
+      if (e.key === 'ArrowRight' || e.key === 'd') { introNav(1);  return; }
+      dismissIntro();
+      window.removeEventListener('keydown', _introKeydown);
     }
+    function _introPointer() { _unlockAudio(); if (!_autoStart) dismissIntro(); }
+    window.addEventListener('keydown',     _introKeydown);
+    window.addEventListener('pointerdown', _introPointer, { once: true });
+    window.addEventListener('touchstart',  _introPointer, { once: true, passive: true });
     setTimeout(() => { document.getElementById('ui').style.opacity = '0'; }, 3000);
     const s = document.createElement('script');
     s.src = 'game.js?t=' + Date.now();
