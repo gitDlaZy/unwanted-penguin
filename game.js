@@ -1654,10 +1654,10 @@ const TOME_DEFS = [
   { id:'precision',  name:'Precision Tome',        emoji:'🎯',  color:'#ffaa22', desc:'+5% critical hit chance',   apply: s => { s.critChance  = Math.min(0.9, s.critChance+0.05); } },
   { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-8% spell cooldown (staff, aura, homhom)', apply: s => { s.weaponCooldown *= 0.92; } },
   { id:'atkspeed',   name:'Attack Speed Tome',     emoji:'🏹',  color:'#ffcc44', desc:'+8% snowball attack speed',  apply: s => { s.attackRate *= 0.92; } },
-  { id:'quantity',   name:'Quantity Tome',         emoji:'❄️',  color:'#aaddff', desc:'+1 snowball (50% less each stack)', apply: (s) => {
-    const stacks = tomeStacks['quantity'] || 0;
-    if (stacks === 0) { s.projCount += 1; }
-    else { s.projExtraChance = Math.min(1, (s.projExtraChance||0) + 0.5); }
+  { id:'quantity',   name:'Quantity Tome',         emoji:'❄️',  color:'#aaddff', desc:'+1 snowball (needs 1/2/3/… more picks each time)', apply: (s) => {
+    const increment = 1 / s.projCount; // first pick: full 1.0; each +1 proj needs more picks
+    s.projAccum = (s.projAccum || 0) + increment;
+    if (s.projAccum >= 1) { s.projAccum -= 1; s.projCount += 1; }
     if (playerState.shaggyMaxCharges > 0) {
       playerState.shaggyMaxCharges++;
       playerState.shaggyCharges = Math.min(playerState.shaggyCharges + 1, playerState.shaggyMaxCharges);
@@ -2672,7 +2672,7 @@ function updateEnemies(dt) {
   const pressure = Math.max(0.1, Math.exp(-gameTime / SPAWN_RAMP_SPEED)) * Math.pow(0.75, playerStats.cursed) * _pebblesBonus;
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
-  const hpScale = (gameTime >= 30 ? Math.pow(1.002, gameTime - 30) : 1) * Math.pow(1.3, playerStats.cursed) * (_pebblesActive ? 1.1 : 1.0);
+  const hpScale = (gameTime >= 60 ? Math.pow(1.002, gameTime - 60) : 1) * Math.pow(1.3, playerStats.cursed) * (_pebblesActive ? 1.1 : 1.0);
   if (!bossDefeated && !_spawnsDisabled && sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (0.9 + Math.random() * 0.5) * pressure; }
   if (!bossDefeated && !_spawnsDisabled && skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
 
@@ -2681,7 +2681,6 @@ function updateEnemies(dt) {
     const dx = player.position.x - e.mesh.position.x;
     const dz = player.position.z - e.mesh.position.z;
     const dist = Math.sqrt(dx * dx + dz * dz);
-    if (dist > 80) continue; // skip AI for off-screen distant enemies
 
     if (e.type === 'seal') {
       if (dist > 0.1) {
@@ -2705,6 +2704,12 @@ function updateEnemies(dt) {
             const od = Math.hypot(ox, oz);
             const minDist = e.elite ? 2.5 : 1.3;
             if (od < minDist && od > 0.01) { sepX += (ox / od) * (minDist - od); sepZ += (oz / od) * (minDist - od); }
+          }
+          // Strip the component pointing toward player so separation never pushes forward
+          if (dist > 0.01) {
+            const tpx = dx / dist, tpz = dz / dist;
+            const dot = sepX * tpx + sepZ * tpz;
+            sepX -= dot * tpx; sepZ -= dot * tpz;
           }
           e.mesh.position.x += sepX * 0.15;
           e.mesh.position.z += sepZ * 0.15;
