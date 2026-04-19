@@ -140,11 +140,8 @@
     // ── Audio system ─────────────────────────────────────────────────────────────
     const _vol = parseFloat(localStorage.getItem('bgmVolume') ?? '0.4');
 
-    const _introTrack = new Audio('sounds/BGM/Gavel%20Penguin%20Intro.mp3');
-    _introTrack.loop   = true;
-    _introTrack.volume = _vol;
-
     const _playlist = [
+      'sounds/BGM/Gavel%20Penguin%20Intro.mp3',
       'sounds/BGM/Gavel%20Penguin.mp3',
       'sounds/BGM/Penguin%20Glitch-Quest%20Adventure.mp3',
       'sounds/BGM/Penguin%20Glitch-Quest.mp3',
@@ -171,7 +168,7 @@
     document.body.appendChild(volWrap);
     document.getElementById('volSlider').addEventListener('input', e => {
       const v = parseFloat(e.target.value);
-      _introTrack.volume = v; _gameTrack.volume = v;
+      _gameTrack.volume = v;
       localStorage.setItem('bgmVolume', v);
     });
 
@@ -179,40 +176,27 @@
     const _autoStart = !!sessionStorage.getItem('bgmAutoStart');
     if (_autoStart) sessionStorage.removeItem('bgmAutoStart');
 
-    function _startGameMusic() {
-      _gameTrack.src = _shuffled[_trackIdx];
-      _gameTrack.play().catch(() => {});
-    }
-    function _unlockAudio() {
+    function _startMusic() {
       if (_audioUnlocked) return;
       _audioUnlocked = true;
-      if (_autoStart) {
-        // Came from retry / level transition — skip intro screen, play game music
-        const el = document.getElementById('introScreen');
-        if (el) el.style.display = 'none';
-        _startGameMusic();
-      } else {
-        // Fresh load — play intro track on champ select
-        _introTrack.play().catch(() => {});
-      }
+      _gameTrack.src = _shuffled[_trackIdx];
+      _gameTrack.play().catch(() => {});
     }
     function dismissIntro() {
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
-      _introTrack.pause(); _introTrack.currentTime = 0;
-      _startGameMusic();
+      _startMusic();
     }
 
     // Unlock on first interaction (any key, click, or touch)
     function _introKeydown(e) {
-      _unlockAudio();
       if (document.getElementById('introScreen')?.style.display === 'none') { window.removeEventListener('keydown', _introKeydown); return; }
-      if (e.key === 'ArrowLeft'  || e.key === 'a') { introNav(-1); return; }
-      if (e.key === 'ArrowRight' || e.key === 'd') { introNav(1);  return; }
+      if (e.key === 'ArrowLeft'  || e.key === 'a') { introNav(-1); _startMusic(); return; }
+      if (e.key === 'ArrowRight' || e.key === 'd') { introNav(1);  _startMusic(); return; }
       dismissIntro();
       window.removeEventListener('keydown', _introKeydown);
     }
-    function _introPointer() { _unlockAudio(); if (!_autoStart) dismissIntro(); }
+    function _introPointer() { dismissIntro(); }
     window.addEventListener('keydown',     _introKeydown);
     window.addEventListener('pointerdown', _introPointer, { once: true });
     window.addEventListener('touchstart',  _introPointer, { once: true, passive: true });
