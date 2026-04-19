@@ -330,6 +330,7 @@ scene.add(portalGroup);
 const _l2IcePlatforms = []; // { x, z, r }
 const _l2Jellyfish = [];
 const _l2Sharks = [];
+let   _l2Ships  = [];
 let   _l2JellySlowTimer = 0;
 const _l2SharkAlertEl = { style: { display: '' } }; // removed shark alert
 const _l2ClueEl = (() => {
@@ -389,7 +390,6 @@ if (CURRENT_LEVEL === 2) {
   const _wdBar = new THREE.MeshStandardMaterial({ color: 0x5a3010, roughness: 0.9 });
   const _wdFlg = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0, side: THREE.DoubleSide });
 
-  const _l2Ships = [];
   function _buildShip(gx, gz, rotY, tiltZ, clue) {
     const g = new THREE.Group();
     g.position.set(gx, 0, gz);
@@ -439,9 +439,32 @@ if (CURRENT_LEVEL === 2) {
       mesh: sg,
       patrolA: new THREE.Vector3(sw1.position.x+(Math.random()-0.5)*12, 0.12, sw1.position.z+(Math.random()-0.5)*12),
       patrolB: new THREE.Vector3(sw2.position.x+(Math.random()-0.5)*12, 0.12, sw2.position.z+(Math.random()-0.5)*12),
-      target: 0, speed: 5.5+Math.random()*2,
+      target: 0, speed: 5.5+Math.random()*2, hp: 120,
     });
   }
+
+  // Orcas — 3 large predators, stronger than sharks
+  for (let i = 0; i < 3; i++) {
+    const o = buildOrca();
+    o.position.set((Math.random()-0.5)*90, 0.18, (Math.random()-0.5)*60);
+    scene.add(o);
+    _l2Orcas.push({ mesh: o, hp: 280, speed: 4.5 + Math.random(), chasing: false,
+      patrolAngle: Math.random() * Math.PI * 2 });
+  }
+
+  // Water currents — animated drifting planes
+  const _curMat = new THREE.MeshBasicMaterial({ color: 0x1166cc, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
+  for (let i = 0; i < 30; i++) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 0.18), _curMat);
+    m.rotation.x = -Math.PI / 2;
+    m.rotation.z = 0.18 + (Math.random()-0.5)*0.3;
+    m.position.set((Math.random()-0.5)*150, 0.04, (Math.random()-0.5)*110);
+    scene.add(m);
+    _l2Currents.push({ mesh: m, speed: 1.8 + Math.random() * 1.2, ox: m.position.x, oz: m.position.z });
+  }
+
+  // North beach
+  buildBeachL2();
 }
 
 function updateL2Enemies(dt) {
@@ -484,11 +507,60 @@ function updateL2Enemies(dt) {
   // Clue proximity
   let nearClue = null;
   if (CURRENT_LEVEL === 2) {
-    const _l2Ships = _l2Sharks.length ? [] : []; // accessed via closure
-    scene.children.forEach(c => { if(c.userData?.clue && Math.hypot(px-c.position.x,pz-c.position.z)<9) nearClue=c.userData.clue; });
+    for (const ship of _l2Ships) { if (Math.hypot(px-ship.position.x,pz-ship.position.z)<9) nearClue=ship.userData.clue; }
   }
   if(nearClue){ document.getElementById('_l2ClueText').textContent=nearClue; _l2ClueEl.style.display='block'; }
   else _l2ClueEl.style.display='none';
+
+  // Orcas
+  _l2Orcas.forEach(o => {
+    const odx = px - o.mesh.position.x, odz = pz - o.mesh.position.z;
+    const odist = Math.hypot(odx, odz);
+    o.chasing = inWater && odist < 24;
+    if (o.chasing) {
+      o.mesh.position.x += (odx/odist) * o.speed * dt;
+      o.mesh.position.z += (odz/odist) * o.speed * dt;
+      if (odist < 1.6 && playerState.iframes <= 0) damagePlayer(55);
+    } else {
+      o.patrolAngle += 0.3 * dt;
+      o.mesh.position.x += Math.cos(o.patrolAngle) * 2.5 * dt;
+      o.mesh.position.z += Math.sin(o.patrolAngle) * 2.5 * dt;
+    }
+    o.mesh.rotation.y = Math.atan2(-(pz - o.mesh.position.z), px - o.mesh.position.x);
+    o.mesh.position.y = 0.18 + Math.sin(Date.now() / 700 + o.patrolAngle) * 0.05;
+  });
+
+  // Crabs — wander on beach
+  _l2Crabs.forEach(c => {
+    c.timer -= dt;
+    if (c.timer <= 0) { c.angle = Math.random() * Math.PI * 2; c.timer = 1.5 + Math.random() * 2; }
+    c.mesh.position.x += Math.cos(c.angle) * c.speed * dt;
+    c.mesh.position.z += Math.sin(c.angle) * c.speed * dt;
+    c.mesh.position.x = Math.max(-38, Math.min(38, c.mesh.position.x));
+    c.mesh.position.z = Math.max(-87, Math.min(-62, c.mesh.position.z));
+    c.mesh.rotation.y = c.angle;
+    c.mesh.position.y = 0.05 + Math.abs(Math.sin(Date.now() / 200 + c.angle)) * 0.02;
+  });
+
+  // Water currents — drift then wrap
+  _l2Currents.forEach(cur => {
+    cur.mesh.position.x += cur.speed * dt * 0.95;
+    cur.mesh.position.z += cur.speed * dt * 0.22;
+    if (cur.mesh.position.x > cur.ox + 18) { cur.mesh.position.x = cur.ox - 18; cur.mesh.position.z = cur.oz; }
+  });
+
+  // Bottle interaction prompt
+  let showInteract = '';
+  if (_l2Bottle && !_bottlePopupOpen && !_shipPopupOpen) {
+    if (Math.hypot(px - _l2Bottle.x, pz - _l2Bottle.z) < 3.5) showInteract = 'E — Read bottle';
+  }
+  if (!showInteract && !_shipPopupOpen && !_bottlePopupOpen) {
+    for (const ship of _l2Ships) {
+      if (Math.hypot(px - ship.position.x, pz - ship.position.z) < 5.5) { showInteract = 'E — Board ship'; break; }
+    }
+  }
+  _interactPrompt.style.display = showInteract ? 'block' : 'none';
+  if (showInteract) _interactPrompt.textContent = showInteract;
 }
 
 // ── Falling Snow ──────────────────────────────────────────────────────────────
@@ -924,6 +996,220 @@ function buildShark() {
 
   return sg;
 }
+
+// ── Level 2 creature models + data ───────────────────────────────────────────
+
+const _l2Orcas   = [];
+const _l2Crabs   = [];
+const _l2Currents = [];
+let   _l2Bottle  = null;
+
+// Ship interaction UI
+const _shipPopup = (() => {
+  const el = document.createElement('div');
+  el.style.cssText = 'display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(5,10,25,0.95);border:2px solid #5533aa;border-radius:10px;padding:22px 32px;font-family:monospace;color:#ccaaff;font-size:15px;max-width:420px;text-align:center;z-index:9999;line-height:1.7';
+  el.innerHTML = '<div id="_shipClueText" style="margin-bottom:14px"></div><div style="font-size:11px;color:#7755aa">ESC to leave ship</div>';
+  document.body.appendChild(el);
+  return el;
+})();
+const _bottlePopup = (() => {
+  const el = document.createElement('div');
+  el.style.cssText = 'display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(5,20,10,0.95);border:2px solid #44aa55;border-radius:10px;padding:22px 32px;font-family:monospace;color:#aaffbb;font-size:15px;max-width:380px;text-align:center;z-index:9999;line-height:1.7';
+  el.innerHTML = '<div style="font-size:18px;margin-bottom:10px">📜 Message in a Bottle</div><div id="_bottleText" style="margin-bottom:14px;font-style:italic"></div><div style="font-size:11px;color:#559966">ESC to close</div>';
+  document.body.appendChild(el);
+  return el;
+})();
+const _interactPrompt = (() => {
+  const el = document.createElement('div');
+  el.style.cssText = 'display:none;position:fixed;bottom:130px;left:50%;transform:translateX(-50%);font-family:monospace;font-size:14px;color:#ccaaff;text-shadow:0 0 8px #8855ff;pointer-events:none;z-index:9999;letter-spacing:2px';
+  document.body.appendChild(el);
+  return el;
+})();
+let _shipPopupOpen = false, _bottlePopupOpen = false;
+
+function buildOrca() {
+  const g = new THREE.Group();
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x0a0a12, roughness: 0.5 });
+  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xe8f0f8, roughness: 0.5 });
+
+  // Body — larger torpedo
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 7), blackMat);
+  body.scale.set(3.6, 1.0, 1.2);
+  g.add(body);
+
+  // Snout
+  const snout = new THREE.Mesh(new THREE.ConeGeometry(0.19, 0.55, 7), blackMat);
+  snout.rotation.z = -Math.PI / 2;
+  snout.position.set(1.2, -0.05, 0);
+  g.add(snout);
+
+  // White belly
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 5), whiteMat);
+  belly.scale.set(3.0, 0.42, 1.0);
+  belly.position.set(0.1, -0.18, 0);
+  g.add(belly);
+
+  // White eye patches
+  [-1, 1].forEach(side => {
+    const patch = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 5), whiteMat);
+    patch.scale.set(0.7, 0.55, 0.3);
+    patch.position.set(0.9, 0.22, side * 0.36);
+    g.add(patch);
+  });
+
+  // Tall straight dorsal fin
+  const dorsal = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 0.07), blackMat);
+  dorsal.position.set(0.0, 0.58, 0);
+  g.add(dorsal);
+
+  // Forked tail
+  const tailUp = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.09, 0.09), blackMat);
+  tailUp.position.set(-1.3, 0.24, 0); tailUp.rotation.z = -0.45;
+  g.add(tailUp);
+  const tailDn = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.08), blackMat);
+  tailDn.position.set(-1.3, -0.1, 0); tailDn.rotation.z = 0.38;
+  g.add(tailDn);
+
+  // Pectoral fins
+  const pecGeo = new THREE.BoxGeometry(0.7, 0.07, 0.35);
+  [-1, 1].forEach(side => {
+    const fin = new THREE.Mesh(pecGeo, blackMat);
+    fin.position.set(0.2, -0.15, side * 0.48);
+    fin.rotation.z = -0.2; fin.rotation.y = side * -0.25;
+    g.add(fin);
+  });
+
+  return g;
+}
+
+function buildCrab() {
+  const g = new THREE.Group();
+  const shellMat = new THREE.MeshStandardMaterial({ color: 0xcc4422, roughness: 0.7 });
+  const legMat   = new THREE.MeshStandardMaterial({ color: 0xaa3311, roughness: 0.8 });
+
+  // Shell body
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), shellMat);
+  shell.scale.set(1.5, 0.45, 1.1);
+  g.add(shell);
+
+  // 4 legs per side
+  [-1, 1].forEach(side => {
+    for (let i = 0; i < 4; i++) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.04, 0.04), legMat);
+      leg.position.set((i - 1.5) * 0.12, -0.06, side * 0.22);
+      leg.rotation.z = side * 0.5;
+      leg.rotation.y = (i - 1.5) * 0.2;
+      g.add(leg);
+    }
+  });
+
+  // Claws at front
+  [-1, 1].forEach(side => {
+    const claw = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 5), shellMat);
+    claw.scale.set(1.3, 0.8, 0.7);
+    claw.position.set(0.3, 0.04, side * 0.26);
+    g.add(claw);
+  });
+
+  // Eyes on stalks
+  [-1, 1].forEach(side => {
+    const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.1, 4), legMat);
+    stalk.position.set(0.18, 0.12, side * 0.12);
+    g.add(stalk);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 5, 5), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+    eye.position.set(0.18, 0.19, side * 0.12);
+    g.add(eye);
+  });
+
+  return g;
+}
+
+function buildBottle() {
+  const g = new THREE.Group();
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0x336633, roughness: 0.1, metalness: 0.3, transparent: true, opacity: 0.75 });
+  const corkMat  = new THREE.MeshStandardMaterial({ color: 0xaa8855, roughness: 0.9 });
+
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.5, 8), glassMat);
+  body.position.y = 0.28;
+  g.add(body);
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.14, 0.18, 8), glassMat);
+  neck.position.y = 0.62;
+  g.add(neck);
+
+  const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.08, 8), corkMat);
+  cork.position.y = 0.77;
+  g.add(cork);
+
+  // Scroll inside
+  const scroll = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.3, 6),
+    new THREE.MeshBasicMaterial({ color: 0xddcc99 }));
+  scroll.position.y = 0.3;
+  g.add(scroll);
+
+  const glow = new THREE.PointLight(0x44ff66, 1.2, 4);
+  glow.position.y = 0.4;
+  g.add(glow);
+
+  g.rotation.z = 0.35;
+  return g;
+}
+
+function buildBeachL2() {
+  const sandMat  = new THREE.MeshStandardMaterial({ color: 0xd4b06a, roughness: 0.95 });
+  const waterLineMat = new THREE.MeshStandardMaterial({ color: 0x4499bb, transparent: true, opacity: 0.45, roughness: 0.1 });
+
+  // Main sand plane
+  const sand = new THREE.Mesh(new THREE.PlaneGeometry(80, 28), sandMat);
+  sand.rotation.x = -Math.PI / 2;
+  sand.position.set(0, 0.01, -74);
+  scene.add(sand);
+  _l2IcePlatforms.push({ x: 0, z: -74, r: 40 });
+
+  // Shallow water edge
+  const shallows = new THREE.Mesh(new THREE.PlaneGeometry(80, 8), waterLineMat);
+  shallows.rotation.x = -Math.PI / 2;
+  shallows.position.set(0, 0.02, -59);
+  scene.add(shallows);
+
+  // Sand dunes
+  for (let i = 0; i < 10; i++) {
+    const dune = new THREE.Mesh(new THREE.SphereGeometry(1.8 + Math.random() * 0.8, 8, 5), sandMat);
+    dune.scale.y = 0.28;
+    dune.position.set((Math.random() - 0.5) * 70, 0.18, -70 - Math.random() * 14);
+    scene.add(dune);
+  }
+
+  // Pirates (3 static figures using buildHuman with pirate palette — just placed standing)
+  const _piratePoses = [[-18, -72], [0, -76], [22, -73]];
+  _piratePoses.forEach(([px, pz]) => {
+    const p = buildHumanPlayer();
+    p.scale.setScalar(0.9);
+    p.position.set(px, 0, pz);
+    p.rotation.y = Math.random() * Math.PI * 2;
+    scene.add(p);
+    _l2BeachPirates.push(p);
+  });
+
+  // Bottle
+  const bot = buildBottle();
+  bot.position.set(8, 0, -67);
+  scene.add(bot);
+  _l2Bottle = { mesh: bot, x: 8, z: -67 };
+
+  // Crabs
+  for (let i = 0; i < 6; i++) {
+    const c = buildCrab();
+    const cx = (Math.random() - 0.5) * 60;
+    const cz = -63 - Math.random() * 16;
+    c.position.set(cx, 0.05, cz);
+    c.scale.setScalar(0.8 + Math.random() * 0.4);
+    scene.add(c);
+    _l2Crabs.push({ mesh: c, angle: Math.random() * Math.PI * 2, timer: Math.random() * 3, speed: 0.6 + Math.random() * 0.5 });
+  }
+}
+
+const _l2BeachPirates = [];
 
 function buildSeal() {
   const dark  = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
@@ -2370,6 +2656,36 @@ function updateSnowballs(dt) {
       }
     }
 
+    // Check hit against L2 sharks and orcas
+    if (!hit && CURRENT_LEVEL === 2) {
+      const hitRadius = 1.5 * playerStats.projSize;
+      for (let si = _l2Sharks.length - 1; si >= 0; si--) {
+        const sh = _l2Sharks[si];
+        if (Math.hypot(s.mesh.position.x - sh.mesh.position.x, s.mesh.position.z - sh.mesh.position.z) < hitRadius) {
+          const isCrit = Math.random() < playerStats.critChance;
+          sh.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+          spawnImpact(s.mesh.position.x, 0.5, s.mesh.position.z, isCrit);
+          if (sh.hp <= 0) { scene.remove(sh.mesh); _l2Sharks.splice(si, 1); killCount++; spawnXpOrb(sh.mesh.position.x, sh.mesh.position.z, 3); updateHUD(); }
+          if (!s.boomerang) hit = true;
+          break;
+        }
+      }
+      if (!hit) {
+        const orcaRadius = 2.2 * playerStats.projSize;
+        for (let oi = _l2Orcas.length - 1; oi >= 0; oi--) {
+          const o = _l2Orcas[oi];
+          if (Math.hypot(s.mesh.position.x - o.mesh.position.x, s.mesh.position.z - o.mesh.position.z) < orcaRadius) {
+            const isCrit = Math.random() < playerStats.critChance;
+            o.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+            spawnImpact(s.mesh.position.x, 0.5, s.mesh.position.z, isCrit);
+            if (o.hp <= 0) { scene.remove(o.mesh); _l2Orcas.splice(oi, 1); killCount++; spawnXpOrb(o.mesh.position.x, o.mesh.position.z, 6); updateHUD(); }
+            if (!s.boomerang) hit = true;
+            break;
+          }
+        }
+      }
+    }
+
     // Boomerang: only removed when it returns to player (handled above) or times out
     if (s.boomerang) {
       s.age = (s.age || 0) + dt;
@@ -2561,8 +2877,8 @@ function spawnCrack(x, z, length, angle) {
   });
 }
 
-// Generate cracks across the full map on a jittered grid
-(function placeCracks() {
+// Generate cracks across the full map on a jittered grid (level 1 only)
+if (CURRENT_LEVEL !== 2) (function placeCracks() {
   const step = 14;
   for (let gx = -85; gx <= 85; gx += step) {
     for (let gz = -85; gz <= 85; gz += step) {
@@ -2587,8 +2903,8 @@ const thinIceNormalMat  = new THREE.MeshStandardMaterial({ color: 0x99ccee, roug
 const thinIceCrackedMat = new THREE.MeshStandardMaterial({ color: 0x556677, roughness: 0.5, transparent: true, opacity: 0.9 });
 const thinIceBrokenMat  = new THREE.MeshStandardMaterial({ color: 0x050d14, roughness: 1.0, transparent: true, opacity: 0.95 });
 
-// Build thin ice tiles on a grid inside the SW zone
-(function placeThinIce() {
+// Build thin ice tiles on a grid inside the SW zone (level 1 only)
+if (CURRENT_LEVEL !== 2) (function placeThinIce() {
   const step = 5;
   for (let tx = THIN_ICE_CX - THIN_ICE_R; tx <= THIN_ICE_CX + THIN_ICE_R; tx += step) {
     for (let tz = THIN_ICE_CZ - THIN_ICE_R; tz <= THIN_ICE_CZ + THIN_ICE_R; tz += step) {
@@ -3776,7 +4092,7 @@ function updateHumans(dt) {
   }
 }
 
-spawnHumans();
+if (CURRENT_LEVEL !== 2) spawnHumans();
 ensureShaggyRing(); // player starts with 1 shaggy charge
 spawnMapItem(31, 10); // single tome on the map
 
@@ -3989,6 +4305,22 @@ window.addEventListener('keydown', e => {
   keyCodes[e.code] = true;
   keys[e.key.toLowerCase()] = true;
   if (e.key.toLowerCase() === 'o') openPendingTome();
+  if (e.key.toLowerCase() === 'e' && CURRENT_LEVEL === 2) {
+    const px = player.position.x, pz = player.position.z;
+    if (_bottlePopupOpen || _shipPopupOpen) { _bottlePopup.style.display='none'; _shipPopup.style.display='none'; _bottlePopupOpen=false; _shipPopupOpen=false; }
+    else if (_l2Bottle && Math.hypot(px-_l2Bottle.x,pz-_l2Bottle.z)<3.5) {
+      document.getElementById('_bottleText').textContent = 'Brave traveller — the orca guards the ancient chest. Seek the three glowing coral pillars and strike them in order. The cold water hides what the warm world forgot.';
+      _bottlePopup.style.display='block'; _bottlePopupOpen=true;
+    } else {
+      for (const ship of _l2Ships) {
+        if (Math.hypot(px-ship.position.x,pz-ship.position.z)<5.5) {
+          document.getElementById('_shipClueText').textContent = ship.userData.clue;
+          _shipPopup.style.display='block'; _shipPopupOpen=true; break;
+        }
+      }
+    }
+  }
+  if (e.key === 'Escape') { _bottlePopup.style.display='none'; _shipPopup.style.display='none'; _bottlePopupOpen=false; _shipPopupOpen=false; }
   if (e.key.toLowerCase() === 'l') activatePowerUpBtn();
   if (choosingPowerUp) {
     if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft')  { puSelectedIdx = 0; puHighlight(); }
