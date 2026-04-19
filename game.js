@@ -218,7 +218,7 @@ function isInWater(x, z) {
 // ── Portal ────────────────────────────────────────────────────────────────────
 
 const portalGroup = new THREE.Group();
-portalGroup.position.set(56, 0, 81);
+portalGroup.position.set(56, 0, 80);
 
 // Outer ring
 const portalRingGeo = new THREE.TorusGeometry(1.6, 0.18, 16, 48);
