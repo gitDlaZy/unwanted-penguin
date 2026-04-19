@@ -3669,10 +3669,63 @@ window.addEventListener('keydown', e => {
     penguinMesh.add(buildWizardCat());
     activeSkin = 'wizard';
   }
+  // Ctrl+Shift+C+M → debug menu
+  if (e.ctrlKey && e.shiftKey && keys['c'] && keys['m']) { e.preventDefault(); toggleDebugMenu(); }
   const typing = document.activeElement?.id === 'nameInput';
   if (!typing) resumeGame();
 });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+// ── Debug Menu ────────────────────────────────────────────────────────────────
+
+let _debugOpen = false;
+const _debugOverlay = (() => {
+  const el = document.createElement('div');
+  el.id = 'debugMenu';
+  el.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:99999;display:none;align-items:center;justify-content:center';
+  el.innerHTML = `
+    <div style="background:#0a0f1e;border:2px solid #44aaff;border-radius:12px;padding:24px 36px;font-family:monospace;color:#aee8ff;min-width:320px">
+      <div style="font-size:18px;letter-spacing:3px;color:#44aaff;margin-bottom:18px;text-align:center">⚙ DEBUG MENU</div>
+      <div id="_dbgList" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div style="margin-top:18px;font-size:11px;color:#446688;text-align:center">Ctrl+Shift+C+M or ESC to close</div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if (e.target === el) closeDebugMenu(); });
+  return el;
+})();
+
+const _debugActions = [
+  { label: '💀  Kill Boss',            fn: () => { if (boss) { boss.hp = 1; } } },
+  { label: '⚡  Instant Level Up',     fn: () => { queueTome(); openPendingTome(); } },
+  { label: '🛡  Add Power-Up Charge',  fn: () => { playerState.shaggyCharges = Math.max(1, (playerState.shaggyCharges||0)+1); updateHUD(); } },
+  { label: '⏩  Skip to Boss (4:55)',   fn: () => { gameTime = 295; } },
+  { label: '❤️  Full Heal',            fn: () => { playerState.hp = playerState.maxHp; updateHUD(); } },
+  { label: '☠  Kill All Enemies',      fn: () => { seals.forEach(s => s.hp = 0); } },
+  { label: '🌀  Spawn Boss Now',        fn: () => { if (!boss) spawnBoss(player.position.x + 15, player.position.z); } },
+  { label: '🐱  Trigger Level 1 End',  fn: () => { triggerLevel1End(); } },
+];
+
+function buildDebugList() {
+  const list = document.getElementById('_dbgList');
+  list.innerHTML = '';
+  _debugActions.forEach((a, i) => {
+    const btn = document.createElement('button');
+    btn.textContent = a.label;
+    btn.style.cssText = 'background:#0d1a30;border:1px solid #1a4a6a;color:#aee8ff;font-family:monospace;font-size:14px;padding:9px 16px;cursor:pointer;border-radius:6px;text-align:left;transition:background 0.1s';
+    btn.onmouseenter = () => btn.style.background = '#1a3a5a';
+    btn.onmouseleave = () => btn.style.background = '#0d1a30';
+    btn.onclick = () => { a.fn(); closeDebugMenu(); };
+    list.appendChild(btn);
+  });
+}
+
+function toggleDebugMenu() { _debugOpen ? closeDebugMenu() : openDebugMenu(); }
+function openDebugMenu()  { buildDebugList(); _debugOverlay.style.display = 'flex'; _debugOpen = true; }
+function closeDebugMenu() { _debugOverlay.style.display = 'none'; _debugOpen = false; }
+
+window.addEventListener('keydown', e => {
+  if (_debugOpen && e.key === 'Escape') { closeDebugMenu(); e.preventDefault(); }
+}, true);
 
 // ── Game Loop ─────────────────────────────────────────────────────────────────
 
