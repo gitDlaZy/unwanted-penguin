@@ -466,7 +466,7 @@ if (CURRENT_LEVEL === 2) {
       idleX: sx, idleZ: sz,           // centre of idle circle
       idleAngle: Math.random()*Math.PI*2,
       idleRadius: 4 + Math.random()*6,
-      speed: 6.33 + Math.random()*2.3, hp: 120,
+      speed: 6.01 + Math.random()*2.19, hp: 120,
       chasing: false,
     });
   }
