@@ -3724,24 +3724,19 @@ const _debugOverlay = (() => {
 })();
 
 let _godMode = false;
-const _godOrigColors = new Map();
+const _godLight = new THREE.PointLight(0xffd700, 0, 6);
+_godLight.position.set(0, 1, 0);
+player.add(_godLight);
+const _godRingMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 1.5, transparent: true, opacity: 0.55, roughness: 0.1, metalness: 0.8 });
+const _godRing = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.08, 8, 32), _godRingMat);
+_godRing.rotation.x = Math.PI / 2;
+_godRing.position.y = 0.1;
+_godRing.visible = false;
+player.add(_godRing);
+
 function setGodModeVisual(on) {
-  penguinMesh.traverse(obj => {
-    if (!obj.isMesh) return;
-    const m = obj.material;
-    if (!m) return;
-    if (on) {
-      _godOrigColors.set(obj.uuid, { color: m.color.getHex(), emissive: m.emissive?.getHex() ?? 0, emissiveIntensity: m.emissiveIntensity ?? 0, metalness: m.metalness ?? 0 });
-      m.color.setHex(0xffd700);
-      if (m.emissive) m.emissive.setHex(0xffaa00);
-      m.emissiveIntensity = 0.8;
-      m.metalness = 0.9;
-    } else {
-      const orig = _godOrigColors.get(obj.uuid);
-      if (orig) { m.color.setHex(orig.color); if (m.emissive) m.emissive.setHex(orig.emissive); m.emissiveIntensity = orig.emissiveIntensity; m.metalness = orig.metalness; }
-    }
-    m.needsUpdate = true;
-  });
+  _godLight.intensity = on ? 3.5 : 0;
+  _godRing.visible = on;
 }
 const _debugActions = [
   { label: '💀  Kill Boss',            fn: () => { if (boss) { boss.hp = 1; } } },
@@ -4084,6 +4079,7 @@ function loop() {
   if (spooksNPC) spooksNPC.position.y = 0.30 + 0.18 * Math.sin(Date.now() / 500);
   portalDisc.rotation.z += 0.012;
   portalLight.intensity = 2.0 + 0.6 * Math.sin(Date.now() / 400);
+  if (_godMode) { _godRing.rotation.z += 0.04; _godRingMat.opacity = 0.4 + 0.2 * Math.sin(Date.now() / 300); }
   renderer.render(scene, camera);
 }
 loop();
