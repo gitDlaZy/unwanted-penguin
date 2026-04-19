@@ -477,14 +477,14 @@ if (CURRENT_LEVEL === 2) {
   }
 
   // Danger-zone currents near south kill border — red/orange, denser, faster
-  const _dangerCurMat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.28, side: THREE.DoubleSide });
+  const _dangerCurMat = new THREE.MeshBasicMaterial({ color: 0xcc1100, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
   for (let i = 0; i < 40; i++) {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 0.22), _dangerCurMat);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(5.5, 0.3), _dangerCurMat);
     m.rotation.x = -Math.PI / 2;
     m.rotation.z = 0.05 + (Math.random()-0.5)*0.15; // nearly south-pointing
     m.position.set((Math.random()-0.5)*160, 0.06, 72 + Math.random() * 30);
     scene.add(m);
-    _l2Currents.push({ mesh: m, speed: 4.5 + Math.random() * 3, ox: m.position.x, oz: m.position.z, danger: true });
+    _l2Currents.push({ mesh: m, speed: 8 + Math.random() * 5, ox: m.position.x, oz: m.position.z, danger: true });
   }
 
   // Warning signs along south danger zone
@@ -661,7 +661,7 @@ function updateL2Enemies(dt) {
 
   // South current — drag toward border
   if (player.position.z > L2_SOUTH_DANGER && !_l2OnIce(px, pz)) {
-    const strength = Math.min(1, (player.position.z - L2_SOUTH_DANGER) / 20) * 6;
+    const strength = Math.min(1, (player.position.z - L2_SOUTH_DANGER) / 20) * 14;
     player.position.z += strength * dt;
   }
 
