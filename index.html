@@ -126,7 +126,7 @@
 
     // BGM — defined here so it's ready before game.js loads
     const bgm = window.bgm = new Audio('sounds/Cowboy%20Bebop%20-%20Opening%20Tank.mp3');
-    bgm.loop   = true;
+    bgm.loop   = false;
     bgm.volume = parseFloat(localStorage.getItem('bgmVolume') ?? '0.4');
 
     // Volume slider
