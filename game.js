@@ -3144,8 +3144,8 @@ function showDmgNumber(worldX, worldZ, amount, isCrit) {
   const el = document.createElement('div');
   el.textContent = Math.round(amount);
   el.style.cssText = `position:fixed;font-family:monospace;font-weight:bold;pointer-events:none;z-index:9999;
-    font-size:${isCrit ? 18 : 13}px;color:${isCrit ? '#ffdd44' : '#ffffff'};
-    text-shadow:0 0 6px ${isCrit ? '#ffaa00' : '#000'};transition:transform 0.6s,opacity 0.6s`;
+    font-size:${isCrit ? 18 : 13}px;color:#ffdd44;
+    text-shadow:0 0 6px #ffaa00;transition:transform 0.6s,opacity 0.6s`;
   document.body.appendChild(el);
   // project world pos to screen
   const v = new THREE.Vector3(worldX, 1.2, worldZ);
