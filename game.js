@@ -2962,7 +2962,9 @@ function updateBurst(dt) {
 function hitEnemy(j, impactX, impactY, impactZ, dmgMult = 1) {
   const e = enemies[j];
   const isCrit = Math.random() < playerStats.critChance;
-  e.hp -= SNOWBALL_DAMAGE * playerStats.damage * dmgMult * (isCrit ? 2 : 1);
+  const _dmg = SNOWBALL_DAMAGE * playerStats.damage * dmgMult * (isCrit ? 2 : 1);
+  e.hp -= _dmg;
+  showDmgNumber(e.mesh.position.x, e.mesh.position.z, _dmg, isCrit);
   spawnImpact(impactX, impactY, impactZ, isCrit);
   if (playerStats.knockback > 0 && e.mesh) {
     const kx = impactX - e.mesh.position.x, kz = impactZ - e.mesh.position.z;
@@ -3135,6 +3137,26 @@ function updateSnowballs(dt) {
       snowballs.splice(i, 1);
     }
   }
+}
+
+function showDmgNumber(worldX, worldZ, amount, isCrit) {
+  if (!window.showDmgNumbers) return;
+  const el = document.createElement('div');
+  el.textContent = Math.round(amount);
+  el.style.cssText = `position:fixed;font-family:monospace;font-weight:bold;pointer-events:none;z-index:9999;
+    font-size:${isCrit ? 18 : 13}px;color:${isCrit ? '#ffdd44' : '#ffffff'};
+    text-shadow:0 0 6px ${isCrit ? '#ffaa00' : '#000'};transition:transform 0.6s,opacity 0.6s`;
+  document.body.appendChild(el);
+  // project world pos to screen
+  const v = new THREE.Vector3(worldX, 1.2, worldZ);
+  v.project(camera);
+  el.style.left = ((v.x + 1) / 2 * window.innerWidth) + 'px';
+  el.style.top  = ((-v.y + 1) / 2 * window.innerHeight) + 'px';
+  requestAnimationFrame(() => {
+    el.style.transform = `translateY(-30px)`;
+    el.style.opacity = '0';
+  });
+  setTimeout(() => el.remove(), 650);
 }
 
 function spawnImpact(x, y, z, crit = false) {

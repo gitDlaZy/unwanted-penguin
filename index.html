@@ -24,13 +24,15 @@
 </head>
 <body>
   <div id="ui">UNWANTED PENGUIN &mdash; WASD move &nbsp;|&nbsp; P jump &nbsp;|&nbsp; L power-up</div>
-  <div style="position:fixed;top:20px;right:24px;pointer-events:none">
-    <div id="killHUD" style="font-family:monospace;font-size:16px;color:#aee8ff;text-shadow:0 0 8px #44aaff;text-align:right">☠ 0</div>
-    <div id="tsHUD" style="font-family:monospace;font-size:10px;color:#6699aa;text-align:right;margin-top:2px"></div>
+  <div style="position:fixed;top:20px;right:24px;text-align:right">
+    <div id="killHUD" style="font-family:monospace;font-size:16px;color:#aee8ff;text-shadow:0 0 8px #44aaff;pointer-events:none">☠ 0</div>
+    <div id="tsHUD" style="font-family:monospace;font-size:10px;color:#6699aa;margin-top:2px;pointer-events:none"></div>
     <script>
       const _n=new Date();
       document.getElementById('tsHUD').textContent=_n.toISOString().slice(0,10)+' · '+_n.toTimeString().slice(0,5);
     </script>
+    <button id="dmgToggleBtn" onclick="window.showDmgNumbers=!window.showDmgNumbers;this.textContent=window.showDmgNumbers?'DMG ON':'DMG OFF';this.style.color=window.showDmgNumbers?'#44ff88':'#6699aa';"
+      style="margin-top:4px;background:none;border:1px solid #334455;border-radius:4px;padding:2px 7px;font-family:monospace;font-size:10px;color:#6699aa;cursor:pointer">DMG OFF</button>
   </div>
   <div id="timerHUD" style="display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);font-family:monospace;font-size:18px;color:#aee8ff;text-shadow:0 0 8px #44aaff;pointer-events:none">⏱ 5:00</div>
   <div id="bossArrow" style="display:none;position:fixed;pointer-events:none;z-index:100;font-size:33px;color:#ff4477;text-shadow:0 0 10px #ff0044;transition:opacity 0.2s">▲</div>
