@@ -3233,19 +3233,14 @@ function spawnGust(x, z, dealsDamage = false) {
   const vlen = Math.sqrt(playerVel.x * playerVel.x + playerVel.z * playerVel.z) || 1;
   const bx = -playerVel.x / vlen;
   const bz = -playerVel.z / vlen;
-  const COUNT = 5;
-  for (let i = 0; i < COUNT; i++) {
-    const mat = _gustMat.clone();
-    mat.color.setHex(dealsDamage ? 0x88ffcc : 0xaaeeff);
-    const mesh = new THREE.Mesh(_gustGeo, mat);
-    mesh.rotation.x = -Math.PI / 2;
-    const spread = (Math.random() - 0.5) * 0.35;
-    const trail  = i * 0.22;
-    mesh.position.set(x + bx * trail + bz * spread, 0.05, z + bz * trail - bx * spread);
-    scene.add(mesh);
-    _gustFX.push({ mesh, timer: 0.35 + i * 0.06, duration: 0.35 + i * 0.06, delay: i * 0.05,
-                   dmgPending: dealsDamage && i === 0 ? 0.3 : -1, ox: x, oz: z });
-  }
+  const mat = _gustMat.clone();
+  mat.color.setHex(dealsDamage ? 0x44ff44 : 0xaaeeff);
+  const mesh = new THREE.Mesh(_gustGeo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(x, 0.05, z);
+  scene.add(mesh);
+  _gustFX.push({ mesh, timer: 0.4, duration: 0.4, delay: 0,
+                 dmgPending: dealsDamage ? 0.3 : -1, ox: x, oz: z });
 }
 
 function updateGusts(dt) {
