@@ -5507,6 +5507,24 @@ function loop() {
 }
 loop();
 
+// Keep game logic ticking when alt-tabbed so player still takes damage
+let _bgTick = null;
+let _bgLast = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    _bgLast = performance.now();
+    _bgTick = setInterval(() => {
+      const now = performance.now();
+      const dt = Math.min((now - _bgLast) / 1000, 0.05);
+      _bgLast = now;
+      update(dt);
+    }, 50);
+  } else {
+    if (_bgTick) { clearInterval(_bgTick); _bgTick = null; }
+    lastTime = performance.now(); // prevent big dt spike on tab return
+  }
+});
+
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   adaptFOV();
