@@ -3250,19 +3250,16 @@ function updateExplosions(dt) {
   }
 }
 
-function spawnGust(x, z, dealsDamage = false) {
-  // direction behind the player based on movement velocity
-  const vlen = Math.sqrt(playerVel.x * playerVel.x + playerVel.z * playerVel.z) || 1;
-  const bx = -playerVel.x / vlen;
-  const bz = -playerVel.z / vlen;
+function spawnGust(x, z, showGust = false, powered = false) {
+  if (!showGust) return;
   const mat = _gustMat.clone();
-  mat.color.setHex(dealsDamage ? 0x44ff44 : 0xaaeeff);
+  mat.color.setHex(powered ? 0x44ff44 : 0xffffff);
   const mesh = new THREE.Mesh(_gustGeo, mat);
   mesh.rotation.x = -Math.PI / 2;
   mesh.position.set(x, 0.05, z);
   scene.add(mesh);
   _gustFX.push({ mesh, timer: 0.4, duration: 0.4, delay: 0,
-                 dmgPending: dealsDamage ? 0.3 : -1, ox: x, oz: z });
+                 dmgPending: powered ? 0.3 : -1, ox: x, oz: z });
 }
 
 function updateGusts(dt) {
@@ -3275,7 +3272,7 @@ function updateGusts(dt) {
       g.dmgPending -= dt;
       if (g.dmgPending <= 0) {
         g.dmgPending = -1;
-        const GUST_DMG = 10 * playerStats.damage;
+        const GUST_DMG = 2;
         const GUST_R2  = 4; // radius² = 2²
         for (const e of enemies) {
           const dx = e.mesh.position.x - g.ox, dz = e.mesh.position.z - g.oz;
@@ -5283,7 +5280,7 @@ function update(dt) {
         _perfectStreak = Math.min(_perfectStreak + 1, 5);
         _jumpBuffer = 0;
         _perfectCooldown = 0.6; // must wait 0.6s before next perfect jump
-        spawnGust(player.position.x, player.position.z, playerStats.gustOfWind > 0);
+        spawnGust(player.position.x, player.position.z, playerStats.gustOfWind > 0, _perfectStreak >= 3);
       } else {
         _perfectStreak = 0;
       }
