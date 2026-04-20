@@ -1631,7 +1631,7 @@ const playerStats = Object.assign({
   damage: 1.0, critChance: 0, attackRate: 1.0, weaponCooldown: 1.0,
   projCount: 1, projExtraChance: 0, projSize: 1.0, projSpeed: 1.0,
   maxShield: 0, shield: 0, shieldRecharge: 0, shieldDmgTimer: 0,
-  evasion: 0, lifesteal: 0, moveSpeed: 1.05, pickupRadius: 0.7,
+  evasion: 0, lifesteal: 0, bloodHeal: 0, moveSpeed: 1.05, pickupRadius: 0.7,
   knockback: 0, cursed: 0, boomerang: false, iframeDuration: 1.0, shaggyStacks: 0, gustOfWind: 0,
 }, _levelSave?.stats ?? {});
 
@@ -1667,7 +1667,7 @@ const TOME_DEFS = [
   { id:'projspeed',  name:'Speed Tome',            emoji:'💨',  color:'#88ffcc', desc:'+15% projectile speed',     apply: s => { s.projSpeed  *= 1.15; } },
   { id:'shield',     name:'Shield Tome',           emoji:'🛡️', color:'#44aaff', desc:'+1 shield charge',          apply: s => { s.maxShield += 1; s.shield = s.maxShield; updateHUD(); } },
   { id:'evasion',    name:'Evasion Tome',          emoji:'🌀',  color:'#44ffaa', desc:'+10% dodge chance',         apply: s => { s.evasion    = Math.min(0.7, s.evasion+0.1); } },
-  { id:'bloody',     name:'Bloody Tome',           emoji:'🩸',  color:'#ff4466', desc:'+20% lifesteal on hit',     apply: s => { s.lifesteal  = Math.min(1, s.lifesteal+0.2); } },
+  { id:'bloody',     name:'Bloody Tome',           emoji:'🩸',  color:'#ff4466', desc:'+1% chance to heal 1 HP on hit',     apply: s => { s.bloodHeal = Math.min(1, s.bloodHeal + 0.01); } },
   { id:'hp',         name:'HP Tome',               emoji:'💙',  color:'#2266ff', desc:'+25 max HP',                apply: s => { s.maxShield += 1; s.shield = s.maxShield; playerState.maxHp+=25; playerState.hp+=25; updateHUD(); } },
   { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+1.5% movement speed. "You obtained ADHD!"', apply: s => { s.moveSpeed *= 1.015; showAdhdMsg(); } },
   { id:'attraction', name:'Attraction Tome',       emoji:'🧲',  color:'#ffaa44', desc:'+1 pickup radius',          apply: s => { s.pickupRadius += 1; } },
@@ -1801,6 +1801,10 @@ function fireGandalfStaff() {
     playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
     updateHUD();
   }
+  if (playerStats.bloodHeal > 0 && Math.random() < playerStats.bloodHeal && playerState.hp < playerState.maxHp) {
+    playerState.hp = Math.min(playerState.maxHp, playerState.hp + 1);
+    updateHUD();
+  }
 }
 
 // Aura Farmer persistent ring — outer edge indicator, scales with projSize
@@ -1872,6 +1876,10 @@ function fireAuraFarmer() {
   });
   if (playerStats.lifesteal > 0 && playerStats.shieldDmgTimer <= 0 && Math.random() < playerStats.lifesteal && playerStats.shield < playerStats.maxShield) {
     playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
+    updateHUD();
+  }
+  if (playerStats.bloodHeal > 0 && Math.random() < playerStats.bloodHeal && playerState.hp < playerState.maxHp) {
+    playerState.hp = Math.min(playerState.maxHp, playerState.hp + 1);
     updateHUD();
   }
 }
@@ -2966,6 +2974,10 @@ function hitEnemy(j, impactX, impactY, impactZ, dmgMult = 1) {
     playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
     updateHUD();
   }
+  if (playerStats.bloodHeal > 0 && Math.random() < playerStats.bloodHeal && playerState.hp < playerState.maxHp) {
+    playerState.hp = Math.min(playerState.maxHp, playerState.hp + 1);
+    updateHUD();
+  }
   if (e.hp <= 0) {
     if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
     if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 5 : 1);
@@ -3217,15 +3229,22 @@ function updateExplosions(dt) {
 }
 
 function spawnGust(x, z, dealsDamage = false) {
-  for (let i = 0; i < 1; i++) {
+  // direction behind the player based on movement velocity
+  const vlen = Math.sqrt(playerVel.x * playerVel.x + playerVel.z * playerVel.z) || 1;
+  const bx = -playerVel.x / vlen;
+  const bz = -playerVel.z / vlen;
+  const COUNT = 5;
+  for (let i = 0; i < COUNT; i++) {
     const mat = _gustMat.clone();
-    if (dealsDamage) mat.color.setHex(0x88ffcc); // teal tint for player gusts
+    mat.color.setHex(dealsDamage ? 0x88ffcc : 0xaaeeff);
     const mesh = new THREE.Mesh(_gustGeo, mat);
     mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(x + (Math.random() - 0.5) * 0.4, 0.05, z + (Math.random() - 0.5) * 0.4);
+    const spread = (Math.random() - 0.5) * 0.35;
+    const trail  = i * 0.22;
+    mesh.position.set(x + bx * trail + bz * spread, 0.05, z + bz * trail - bx * spread);
     scene.add(mesh);
-    _gustFX.push({ mesh, timer: 0.3 + i * 0.07, duration: 0.3 + i * 0.07, delay: i * 0.04,
-                   dmgPending: dealsDamage ? 0.3 : -1, ox: x, oz: z });
+    _gustFX.push({ mesh, timer: 0.35 + i * 0.06, duration: 0.35 + i * 0.06, delay: i * 0.05,
+                   dmgPending: dealsDamage && i === 0 ? 0.3 : -1, ox: x, oz: z });
   }
 }
 
