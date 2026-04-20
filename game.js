@@ -1632,7 +1632,7 @@ const playerStats = Object.assign({
   projCount: 1, projExtraChance: 0, projSize: 1.0, projSpeed: 1.0,
   maxShield: 0, shield: 0, shieldRecharge: 0, shieldDmgTimer: 0,
   evasion: 0, lifesteal: 0, bloodHeal: 0, moveSpeed: 1.05, pickupRadius: 0.7,
-  knockback: 0, cursed: 0, boomerang: false, iframeDuration: 1.0, shaggyStacks: 0, gustOfWind: 0,
+  knockback: 0, cursed: 0, boomerang: false, iframeDuration: 1.0, shaggyStacks: 0, gustOfWind: 1, // TEMP: testing
 }, _levelSave?.stats ?? {});
 
 const tomeStacks = Object.assign({}, _levelSave?.tomeStacks ?? {});
