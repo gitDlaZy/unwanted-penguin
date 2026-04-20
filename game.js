@@ -3278,6 +3278,7 @@ function updateGusts(dt) {
           const dx = e.mesh.position.x - g.ox, dz = e.mesh.position.z - g.oz;
           if (dx*dx + dz*dz <= GUST_R2) {
             e.hp -= GUST_DMG;
+            showDmgNumber(e.mesh.position.x, e.mesh.position.z, GUST_DMG, false);
           }
         }
       }
