@@ -3273,7 +3273,7 @@ function updateGusts(dt) {
       if (g.dmgPending <= 0) {
         g.dmgPending = -1;
         const GUST_DMG = 2;
-        const GUST_R2  = 0.25; // radius² = 0.5²
+        const GUST_R2  = 1; // radius² = 1²
         for (const e of enemies) {
           const dx = e.mesh.position.x - g.ox, dz = e.mesh.position.z - g.oz;
           if (dx*dx + dz*dz <= GUST_R2) {
