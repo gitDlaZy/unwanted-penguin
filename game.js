@@ -3250,7 +3250,7 @@ function updateExplosions(dt) {
   }
 }
 
-function spawnGust(x, z, showGust = false, powered = false) {
+function spawnGust(x, z, showGust = false, powered = false, delay = 0) {
   if (!showGust) return;
   const mat = _gustMat.clone();
   mat.color.setHex(powered ? 0x44ff44 : 0xffffff);
@@ -3258,7 +3258,7 @@ function spawnGust(x, z, showGust = false, powered = false) {
   mesh.rotation.x = -Math.PI / 2;
   mesh.position.set(x, 0.05, z);
   scene.add(mesh);
-  _gustFX.push({ mesh, timer: 0.4, duration: 0.4, delay: 0,
+  _gustFX.push({ mesh, timer: 0.4, duration: 0.4, delay,
                  dmgPending: powered ? 0.3 : -1, ox: x, oz: z });
 }
 
@@ -5282,6 +5282,10 @@ function update(dt) {
         _jumpBuffer = 0;
         _perfectCooldown = 0.6; // must wait 0.6s before next perfect jump
         spawnGust(player.position.x, player.position.z, playerStats.gustOfWind > 0, _perfectStreak >= 3);
+        // Behind gust: opposite of movement direction, 0.2s delayed
+        const velLen = Math.sqrt(playerVel.x*playerVel.x + playerVel.z*playerVel.z) || 1;
+        spawnGust(player.position.x - (playerVel.x/velLen)*2, player.position.z - (playerVel.z/velLen)*2,
+                  playerStats.gustOfWind > 0, _perfectStreak >= 3, 0.2);
       } else {
         _perfectStreak = 0;
       }
