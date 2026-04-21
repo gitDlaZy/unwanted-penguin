@@ -1654,10 +1654,10 @@ const TOME_DEFS = [
   { id:'precision',  name:'Precision Tome',        emoji:'🎯',  color:'#ffaa22', desc:'+5% critical hit chance',   apply: s => { s.critChance  = Math.min(0.9, s.critChance+0.05); } },
   { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-8% spell cooldown (staff, aura, homhom)', apply: s => { s.weaponCooldown *= 0.92; } },
   { id:'atkspeed',   name:'Attack Speed Tome',     emoji:'🏹',  color:'#ffcc44', desc:'+8% snowball attack speed',  apply: s => { s.attackRate *= 0.92; } },
-  { id:'quantity',   name:'Quantity Tome',         emoji:'❄️',  color:'#aaddff', desc:'+1 snowball (needs 1/2/3/… more picks each time)', apply: (s) => {
-    const increment = 1 / s.projCount; // first pick: full 1.0; each +1 proj needs more picks
-    s.projAccum = (s.projAccum || 0) + increment;
-    if (s.projAccum >= 1) { s.projAccum -= 1; s.projCount += 1; }
+  { id:'quantity',   name:'Quantity Tome',         emoji:'❄️',  color:'#aaddff', desc:'+1 snowball (50% less each stack)', apply: (s) => {
+    const stacks = tomeStacks['quantity'] || 0;
+    if (stacks === 0) { s.projCount += 1; }
+    else { s.projExtraChance = Math.min(1, (s.projExtraChance||0) + 0.5); }
     if (playerState.shaggyMaxCharges > 0) {
       playerState.shaggyMaxCharges++;
       playerState.shaggyCharges = Math.min(playerState.shaggyCharges + 1, playerState.shaggyMaxCharges);
@@ -2874,7 +2874,7 @@ function updateNomOrbs(dt) {
         orb.hitCooldowns.set(e, 0.4);
         e.nomSlowTimer = 1.0; // 20% slow for 1 second
         const isCrit = Math.random() < playerStats.critChance;
-        e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1) * 1.8 * Math.pow(1.25, (orb.stacks || 1) - 1);
+        e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1) * 3 * Math.pow(1.25, (orb.stacks || 1) - 1);
         spawnImpact(orb.mesh.position.x, orb.mesh.position.y, orb.mesh.position.z, isCrit);
         if (e.hp <= 0) {
           if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
@@ -3031,8 +3031,7 @@ function updateSnowballs(dt) {
           // Each enemy hit once per leg — pierces through all
           if (!s.hitSet) s.hitSet = { out: new Set(), ret: new Set() };
           const legSet = s.returning ? s.hitSet.ret : s.hitSet.out;
-          const _bDmg = s.returning ? 0.4 : 0.8;
-          if (!legSet.has(e)) { legSet.add(e); hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z, _bDmg); }
+            if (!legSet.has(e)) { legSet.add(e); hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z); }
           continue; // pierce — keep checking other enemies this frame
         } else {
           hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z);
