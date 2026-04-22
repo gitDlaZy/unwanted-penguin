@@ -1676,7 +1676,7 @@ const TOME_DEFS = [
   { id:'evasion',    name:'Evasion Tome',          emoji:'🌀',  color:'#44ffaa', desc:'+10% dodge chance',         apply: s => { s.evasion    = Math.min(0.7, s.evasion+0.1); } },
   { id:'bloody',     name:'Bloody Tome',           emoji:'🩸',  color:'#ff4466', desc:'+2% chance to heal 1 HP on hit',     apply: s => { s.bloodHeal = Math.min(1, s.bloodHeal + 0.02); } },
   { id:'hp',         name:'HP Tome',               emoji:'💙',  color:'#2266ff', desc:'+25 max HP',                apply: s => { s.maxShield += 1; s.shield = s.maxShield; playerState.maxHp+=25; playerState.hp+=25; updateHUD(); } },
-  { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+1.5% movement speed. "You obtained ADHD!"', apply: s => { s.moveSpeed *= 1.015; showAdhdMsg(); } },
+  { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+1% movement speed. "You obtained ADHD!"',   apply: s => { s.moveSpeed *= 1.01;  showAdhdMsg(); } },
   { id:'attraction', name:'Attraction Tome',       emoji:'🧲',  color:'#ffaa44', desc:'+1 pickup radius',          apply: s => { s.pickupRadius += 1; } },
   { id:'knockback',  name:'Knockback Tome',        emoji:'💥',  color:'#ff8844', desc:'+0.75 knockback on hit',    apply: s => { s.knockback  += 0.75; } },
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'+25% spawn rate, +30% enemy HP', apply:s => { s.cursed += 1; } },
