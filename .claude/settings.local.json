@@ -26,7 +26,18 @@
       "Bash(apt-get install *)",
       "Bash(sudo apt-get *)",
       "Bash(fbx2gltf *)",
-      "Bash(npx fbx2gltf *)"
+      "Bash(npx fbx2gltf *)",
+      "Bash(awk -F: '$2 > 764')",
+      "Bash(awk NR>=820 && NR<=835 *)",
+      "Bash(awk NR>=835 && NR<=850 *)",
+      "Bash(awk NR>=850 && NR<=870 *)",
+      "Bash(awk NR>=866 && NR<=878 *)",
+      "Bash(awk NR>=537 && NR<=542 *)",
+      "Bash(awk NR>=535 && NR<=545 *)",
+      "Bash(awk NR>=490 && NR<=540 *)",
+      "Bash(python3 *)",
+      "Bash(git rm *)",
+      "Skill(update-config)"
     ]
   }
 }
