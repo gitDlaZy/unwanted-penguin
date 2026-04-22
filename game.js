@@ -1873,7 +1873,9 @@ function fireAuraFarmer() {
   if (!inRange.length) return;
   inRange.forEach(e => {
     const isCrit = Math.random() < playerStats.critChance;
-    e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
+    const _auraDmg = SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
+    e.hp -= _auraDmg;
+    showDmgNumber(e.mesh.position.x, e.mesh.position.z, _auraDmg, isCrit);
     if (playerStats.knockback > 0 && e.mesh) {
       const dx = e.mesh.position.x - px, dz = e.mesh.position.z - pz;
       const dist = Math.sqrt(dx * dx + dz * dz) || 1;
@@ -4173,22 +4175,24 @@ function updateXpOrbs(dt) {
       document.body.appendChild(el); setTimeout(() => el.remove(), 2500);
     }
   }
+  const _attractR = (playerStats.pickupRadius + 0.8) * 4;
   for (let i = xpOrbs.length - 1; i >= 0; i--) {
     const orb = xpOrbs[i];
+    const dx = player.position.x - orb.group.position.x;
+    const dz = player.position.z - orb.group.position.z;
+    const _d2 = dx*dx + dz*dz;
+    if (!orb.magnetize && _d2 < _attractR * _attractR) orb.magnetize = true;
     if (orb.magnetize) {
-      // Fly toward player
-      const mx = player.position.x - orb.group.position.x, mz = player.position.z - orb.group.position.z;
-      const md = Math.hypot(mx, mz) || 1;
-      orb.group.position.x += (mx/md) * 8 * dt;
-      orb.group.position.z += (mz/md) * 8 * dt;
+      const md = Math.sqrt(_d2) || 1;
+      const spd = 8 + (1 - Math.min(1, md / _attractR)) * 14; // faster as it gets closer
+      orb.group.position.x += (dx/md) * spd * dt;
+      orb.group.position.z += (dz/md) * spd * dt;
       orb.group.position.y = 0.5 + Math.sin(t * 6 + orb.bobOffset) * 0.2;
       orb.orb.rotation.y += dt * 5;
     } else {
-    orb.group.position.y = 0.5 + Math.sin(t * 3 + orb.bobOffset) * 0.15;
-    orb.orb.rotation.y += dt * 2;
+      orb.group.position.y = 0.5 + Math.sin(t * 3 + orb.bobOffset) * 0.15;
+      orb.orb.rotation.y += dt * 2;
     }
-    const dx = player.position.x - orb.group.position.x;
-    const dz = player.position.z - orb.group.position.z;
     const pr = orb.magnetize ? 1.2 : playerStats.pickupRadius + 0.8;
     if (dx*dx + dz*dz < pr * pr) {
       disposeMesh(orb.group); scene.remove(orb.group);
