@@ -4194,7 +4194,7 @@ function updateXpOrbs(dt) {
       orb.group.position.y = 0.5 + Math.sin(t * 3 + orb.bobOffset) * 0.15;
       orb.orb.rotation.y += dt * 2;
     }
-    const pr = orb.magnetize ? 1.2 : playerStats.pickupRadius + 0.8;
+    const pr = orb.magnetize ? _attractR * 0.25 : _attractR;
     if (dx*dx + dz*dz < pr * pr) {
       disposeMesh(orb.group); scene.remove(orb.group);
       xpOrbs.splice(i, 1);
