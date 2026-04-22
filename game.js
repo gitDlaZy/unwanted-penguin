@@ -1635,7 +1635,7 @@ const playerState = {
 // ── Player Stats (tome upgrades) ──────────────────────────────────────────────
 
 const playerStats = Object.assign({
-  damage: 1.0, critChance: 0, attackRate: 1.0, weaponCooldown: 1.0,
+  damage: 1.0, critChance: 0, attackRate: 1.0, weaponCooldown: 1.0, magicDmgMult: 1.0,
   projCount: 1, projExtraChance: 0, projSize: 1.0, projSpeed: 1.0,
   maxShield: 0, shield: 0, shieldRecharge: 0, shieldDmgTimer: 0,
   evasion: 0, lifesteal: 0, bloodHeal: 0, moveSpeed: 1.05, pickupRadius: 0.7,
@@ -1658,6 +1658,7 @@ function showAdhdMsg() {
 const TOME_DEFS = [
   { id:'damage',     name:'Damage Tome',           emoji:'⚔️',  color:'#ff6644', desc:'+5% damage (all weapons)',       apply: s => { s.damage     *= 1.05; } },
   { id:'snowball_dmg', name: selectedSkin === 'human' ? 'Bullet Tome' : 'Snowball Tome', emoji: selectedSkin === 'human' ? '🔫' : '🌨️', color:'#cceeff', desc: selectedSkin === 'human' ? '+20% bullet damage' : '+20% snowball damage', apply: s => { s.snowballDmgMult = (s.snowballDmgMult||1) * 1.2; } },
+  { id:'magic_dmg',   name:'Magic Tome',             emoji:'✨',  color:'#cc88ff', desc:'+10% magic damage (staff, aura, orb, gust, shaggy)', apply: s => { s.magicDmgMult = (s.magicDmgMult||1) * 1.1; } },
   { id:'precision',  name:'Precision Tome',        emoji:'🎯',  color:'#ffaa22', desc:'+5% critical hit chance',   apply: s => { s.critChance  = Math.min(0.9, s.critChance+0.05); } },
   { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-8% spell cooldown (staff, aura, homhom)', apply: s => { s.weaponCooldown *= 0.92; } },
   { id:'atkspeed',   name:'Attack Speed Tome',     emoji:'🏹',  color:'#ffcc44', desc:'+8% snowball attack speed',  apply: s => { s.attackRate *= 0.92; } },
@@ -1794,10 +1795,9 @@ function fireGandalfStaff() {
     gandalfRecentlyHit.add(t);
   }
   targets.forEach(target => {
-    const isCrit = Math.random() < playerStats.critChance;
-    const _gDmg = STAFF_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+    const _gDmg = STAFF_DAMAGE * (playerStats.magicDmgMult||1);
     target.hp -= _gDmg;
-    showDmgNumber(target.mesh.position.x, target.mesh.position.z, _gDmg, isCrit);
+    showDmgNumber(target.mesh.position.x, target.mesh.position.z, _gDmg, false);
     if (playerStats.knockback > 0 && target.mesh) {
       const dx = target.mesh.position.x - px, dz = target.mesh.position.z - pz;
       const dist = Math.sqrt(dx * dx + dz * dz) || 1;
@@ -1874,10 +1874,9 @@ function fireAuraFarmer() {
   showAuraDamageFlash(px, pz);
   if (!inRange.length) return;
   inRange.forEach(e => {
-    const isCrit = Math.random() < playerStats.critChance;
-    const _auraDmg = SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
+    const _auraDmg = SNOWBALL_DAMAGE * (playerStats.magicDmgMult||1);
     e.hp -= _auraDmg;
-    showDmgNumber(e.mesh.position.x, e.mesh.position.z, _auraDmg, isCrit);
+    showDmgNumber(e.mesh.position.x, e.mesh.position.z, _auraDmg, false);
     if (playerStats.knockback > 0 && e.mesh) {
       const dx = e.mesh.position.x - px, dz = e.mesh.position.z - pz;
       const dist = Math.sqrt(dx * dx + dz * dz) || 1;
@@ -2885,9 +2884,10 @@ function updateNomOrbs(dt) {
         if (cd > 0) continue;
         orb.hitCooldowns.set(e, 0.4);
         e.nomSlowTimer = 1.0; // 20% slow for 1 second
-        const isCrit = Math.random() < playerStats.critChance;
-        e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1) * 3 * Math.pow(1.25, (orb.stacks || 1) - 1);
-        spawnImpact(orb.mesh.position.x, orb.mesh.position.y, orb.mesh.position.z, isCrit);
+        const _nomDmg = SNOWBALL_DAMAGE * (playerStats.magicDmgMult||1) * 3 * Math.pow(1.25, (orb.stacks || 1) - 1);
+        e.hp -= _nomDmg;
+        showDmgNumber(e.mesh.position.x, e.mesh.position.z, _nomDmg, false);
+        spawnImpact(orb.mesh.position.x, orb.mesh.position.y, orb.mesh.position.z, false);
         if (e.hp <= 0) {
           if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
           if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 5 : 1);
@@ -2905,7 +2905,7 @@ function updateNomOrbs(dt) {
 const ATTACK_RATE = 0.8; // seconds between shots
 const ATTACK_RANGE = 17; // units — only fire if an enemy is within this distance
 const SNOWBALL_SPEED = 23.4;
-const STAFF_DAMAGE   = 18; // lightning — separate from snowball damage
+const STAFF_DAMAGE   = 10; // lightning — magic damage, no crits
 const SNOWBALL_DAMAGE = 10;
 
 function findNearestEnemy() {
@@ -3300,7 +3300,7 @@ function updateGusts(dt) {
       g.dmgPending -= dt;
       if (g.dmgPending <= 0) {
         g.dmgPending = -1;
-        const GUST_DMG = 10 * playerStats.damage;
+        const GUST_DMG = 10 * (playerStats.magicDmgMult||1);
         const GUST_R2  = 4; // radius² = 2²
         for (const e of enemies) {
           const dx = e.mesh.position.x - g.ox, dz = e.mesh.position.z - g.oz;
@@ -3791,7 +3791,11 @@ function triggerShaggy() {
   playerState.iframes = Math.min(0.5, 0.1 + playerState.shaggyMaxCharges * 0.1);
   if (playerStats.shaggyStacks > 0) {
     const nearest = findNearestEnemy();
-    if (nearest) nearest.hp -= playerStats.shaggyStacks;
+    if (nearest) {
+      const _shagDmg = playerStats.shaggyStacks * (playerStats.magicDmgMult||1);
+      nearest.hp -= _shagDmg;
+      showDmgNumber(nearest.mesh.position.x, nearest.mesh.position.z, _shagDmg, false);
+    }
   }
 }
 
