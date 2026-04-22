@@ -1650,7 +1650,7 @@ function showAdhdMsg() {
 
 const TOME_DEFS = [
   { id:'damage',     name:'Damage Tome',           emoji:'⚔️',  color:'#ff6644', desc:'+5% damage (all weapons)',       apply: s => { s.damage     *= 1.05; } },
-  { id:'snowball_dmg', name:'Snowball Tome',         emoji:'🌨️', color:'#cceeff', desc:'+20% snowball damage',           apply: s => { s.snowballDmgMult = (s.snowballDmgMult||1) * 1.2; } },
+  { id:'snowball_dmg', name: selectedSkin === 'human' ? 'Bullet Tome' : 'Snowball Tome', emoji: selectedSkin === 'human' ? '🔫' : '🌨️', color:'#cceeff', desc: selectedSkin === 'human' ? '+20% bullet damage' : '+20% snowball damage', apply: s => { s.snowballDmgMult = (s.snowballDmgMult||1) * 1.2; } },
   { id:'precision',  name:'Precision Tome',        emoji:'🎯',  color:'#ffaa22', desc:'+5% critical hit chance',   apply: s => { s.critChance  = Math.min(0.9, s.critChance+0.05); } },
   { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-8% spell cooldown (staff, aura, homhom)', apply: s => { s.weaponCooldown *= 0.92; } },
   { id:'atkspeed',   name:'Attack Speed Tome',     emoji:'🏹',  color:'#ffcc44', desc:'+8% snowball attack speed',  apply: s => { s.attackRate *= 0.92; } },
@@ -2931,15 +2931,25 @@ function fireSingleSnowball(target) {
   const speed  = SNOWBALL_SPEED * playerStats.projSpeed;
   const radius = 0.18 * playerStats.projSize;
   const isWizard = activeSkin === 'wizard';
-  const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(radius, 8, 8),
-    new THREE.MeshStandardMaterial({
-      color:             isWizard ? 0xcc44ff : 0xeef8ff,
-      emissive:          isWizard ? 0x9900ff : 0x88ccff,
-      emissiveIntensity: isWizard ? 1.2 : 0.6,
-      roughness: 0.3
-    })
-  );
+  const isHuman  = activeSkin === 'human';
+  let mesh;
+  if (isHuman) {
+    mesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04 * playerStats.projSize, 0.06 * playerStats.projSize, 0.28 * playerStats.projSize, 6),
+      new THREE.MeshStandardMaterial({ color: 0x999999, emissive: 0xffaa00, emissiveIntensity: 0.5, roughness: 0.2, metalness: 0.9 })
+    );
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  } else {
+    mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(radius, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color:             isWizard ? 0xcc44ff : 0xeef8ff,
+        emissive:          isWizard ? 0x9900ff : 0x88ccff,
+        emissiveIntensity: isWizard ? 1.2 : 0.6,
+        roughness: 0.3
+      })
+    );
+  }
   mesh.position.copy(player.position);
   mesh.position.y = 1.0;
   scene.add(mesh);
