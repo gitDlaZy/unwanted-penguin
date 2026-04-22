@@ -2655,6 +2655,7 @@ function spawnSwarmWave() {
     else                 { sx = (Math.random() - 0.5) * 160; sz = -edgeVal; }
 
     const mesh = buildBelgica();
+    mesh.scale.setScalar(1.5);
     mesh.position.set(sx, 0, sz);
     scene.add(mesh);
     enemies.push({ mesh, type: 'belgica', hp: 8 });
@@ -2681,7 +2682,7 @@ function updateEnemies(dt) {
   const pressure = Math.max(0.1, Math.exp(-gameTime / SPAWN_RAMP_SPEED)) * Math.pow(0.75, playerStats.cursed) * _pebblesBonus;
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
-  const hpScale = (gameTime >= 90 ? Math.pow(1.002, gameTime - 90) : 1) * Math.pow(1.3, playerStats.cursed) * (_pebblesActive ? 1.1 : 1.0);
+  const hpScale = (gameTime >= 60 ? 1.1 + (gameTime - 60) / 600 : 1) * Math.pow(1.3, playerStats.cursed) * (_pebblesActive ? 1.1 : 1.0);
   if (!bossDefeated && !_spawnsDisabled && sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (0.9 + Math.random() * 0.5) * pressure; }
   if (!bossDefeated && !_spawnsDisabled && skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
 
