@@ -1795,7 +1795,9 @@ function fireGandalfStaff() {
   }
   targets.forEach(target => {
     const isCrit = Math.random() < playerStats.critChance;
-    target.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1) * (1 + playerStats.projSize * 0.5 - 0.5);
+    const _gDmg = SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1) * (1 + playerStats.projSize * 0.5 - 0.5);
+    target.hp -= _gDmg;
+    showDmgNumber(target.mesh.position.x, target.mesh.position.z, _gDmg, isCrit);
     if (playerStats.knockback > 0 && target.mesh) {
       const dx = target.mesh.position.x - px, dz = target.mesh.position.z - pz;
       const dist = Math.sqrt(dx * dx + dz * dz) || 1;
