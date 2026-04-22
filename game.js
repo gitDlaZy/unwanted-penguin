@@ -1618,6 +1618,7 @@ player.add(penguinMesh);
 const builtModel = selectedSkin === 'evil' ? buildEvilPenguin() : selectedSkin === 'wizard' ? buildWizardCat() : selectedSkin === 'human' ? buildHumanPlayer() : buildPenguin();
 penguinMesh.add(builtModel);
 let _humanGunPivot = builtModel.userData.gunPivot ?? null;
+let _gunHoldTimer = 0;
 player.position.set(35, 0, 25);
 scene.add(player);
 
@@ -2941,6 +2942,7 @@ function fireSingleSnowball(target) {
   let mesh;
   if (isHuman && _humanGunPivot) {
     _humanGunPivot.rotation.y = Math.atan2(tx, tz) - player.rotation.y;
+    _gunHoldTimer = 0.2;
   }
   if (isHuman) {
     mesh = new THREE.Mesh(
@@ -5173,7 +5175,10 @@ let frameTime = 0; // cached Date.now()/1000 per frame — avoids repeated calls
 function update(dt) {
   frameTime = Date.now() / 1000;
   updateTomeInput(dt);
-  if (_humanGunPivot) _humanGunPivot.rotation.y += (0 - _humanGunPivot.rotation.y) * Math.min(1, dt * 10);
+  if (_humanGunPivot) {
+    _gunHoldTimer = Math.max(0, _gunHoldTimer - dt);
+    if (_gunHoldTimer === 0) _humanGunPivot.rotation.y += (0 - _humanGunPivot.rotation.y) * Math.min(1, dt * 10);
+  }
   if (playerState.dead || choosingTome || choosingPowerUp || waitingToResume) return;
   tickPowerUps(dt);
   playerState.iframes   = Math.max(0, playerState.iframes - dt);
