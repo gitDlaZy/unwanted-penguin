@@ -1007,11 +1007,16 @@ function buildHumanPlayer() {
   const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.5, 8), shirt);
   armR.position.set(0.42, 1.32, 0.12); armR.rotation.x = -0.65; g.add(armR);
 
-  // Rifle — barrel + stock
+  // Rifle — barrel + stock inside a pivot group so we can rotate it
+  const gunPivot = new THREE.Group();
+  gunPivot.position.set(0.38, 1.35, 0);
   const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 8), gunMat);
-  barrel.rotation.x = Math.PI / 2; barrel.position.set(0.38, 1.38, -0.48); g.add(barrel);
+  barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 0.03, -0.48);
   const stock = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.16, 0.3), woodMat);
-  stock.position.set(0.38, 1.22, -0.06); g.add(stock);
+  stock.position.set(0, -0.13, -0.06);
+  gunPivot.add(barrel); gunPivot.add(stock);
+  g.add(gunPivot);
+  g.userData.gunPivot = gunPivot;
 
   return g;
 }
@@ -1612,6 +1617,7 @@ player.add(penguinMesh);
 
 const builtModel = selectedSkin === 'evil' ? buildEvilPenguin() : selectedSkin === 'wizard' ? buildWizardCat() : selectedSkin === 'human' ? buildHumanPlayer() : buildPenguin();
 penguinMesh.add(builtModel);
+let _humanGunPivot = builtModel.userData.gunPivot ?? null;
 player.position.set(35, 0, 25);
 scene.add(player);
 
@@ -2933,6 +2939,9 @@ function fireSingleSnowball(target) {
   const isWizard = activeSkin === 'wizard';
   const isHuman  = activeSkin === 'human';
   let mesh;
+  if (isHuman && _humanGunPivot) {
+    _humanGunPivot.rotation.y = Math.atan2(tx, tz) - player.rotation.y;
+  }
   if (isHuman) {
     mesh = new THREE.Mesh(
       new THREE.CylinderGeometry(0.04 * playerStats.projSize, 0.06 * playerStats.projSize, 0.28 * playerStats.projSize, 6),
@@ -5164,6 +5173,7 @@ let frameTime = 0; // cached Date.now()/1000 per frame — avoids repeated calls
 function update(dt) {
   frameTime = Date.now() / 1000;
   updateTomeInput(dt);
+  if (_humanGunPivot) _humanGunPivot.rotation.y += (0 - _humanGunPivot.rotation.y) * Math.min(1, dt * 10);
   if (playerState.dead || choosingTome || choosingPowerUp || waitingToResume) return;
   tickPowerUps(dt);
   playerState.iframes   = Math.max(0, playerState.iframes - dt);
