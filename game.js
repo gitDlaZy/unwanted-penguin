@@ -1672,7 +1672,7 @@ const TOME_DEFS = [
   }},
   { id:'size',       name:'Size Tome',             emoji:'🔮',  color:'#cc88ff', desc:'+20% projectile size',      apply: s => { s.projSize   *= 1.2; } },
   { id:'projspeed',  name:'Speed Tome',            emoji:'💨',  color:'#88ffcc', desc:'+15% projectile speed',     apply: s => { s.projSpeed  *= 1.15; } },
-  { id:'shield',     name:'Shield Tome',           emoji:'🛡️', color:'#44aaff', desc:'First: +1 shield. Extra stacks: +0.3s iframes on shield hit', apply: s => { if (s.maxShield === 0) { s.maxShield = 1; s.shield = 1; } else { s.shieldIframes = (s.shieldIframes ?? 1.2) + 0.3; } updateHUD(); } },
+  { id:'shield',     name:'Shield Tome',           emoji:'🛡️', color:'#44aaff', desc:'First: +1 shield. Extra stacks: +0.3s iframes on shield hit', apply: s => { if (!(tomeStacks['shield'] > 0)) { s.maxShield = Math.max(s.maxShield, 1); s.shield = Math.max(s.shield, 1); } else { s.shieldIframes = (s.shieldIframes ?? 1.2) + 0.3; } updateHUD(); } },
   { id:'evasion',    name:'Evasion Tome',          emoji:'🌀',  color:'#44ffaa', desc:'+10% dodge chance',         apply: s => { s.evasion    = Math.min(0.7, s.evasion+0.1); } },
   { id:'bloody',     name:'Bloody Tome',           emoji:'🩸',  color:'#ff4466', desc:'+2% chance to heal 1 HP on hit',     apply: s => { s.bloodHeal = Math.min(1, s.bloodHeal + 0.02); } },
   { id:'hp',         name:'HP Tome',               emoji:'💙',  color:'#2266ff', desc:'+25 max HP',                apply: s => { s.maxShield += 1; s.shield = s.maxShield; playerState.maxHp+=25; playerState.hp+=25; updateHUD(); } },
@@ -2721,7 +2721,7 @@ function updateEnemies(dt) {
             const oz = e.mesh.position.z - enemies[k].mesh.position.z;
             if (Math.abs(ox) > 3 || Math.abs(oz) > 3) continue; // cheap early-out
             const od = Math.hypot(ox, oz);
-            const minDist = e.elite ? 1.5 : 0.5;
+            const minDist = e.elite ? 1.5 : 0.9;
             if (od < minDist && od > 0.01) { sepX += (ox / od) * (minDist - od); sepZ += (oz / od) * (minDist - od); }
           }
           // Strip the component pointing toward player so separation never pushes forward
