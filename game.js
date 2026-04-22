@@ -2901,6 +2901,7 @@ function updateNomOrbs(dt) {
   }
 }
 const ATTACK_RATE = 0.8; // seconds between shots
+const ATTACK_RANGE = 15; // units — only fire if an enemy is within this distance
 const SNOWBALL_SPEED = 23.4;
 const SNOWBALL_DAMAGE = 10;
 
@@ -2911,7 +2912,7 @@ function findNearestEnemy() {
     const bdz = boss.mesh.position.z - player.position.z;
     if (bdx*bdx + bdz*bdz <= 400) return boss; // 20-unit radius
   }
-  let nearest = null, bestDist = Infinity;
+  let nearest = null, bestDist = ATTACK_RANGE * ATTACK_RANGE;
   for (const e of enemies) {
     const dx = e.mesh.position.x - player.position.x;
     const dz = e.mesh.position.z - player.position.z;
