@@ -3604,13 +3604,13 @@ function showDeathScreen() {
                letter-spacing:2px;white-space:nowrap">SUBMIT</button>
     </div>
     <div style="display:flex;justify-content:center;gap:8px;margin-bottom:4px">
+      <button id="retryBtn"
+        style="background:transparent;border:2px solid #44aaff55;color:#aee8ff;
+               font-family:monospace;font-size:12px;padding:4px 18px;cursor:pointer;border-radius:4px;letter-spacing:2px">RETRY</button>
       <button id="refreshBtn"
         style="background:transparent;border:1px solid #44aaff44;color:#aee8ff99;
                font-family:monospace;font-size:12px;padding:4px 14px;cursor:pointer;border-radius:4px;
                letter-spacing:1px">↻ REFRESH</button>
-      <button id="retryBtn"
-        style="background:transparent;border:2px solid #44aaff55;color:#aee8ff;
-               font-family:monospace;font-size:12px;padding:4px 18px;cursor:pointer;border-radius:4px;letter-spacing:2px">RETRY</button>
     </div>
     <div id="scoreboardEl" style="min-height:60px"><div style="opacity:0.4;font-size:13px">Loading scores...</div></div>
     <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
@@ -3675,7 +3675,7 @@ function showDeathScreen() {
       Object.entries(_skins).forEach(([k,[i,b]]) => document.getElementById(i).style.background = k===key ? b : 'transparent');
     });
   });
-  document.getElementById('retryBtn').addEventListener('click', () => { sessionStorage.removeItem('levelProgress'); sessionStorage.setItem('bgmAutoStart','1'); location.href = 'index.html?v=' + Date.now(); });
+  document.getElementById('retryBtn').addEventListener('click', () => { sessionStorage.removeItem('levelProgress'); sessionStorage.setItem('bgmAutoStart','1'); sessionStorage.setItem('skipIntro','1'); location.href = 'index.html?v=' + Date.now(); });
   document.getElementById('howToBtn').addEventListener('click', () => {
     const el = document.getElementById('introScreen');
     if (el) { el.style.display = 'flex'; }
