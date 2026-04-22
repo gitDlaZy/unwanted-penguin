@@ -2901,7 +2901,7 @@ function updateNomOrbs(dt) {
   }
 }
 const ATTACK_RATE = 0.8; // seconds between shots
-const ATTACK_RANGE = 15; // units — only fire if an enemy is within this distance
+const ATTACK_RANGE = 17; // units — only fire if an enemy is within this distance
 const SNOWBALL_SPEED = 23.4;
 const SNOWBALL_DAMAGE = 10;
 
