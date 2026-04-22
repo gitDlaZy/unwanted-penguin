@@ -4175,7 +4175,7 @@ function updateXpOrbs(dt) {
       document.body.appendChild(el); setTimeout(() => el.remove(), 2500);
     }
   }
-  const _attractR = (playerStats.pickupRadius + 0.8) * 4;
+  const _attractR = playerStats.pickupRadius + 0.8;
   for (let i = xpOrbs.length - 1; i >= 0; i--) {
     const orb = xpOrbs[i];
     const dx = player.position.x - orb.group.position.x;
