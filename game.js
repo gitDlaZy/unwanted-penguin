@@ -2712,7 +2712,7 @@ function updateEnemies(dt) {
             const oz = e.mesh.position.z - enemies[k].mesh.position.z;
             if (Math.abs(ox) > 3 || Math.abs(oz) > 3) continue; // cheap early-out
             const od = Math.hypot(ox, oz);
-            const minDist = e.elite ? 2.5 : 1.3;
+            const minDist = e.elite ? 1.5 : 0.5;
             if (od < minDist && od > 0.01) { sepX += (ox / od) * (minDist - od); sepZ += (oz / od) * (minDist - od); }
           }
           // Strip the component pointing toward player so separation never pushes forward
@@ -2721,8 +2721,8 @@ function updateEnemies(dt) {
             const dot = sepX * tpx + sepZ * tpz;
             sepX -= dot * tpx; sepZ -= dot * tpz;
           }
-          e.mesh.position.x += sepX * 0.15;
-          e.mesh.position.z += sepZ * 0.15;
+          e.mesh.position.x += sepX * 0.05;
+          e.mesh.position.z += sepZ * 0.05;
         }
 
         let inPool = false;
