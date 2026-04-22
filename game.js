@@ -4144,7 +4144,7 @@ function spawnXpOrb(x, z, amount = 1) {
   group.add(orb);
   group.position.set(x, 0.5, z);
   scene.add(group);
-  xpOrbs.push({ group, orb, amount, bobOffset: Math.random() * Math.PI * 2 });
+  xpOrbs.push({ group, orb, amount, bobOffset: Math.random() * Math.PI * 2, spawnDelay: 0.6 });
 }
 
 function gainXP(amount) {
@@ -4181,7 +4181,8 @@ function updateXpOrbs(dt) {
     const dx = player.position.x - orb.group.position.x;
     const dz = player.position.z - orb.group.position.z;
     const _d2 = dx*dx + dz*dz;
-    if (!orb.magnetize && _d2 < _attractR * _attractR) orb.magnetize = true;
+    if (orb.spawnDelay > 0) { orb.spawnDelay -= dt; }
+    else if (!orb.magnetize && _d2 < _attractR * _attractR) orb.magnetize = true;
     if (orb.magnetize) {
       const md = Math.sqrt(_d2) || 1;
       const spd = 8 + (1 - Math.min(1, md / _attractR)) * 14; // faster as it gets closer
