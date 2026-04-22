@@ -2261,9 +2261,11 @@ function showPowerUpChoice() {
 }
 
 function updateXPBar() {
+  const base   = cumulativeXpForLevel(playerLevel);
   const needed = xpToNext(playerLevel);
-  xpLabelEl.textContent = `LVL ${playerLevel} — XP ${playerXP} / ${needed}`;
-  xpBarInner.style.width = (playerXP / needed * 100) + '%';
+  const progress = playerXP - base;
+  xpLabelEl.textContent = `LVL ${playerLevel} — XP ${progress} / ${needed}`;
+  xpBarInner.style.width = (progress / needed * 100) + '%';
 }
 
 function updateHUD() {
@@ -4141,6 +4143,12 @@ function xpToNext(level) {
   return table[Math.min(level - 1, table.length - 1)];
 }
 
+function cumulativeXpForLevel(level) {
+  let total = 0;
+  for (let l = 1; l < level; l++) total += xpToNext(l);
+  return total;
+}
+
 const xpOrbs = [];
 
 function spawnXpOrb(x, z, amount = 1) {
@@ -4157,13 +4165,13 @@ function spawnXpOrb(x, z, amount = 1) {
 
 function gainXP(amount) {
   playerXP += amount;
-  const needed = xpToNext(playerLevel);
-  if (playerXP >= needed) {
-    playerXP -= needed;
+  let leveled = false;
+  while (playerXP >= cumulativeXpForLevel(playerLevel + 1)) {
     playerLevel++;
-    updateXPBar();
+    leveled = true;
     queueTome();
   }
+  if (leveled) updateXPBar();
   updateXPBar();
 }
 
