@@ -4099,25 +4099,39 @@ function spawnMapItem(x, z) {
   group.add(orb);
   group.position.set(x, 1.0, z);
   scene.add(group);
-  mapItems.push({ group, orb, bobOffset: Math.random() * Math.PI * 2 });
+  mapItems.push({ group, orb, bobOffset: Math.random() * Math.PI * 2, magnetize: false, spawnDelay: 0.6 });
 }
 
 function updateItems(dt) {
   // Elite-drop items (purple orbs) still work
   if (choosingTome) return;
   const t = frameTime;
+  const _attractR = playerStats.pickupRadius + 0.8;
+  const px = player.position.x, pz = player.position.z;
   for (let i = mapItems.length - 1; i >= 0; i--) {
     const item = mapItems[i];
-    item.group.position.y = 1.0 + Math.sin(t * 2 + item.bobOffset) * 0.25;
     item.orb.rotation.y += dt * 1.5;
-    const dx = player.position.x - item.group.position.x;
-    const dz = player.position.z - item.group.position.z;
-    if (Math.sqrt(dx*dx + dz*dz) < playerStats.pickupRadius) {
+    const dx = px - item.group.position.x;
+    const dz = pz - item.group.position.z;
+    const d2 = dx*dx + dz*dz;
+    if (item.spawnDelay > 0) { item.spawnDelay -= dt; }
+    else if (!item.magnetize && d2 < _attractR * _attractR) item.magnetize = true;
+    if (item.magnetize) {
+      const md = Math.sqrt(d2);
+      if (md > 0.01) {
+        const spd = 8 + (1 - Math.min(1, md / _attractR)) * 14;
+        item.group.position.x += (dx / md) * spd * dt;
+        item.group.position.z += (dz / md) * spd * dt;
+      }
+    }
+    const collectR = item.magnetize ? _attractR * 0.25 : playerStats.pickupRadius;
+    if (Math.sqrt(d2) < collectR) {
       scene.remove(item.group);
       mapItems.splice(i, 1);
       queueTome();
       break;
     }
+    item.group.position.y = 1.0 + Math.sin(t * 2 + item.bobOffset) * 0.25;
   }
 }
 
@@ -4918,12 +4932,17 @@ let _debugOpen = false;
 const _debugOverlay = (() => {
   const el = document.createElement('div');
   el.id = 'debugMenu';
-  el.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:99999;display:none;align-items:center;justify-content:center';
+  el.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:99999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 0';
   el.innerHTML = `
-    <div style="background:#0a0f1e;border:2px solid #44aaff;border-radius:12px;padding:24px 36px;font-family:monospace;color:#aee8ff;min-width:320px">
-      <div style="font-size:18px;letter-spacing:3px;color:#44aaff;margin-bottom:18px;text-align:center">⚙ DEBUG MENU</div>
-      <div id="_dbgList" style="display:flex;flex-direction:column;gap:10px"></div>
-      <div style="margin-top:18px;font-size:11px;color:#446688;text-align:center">Ctrl+Shift+6+7 or ESC to close</div>
+    <div style="background:#0a0f1e;border:2px solid #44aaff;border-radius:12px;padding:24px 32px;font-family:monospace;color:#aee8ff;min-width:340px;max-width:720px;width:90vw">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div style="font-size:18px;letter-spacing:3px;color:#44aaff">⚙ DEBUG MENU</div>
+        <button id="_dbgClose" style="background:#1a0010;border:1px solid #ff4466;color:#ff8899;font-family:monospace;font-size:13px;padding:5px 14px;cursor:pointer;border-radius:6px;letter-spacing:1px">✕ CLOSE</button>
+      </div>
+      <div id="_dbgList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px"></div>
+      <div style="font-size:13px;letter-spacing:2px;color:#aa66ff;margin-bottom:10px;border-top:1px solid #1a2a4a;padding-top:14px">📖 LEVEL TOMES</div>
+      <div id="_dbgTomeGrid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      <div style="margin-top:14px;font-size:11px;color:#446688;text-align:center">Ctrl+Shift+6+7 or ESC to close</div>
     </div>`;
   document.body.appendChild(el);
   el.addEventListener('click', e => { if (e.target === el) closeDebugMenu(); });
@@ -4973,6 +4992,30 @@ function buildDebugList() {
     btn.onclick = () => { a.fn(); if (a.noClose) { btn.textContent = getLabel(); } else { closeDebugMenu(); } };
     list.appendChild(btn);
   });
+
+  // Tome grid — click to apply without closing
+  const grid = document.getElementById('_dbgTomeGrid');
+  grid.innerHTML = '';
+  [...TOME_DEFS, ...WEAPON_DEFS].forEach(tome => {
+    const btn = document.createElement('button');
+    const stacks = () => tomeStacks[tome.id] || (weaponStacks[tome.id] || 0);
+    const render = () => {
+      const s = stacks();
+      btn.textContent = `${tome.emoji} ${tome.name}${s > 0 ? ` ×${s}` : ''}`;
+    };
+    render();
+    btn.style.cssText = `background:#0d1a30;border:1px solid ${tome.color}55;color:${tome.color};font-family:monospace;font-size:12px;padding:6px 12px;cursor:pointer;border-radius:6px;transition:background 0.1s`;
+    btn.onmouseenter = () => btn.style.background = '#1a2a40';
+    btn.onmouseleave = () => btn.style.background = '#0d1a30';
+    btn.onclick = () => {
+      if (tome.isWeapon) { applyWeapon(tome.id); }
+      else { tome.apply(playerStats, () => {}); tomeStacks[tome.id] = (tomeStacks[tome.id] || 0) + 1; }
+      render();
+    };
+    grid.appendChild(btn);
+  });
+
+  document.getElementById('_dbgClose').onclick = closeDebugMenu;
 }
 
 function toggleDebugMenu() { _debugOpen ? closeDebugMenu() : openDebugMenu(); }
