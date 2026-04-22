@@ -1795,7 +1795,7 @@ function fireGandalfStaff() {
   }
   targets.forEach(target => {
     const isCrit = Math.random() < playerStats.critChance;
-    const _gDmg = SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1) * (1 + playerStats.projSize * 0.5 - 0.5);
+    const _gDmg = STAFF_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
     target.hp -= _gDmg;
     showDmgNumber(target.mesh.position.x, target.mesh.position.z, _gDmg, isCrit);
     if (playerStats.knockback > 0 && target.mesh) {
@@ -2905,6 +2905,7 @@ function updateNomOrbs(dt) {
 const ATTACK_RATE = 0.8; // seconds between shots
 const ATTACK_RANGE = 17; // units — only fire if an enemy is within this distance
 const SNOWBALL_SPEED = 23.4;
+const STAFF_DAMAGE   = 18; // lightning — separate from snowball damage
 const SNOWBALL_DAMAGE = 10;
 
 function findNearestEnemy() {
