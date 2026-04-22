@@ -2599,7 +2599,7 @@ function spawnSeal(hpScale = 1) {
   if (!elite) mesh.scale.setScalar(0.8);
   mesh.position.set(sx, 0, sz);
   scene.add(mesh);
-  enemies.push({ mesh, type: 'seal', hp: Math.round((elite ? 100 : 30) * hpScale), elite });
+  enemies.push({ mesh, type: 'seal', hp: Math.round((elite ? 80 : 20) * hpScale), elite });
 }
 
 function spawnSkua(hpScale = 1) {
@@ -4734,8 +4734,10 @@ levelBtn.style.cssText = `
 levelBtn.textContent = 'LEVEL';
 rightTopRow.appendChild(levelBtn);
 
-// JUMP button — bottom row, centered
+// JUMP button — bottom row, centered (larger for easier tap target)
 const jumpBtn = makeActionBtn('JUMP', '#aee8ff', rightPad);
+jumpBtn.style.width = '110px';
+jumpBtn.style.height = '110px';
 
 
 // ── Joystick logic ────────────────────────────────────────────────────────────
