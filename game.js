@@ -1665,7 +1665,7 @@ const TOME_DEFS = [
   }},
   { id:'size',       name:'Size Tome',             emoji:'🔮',  color:'#cc88ff', desc:'+20% projectile size',      apply: s => { s.projSize   *= 1.2; } },
   { id:'projspeed',  name:'Speed Tome',            emoji:'💨',  color:'#88ffcc', desc:'+15% projectile speed',     apply: s => { s.projSpeed  *= 1.15; } },
-  { id:'shield',     name:'Shield Tome',           emoji:'🛡️', color:'#44aaff', desc:'+1 shield charge',          apply: s => { s.maxShield += 1; s.shield = s.maxShield; updateHUD(); } },
+  { id:'shield',     name:'Shield Tome',           emoji:'🛡️', color:'#44aaff', desc:'First: +1 shield. Extra stacks: +0.3s iframes on shield hit', apply: s => { if (s.maxShield === 0) { s.maxShield = 1; s.shield = 1; } else { s.shieldIframes = (s.shieldIframes ?? 1.2) + 0.3; } updateHUD(); } },
   { id:'evasion',    name:'Evasion Tome',          emoji:'🌀',  color:'#44ffaa', desc:'+10% dodge chance',         apply: s => { s.evasion    = Math.min(0.7, s.evasion+0.1); } },
   { id:'bloody',     name:'Bloody Tome',           emoji:'🩸',  color:'#ff4466', desc:'+2% chance to heal 1 HP on hit',     apply: s => { s.bloodHeal = Math.min(1, s.bloodHeal + 0.02); } },
   { id:'hp',         name:'HP Tome',               emoji:'💙',  color:'#2266ff', desc:'+25 max HP',                apply: s => { s.maxShield += 1; s.shield = s.maxShield; playerState.maxHp+=25; playerState.hp+=25; updateHUD(); } },
@@ -3781,7 +3781,7 @@ function damagePlayer(amount) {
   if (playerStats.shield > 0) {
     playerStats.shield--;
     playerStats.shieldDmgTimer = 30;
-    playerState.iframes = 1.2;
+    playerState.iframes = playerStats.shieldIframes ?? 1.2;
     updateHUD();
     return;
   }
@@ -4933,8 +4933,8 @@ function buildDebugList() {
 }
 
 function toggleDebugMenu() { _debugOpen ? closeDebugMenu() : openDebugMenu(); }
-function openDebugMenu()  { buildDebugList(); _debugOverlay.style.display = 'flex'; _debugOpen = true; }
-function closeDebugMenu() { _debugOverlay.style.display = 'none'; _debugOpen = false; }
+function openDebugMenu()  { buildDebugList(); _debugOverlay.style.display = 'flex'; _debugOpen = true; if (!playerState.dead) { waitingToResume = true; playerState.iframes = 999; } }
+function closeDebugMenu() { _debugOverlay.style.display = 'none'; _debugOpen = false; if (waitingToResume) { waitingToResume = false; playerState.iframes = 0; movementLockout = 0.3; } }
 
 // ── Level Progress Save / Portal Transition ───────────────────────────────────
 
