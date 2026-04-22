@@ -3819,16 +3819,16 @@ const tomeScreen = document.createElement('div');
 tomeScreen.style.cssText = `
   display:none; position:fixed; inset:0; z-index:210;
   background:rgba(0,8,24,0.92);
-  flex-direction:column; align-items:center; justify-content:center;
+  flex-direction:column; align-items:center; justify-content:flex-start; padding-top:40px;
   font-family:monospace; color:#aee8ff;
   pointer-events:none;
 `;
 tomeScreen.innerHTML = `
   <div style="pointer-events:auto;display:flex;flex-direction:column;align-items:center">
-    <div style="font-size:30px;font-weight:bold;letter-spacing:4px;text-shadow:0 0 20px #44aaff;margin-bottom:8px">CHOOSE AN UPGRADE</div>
-    <div style="font-size:13px;opacity:0.5;margin-bottom:32px">Pick one tome to carry forward</div>
-    <div id="tomeCards" style="display:flex;gap:18px;flex-wrap:wrap;justify-content:center;max-width:800px"></div>
-    <div style="margin-top:28px;font-size:12px;opacity:0.4;letter-spacing:2px">A / D to navigate &nbsp;|&nbsp; P to confirm</div>
+    <div style="font-size:22px;font-weight:bold;letter-spacing:4px;text-shadow:0 0 20px #44aaff;margin-bottom:6px">CHOOSE AN UPGRADE</div>
+    <div style="font-size:11px;opacity:0.5;margin-bottom:16px">Pick one tome to carry forward</div>
+    <div id="tomeCards" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:560px"></div>
+    <div style="margin-top:14px;font-size:11px;opacity:0.4;letter-spacing:2px">A / D to navigate &nbsp;|&nbsp; P to confirm</div>
   </div>
 `;
 document.body.appendChild(tomeScreen);
@@ -3919,18 +3919,18 @@ function showTomeChoice() {
     const card = document.createElement('div');
     card.className = 'tome-card';
     card.style.cssText = `
-      cursor:pointer; border:1px solid ${tome.color}33; padding:22px 18px;
-      width:170px; background:rgba(0,16,36,0.9); border-radius:8px;
+      cursor:pointer; border:1px solid ${tome.color}33; padding:14px 12px;
+      width:130px; background:rgba(0,16,36,0.9); border-radius:8px;
       text-align:center; transition:border-color 0.12s, transform 0.12s, box-shadow 0.12s;
       box-shadow:0 0 12px ${tome.color}11;
     `;
     card.innerHTML = `
-      ${tome.isWeapon ? `<div style="font-size:10px;letter-spacing:2px;color:${tome.color};opacity:0.7;margin-bottom:6px">⚔ WEAPON</div>` : ''}
-      <div style="font-size:34px;margin-bottom:10px">${tome.emoji}</div>
-      <div style="font-size:15px;font-weight:bold;color:${tome.color};margin-bottom:8px">${tome.name}</div>
-      <div style="font-size:12px;opacity:0.75;line-height:1.4">${tome.desc}</div>
-      ${!tome.isWeapon && stacks > 0 ? `<div style="font-size:11px;opacity:0.45;margin-top:8px">Stack: ${stacks}</div>` : ''}
-      ${tome.isWeapon && equippedWeapons.has(tome.id) ? `<div style="font-size:11px;opacity:0.55;margin-top:8px;color:${tome.color}">✓ ${
+      ${tome.isWeapon ? `<div style="font-size:9px;letter-spacing:2px;color:${tome.color};opacity:0.7;margin-bottom:4px">⚔ WEAPON</div>` : ''}
+      <div style="font-size:26px;margin-bottom:6px">${tome.emoji}</div>
+      <div style="font-size:12px;font-weight:bold;color:${tome.color};margin-bottom:6px">${tome.name}</div>
+      <div style="font-size:10px;opacity:0.75;line-height:1.4">${tome.desc}</div>
+      ${!tome.isWeapon && stacks > 0 ? `<div style="font-size:10px;opacity:0.45;margin-top:6px">Stack: ${stacks}</div>` : ''}
+      ${tome.isWeapon && equippedWeapons.has(tome.id) ? `<div style="font-size:10px;opacity:0.55;margin-top:6px;color:${tome.color}">✓ ${
         tome.id === 'gandalf_staff' ? `${weaponStacks['gandalf_staff'] || 1} shocks`
         : tome.id === 'toxic_friend' ? `${Math.round((0.15 + 0.05*(weaponStacks['toxic_friend']||1))*100)}% slow`
         : 'Equipped'}</div>` : ''}
