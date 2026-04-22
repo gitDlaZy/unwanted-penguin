@@ -1866,7 +1866,7 @@ function fireAuraFarmer() {
   if (!inRange.length) return;
   inRange.forEach(e => {
     const isCrit = Math.random() < playerStats.critChance;
-    e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+    e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
     if (playerStats.knockback > 0 && e.mesh) {
       const dx = e.mesh.position.x - px, dz = e.mesh.position.z - pz;
       const dist = Math.sqrt(dx * dx + dz * dz) || 1;
@@ -1948,7 +1948,7 @@ function updateToxicPools(dt) {
         const e = enemies[j];
         if (!e.dead && e.mesh && Math.sqrt((e.mesh.position.x-p.x)**2+(e.mesh.position.z-p.z)**2) < p.r) {
           const isCrit = Math.random() < playerStats.critChance;
-          e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+          e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
           if (e.hp <= 0) {
             if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
             if (e.type === 'seal') spawnXpOrb(e.mesh.position.x, e.mesh.position.z, e.elite ? 5 : 1);
@@ -2875,7 +2875,7 @@ function updateNomOrbs(dt) {
         orb.hitCooldowns.set(e, 0.4);
         e.nomSlowTimer = 1.0; // 20% slow for 1 second
         const isCrit = Math.random() < playerStats.critChance;
-        e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1) * 3 * Math.pow(1.25, (orb.stacks || 1) - 1);
+        e.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1) * 3 * Math.pow(1.25, (orb.stacks || 1) - 1);
         spawnImpact(orb.mesh.position.x, orb.mesh.position.y, orb.mesh.position.z, isCrit);
         if (e.hp <= 0) {
           if (e.elite) spawnMapItem(e.mesh.position.x, e.mesh.position.z);
@@ -2963,7 +2963,7 @@ function updateBurst(dt) {
 function hitEnemy(j, impactX, impactY, impactZ, dmgMult = 1) {
   const e = enemies[j];
   const isCrit = Math.random() < playerStats.critChance;
-  const _dmg = SNOWBALL_DAMAGE * playerStats.damage * dmgMult * (isCrit ? 2 : 1);
+  const _dmg = SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * dmgMult * (isCrit ? 2 : 1);
   e.hp -= _dmg;
   showDmgNumber(e.mesh.position.x, e.mesh.position.z, _dmg, isCrit);
   spawnImpact(impactX, impactY, impactZ, isCrit);
@@ -3047,7 +3047,7 @@ function updateSnowballs(dt) {
       const bdz = s.mesh.position.z - boss.mesh.position.z;
       if (bdx*bdx + bdz*bdz < (3.0 * playerStats.projSize) ** 2) {
         const isCrit = Math.random() < playerStats.critChance;
-        boss.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+        boss.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
         spawnImpact(s.mesh.position.x, s.mesh.position.y, s.mesh.position.z, isCrit);
         // Teleport at 75/50/25% thresholds
         const hpPct = boss.hp / boss.maxHp;
@@ -3073,7 +3073,7 @@ function updateSnowballs(dt) {
         const sh = _l2Sharks[si];
         if (Math.hypot(s.mesh.position.x - sh.mesh.position.x, s.mesh.position.z - sh.mesh.position.z) < hitRadius) {
           const isCrit = Math.random() < playerStats.critChance;
-          sh.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+          sh.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
           spawnImpact(s.mesh.position.x, 0.5, s.mesh.position.z, isCrit);
           if (sh.hp <= 0) { scene.remove(sh.mesh); _l2Sharks.splice(si, 1); killCount++; spawnXpOrb(sh.mesh.position.x, sh.mesh.position.z, 3); updateHUD(); }
           if (!s.boomerang) hit = true;
@@ -3086,7 +3086,7 @@ function updateSnowballs(dt) {
           const o = _l2Orcas[oi];
           if (Math.hypot(s.mesh.position.x - o.mesh.position.x, s.mesh.position.z - o.mesh.position.z) < orcaRadius) {
             const isCrit = Math.random() < playerStats.critChance;
-            o.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+            o.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
             spawnImpact(s.mesh.position.x, 0.5, s.mesh.position.z, isCrit);
             if (o.hp <= 0) { scene.remove(o.mesh); _l2Orcas.splice(oi, 1); killCount++; spawnXpOrb(o.mesh.position.x, o.mesh.position.z, 6); updateHUD(); }
             if (!s.boomerang) hit = true;
@@ -3100,7 +3100,7 @@ function updateSnowballs(dt) {
     if (!hit && CURRENT_LEVEL === 2 && _ghostPirate) {
       if (Math.hypot(s.mesh.position.x - _ghostPirate.mesh.position.x, s.mesh.position.z - _ghostPirate.mesh.position.z) < 1.8 * playerStats.projSize) {
         const isCrit = Math.random() < playerStats.critChance;
-        _ghostPirate.hp -= SNOWBALL_DAMAGE * playerStats.damage * (isCrit ? 2 : 1);
+        _ghostPirate.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
         spawnImpact(s.mesh.position.x, 0.8, s.mesh.position.z, isCrit);
         if (_ghostPirate.hp <= 0) {
           // Death — drop rusty key
