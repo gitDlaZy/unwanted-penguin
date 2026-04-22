@@ -1674,7 +1674,7 @@ const TOME_DEFS = [
   { id:'knockback',  name:'Knockback Tome',        emoji:'💥',  color:'#ff8844', desc:'+0.75 knockback on hit',    apply: s => { s.knockback  += 0.75; } },
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'+25% spawn rate, +30% enemy HP', apply:s => { s.cursed += 1; } },
   { id:'chaos',      name:'Chaos Tome',            emoji:'🎲',  color:'#ff44ff', desc:'Random tome effect!',        apply: (s, chaos) => chaos() },
-  { id:'hasper',     name:'Deveh',        emoji:'🪃',  color:'#ffaa88', desc:'Boomerang snowball — deals damage both ways, +0.5 damage. Next shot waits for return.', apply: s => { s.boomerang = true; s.damage += 0.5; } },
+  { id:'hasper',     name:'Deveh',        emoji:'🪃',  color:'#ffaa88', desc:'Boomerang snowball — 60% dmg out, 40% on return. +0.3× per stack. Next shot waits for return.', apply: s => { s.boomerang = true; } },
   { id:'shaggy',    name:'Shaggy',                emoji:'🦬', color:'#cc9966', desc:'Absorb 1 hit (iframes scale with stacks, cap 0.5s). Refresh after 130s (-10s/stack, cap 50s). Each pick: +0.2 damage.', apply: s => {
     s.shaggyStacks = Math.max(1, s.shaggyStacks + 1);
     s.damage += 0.2;
@@ -3032,7 +3032,7 @@ function updateSnowballs(dt) {
           // Each enemy hit once per leg — pierces through all
           if (!s.hitSet) s.hitSet = { out: new Set(), ret: new Set() };
           const legSet = s.returning ? s.hitSet.ret : s.hitSet.out;
-            if (!legSet.has(e)) { legSet.add(e); hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z); }
+            if (!legSet.has(e)) { legSet.add(e); const _bm = (1 + 0.3 * ((weaponStacks['hasper'] || 1) - 1)) * (s.returning ? 0.4 : 0.6); hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z, _bm); }
           continue; // pierce — keep checking other enemies this frame
         } else {
           hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z);
@@ -3047,7 +3047,8 @@ function updateSnowballs(dt) {
       const bdz = s.mesh.position.z - boss.mesh.position.z;
       if (bdx*bdx + bdz*bdz < (3.0 * playerStats.projSize) ** 2) {
         const isCrit = Math.random() < playerStats.critChance;
-        boss.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
+        const _bossBoomMult = s.boomerang ? (1 + 0.3 * ((weaponStacks['hasper'] || 1) - 1)) * (s.returning ? 0.4 : 0.6) : 1;
+        boss.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * _bossBoomMult * (isCrit ? 2 : 1);
         spawnImpact(s.mesh.position.x, s.mesh.position.y, s.mesh.position.z, isCrit);
         // Teleport at 75/50/25% thresholds
         const hpPct = boss.hp / boss.maxHp;
