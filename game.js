@@ -3603,11 +3603,14 @@ function showDeathScreen() {
                font-family:monospace;font-size:14px;padding:8px 18px;cursor:pointer;border-radius:4px;
                letter-spacing:2px;white-space:nowrap">SUBMIT</button>
     </div>
-    <div style="display:flex;justify-content:center;margin-bottom:4px">
+    <div style="display:flex;justify-content:center;gap:8px;margin-bottom:4px">
       <button id="refreshBtn"
         style="background:transparent;border:1px solid #44aaff44;color:#aee8ff99;
                font-family:monospace;font-size:12px;padding:4px 14px;cursor:pointer;border-radius:4px;
                letter-spacing:1px">↻ REFRESH</button>
+      <button id="retryBtn"
+        style="background:transparent;border:2px solid #44aaff55;color:#aee8ff;
+               font-family:monospace;font-size:12px;padding:4px 18px;cursor:pointer;border-radius:4px;letter-spacing:2px">RETRY</button>
     </div>
     <div id="scoreboardEl" style="min-height:60px"><div style="opacity:0.4;font-size:13px">Loading scores...</div></div>
     <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
@@ -3625,9 +3628,6 @@ function showDeathScreen() {
         🧍 HUMAN</button>
     </div>
     <div style="display:flex;gap:12px;margin-top:8px">
-      <button id="retryBtn"
-        style="background:transparent;border:2px solid #44aaff55;color:#aee8ff;
-               font-family:monospace;font-size:18px;padding:10px 36px;cursor:pointer;letter-spacing:3px">RETRY</button>
       <button id="howToBtn"
         style="background:transparent;border:2px solid #44aaff33;color:#aee8ff88;
                font-family:monospace;font-size:13px;padding:10px 18px;cursor:pointer;letter-spacing:2px">HOW TO PLAY</button>
