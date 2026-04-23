@@ -5416,8 +5416,8 @@ function update(dt) {
         _perfectStreak = Math.min(_perfectStreak + 1, 5);
         _jumpBuffer = 0;
         _perfectCooldown = 0.6; // must wait 0.6s before next perfect jump
-        spawnGust(player.position.x, player.position.z, playerStats.gustOfWind > 0, _perfectStreak >= 3);
-        // Behind gust: fires on 3rd perfect jump and every one after in succession
+        spawnGust(player.position.x, player.position.z, true, playerStats.gustOfWind > 0 && _perfectStreak >= 3);
+        // Behind gust: fires on 3rd perfect jump and every one after in succession (requires stacks)
         if (playerStats.gustOfWind > 0 && _perfectStreak >= 3) {
           const velLen = Math.sqrt(playerVel.x*playerVel.x + playerVel.z*playerVel.z) || 1;
           spawnGust(player.position.x - (playerVel.x/velLen)*2, player.position.z - (playerVel.z/velLen)*2,
