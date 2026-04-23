@@ -1639,7 +1639,7 @@ const playerStats = Object.assign({
   projCount: 1, projExtraChance: 0, projSize: 1.0, projSpeed: 1.0,
   maxShield: 0, shield: 0, shieldRecharge: 0, shieldDmgTimer: 0,
   evasion: 0, lifesteal: 0, bloodHeal: 0, moveSpeed: 1.05, pickupRadius: 0.7,
-  knockback: 0, cursed: 0, boomerang: false, iframeDuration: 1.0, shaggyStacks: 0, gustOfWind: 1, // TEMP: testing
+  knockback: 0, cursed: 0, boomerang: false, iframeDuration: 1.0, shaggyStacks: 0, gustOfWind: 0,
 }, _levelSave?.stats ?? {});
 
 const tomeStacks = Object.assign({}, _levelSave?.tomeStacks ?? {});
@@ -1810,10 +1810,7 @@ function fireGandalfStaff() {
     playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
     updateHUD();
   }
-  if (playerStats.bloodHeal > 0 && Math.random() < playerStats.bloodHeal && playerState.hp < playerState.maxHp) {
-    playerState.hp = Math.min(playerState.maxHp, playerState.hp + 1);
-    updateHUD();
-  }
+  // bloodHeal does not apply to magic damage weapons
 }
 
 // Aura Farmer persistent ring — outer edge indicator, scales with projSize
@@ -1888,10 +1885,7 @@ function fireAuraFarmer() {
     playerStats.shield = Math.min(playerStats.maxShield, playerStats.shield + 1);
     updateHUD();
   }
-  if (playerStats.bloodHeal > 0 && Math.random() < playerStats.bloodHeal && playerState.hp < playerState.maxHp) {
-    playerState.hp = Math.min(playerState.maxHp, playerState.hp + 1);
-    updateHUD();
-  }
+  // bloodHeal does not apply to magic damage weapons
 }
 
 function tickWeapons(dt) {
@@ -2667,7 +2661,7 @@ function spawnSwarmWave() {
     else                 { sx = (Math.random() - 0.5) * 160; sz = -edgeVal; }
 
     const mesh = buildBelgica();
-    mesh.scale.setScalar(1.5);
+    mesh.scale.setScalar(0.9); // 40% smaller than before
     mesh.position.set(sx, 0, sz);
     scene.add(mesh);
     enemies.push({ mesh, type: 'belgica', hp: 8 });
@@ -2768,7 +2762,7 @@ function updateEnemies(dt) {
         e.mesh.position.y = 7 + Math.sin(frameTime * 1000 / 500 + i) * 0.4;
         e.mesh.rotation.y = Math.atan2(-dz, dx);
 
-        e.dropTimer -= dt;
+        if (dist < 25) e.dropTimer -= dt; // only countdown when skua is close enough to see
         if (e.dropTimer <= 0) {
           const fallTime = e.mesh.position.y / 10;
           const leadTime = fallTime + 1.0;
@@ -2989,14 +2983,16 @@ function updateBurst(dt) {
   }
 }
 
-function hitEnemy(j, impactX, impactY, impactZ, dmgMult = 1) {
+function hitEnemy(j, impactX, impactY, impactZ, dmgMult = 1, skipKnockback = false) {
   const e = enemies[j];
+  // Belgica has 50% dodge chance
+  if (e.type === 'belgica' && Math.random() < 0.5) return false;
   const isCrit = Math.random() < playerStats.critChance;
   const _dmg = SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * dmgMult * (isCrit ? 2 : 1);
   e.hp -= _dmg;
   showDmgNumber(e.mesh.position.x, e.mesh.position.z, _dmg, isCrit);
   spawnImpact(impactX, impactY, impactZ, isCrit);
-  if (playerStats.knockback > 0 && e.mesh) {
+  if (playerStats.knockback > 0 && e.mesh && !skipKnockback) {
     const kx = impactX - e.mesh.position.x, kz = impactZ - e.mesh.position.z;
     const kd = Math.sqrt(kx*kx + kz*kz) || 1;
     e.mesh.position.x -= (kx / kd) * playerStats.knockback;
@@ -3060,8 +3056,18 @@ function updateSnowballs(dt) {
         if (s.boomerang) {
           // Each enemy hit once per leg — pierces through all
           if (!s.hitSet) s.hitSet = { out: new Set(), ret: new Set() };
-          const legSet = s.returning ? s.hitSet.ret : s.hitSet.out;
-            if (!legSet.has(e)) { legSet.add(e); const _bm = (1 + 0.3 * ((weaponStacks['hasper'] || 1) - 1)) * (s.returning ? 0.4 : 0.6); hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z, _bm); }
+          if (!s.kbApplied) s.kbApplied = { out: false, ret: false };
+          const legKey = s.returning ? 'ret' : 'out';
+          const legSet = s.hitSet[legKey];
+          if (!legSet.has(e)) {
+            const isFirstHit = legSet.size === 0;
+            legSet.add(e);
+            const _bm = (1 + 0.3 * ((weaponStacks['hasper'] || 1) - 1)) * (s.returning ? 0.4 : 0.6);
+            // Knockback only on first enemy hit per leg
+            const skip = !isFirstHit || s.kbApplied[legKey];
+            if (isFirstHit) s.kbApplied[legKey] = true;
+            hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z, _bm, skip);
+          }
           continue; // pierce — keep checking other enemies this frame
         } else {
           hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z);
@@ -4026,8 +4032,8 @@ function resumeGame() {
   touchInput.dx = 0; touchInput.dz = 0; touchInput.jump = false;
 }
 
-// Any tap or key resumes
-document.addEventListener('touchstart', () => resumeGame(), { passive: true });
+// Any tap or key resumes (but not while debug menu is open)
+document.addEventListener('touchstart', () => { if (!_debugOpen) resumeGame(); }, { passive: true });
 
 function applyTome(id) {
   if (WEAPON_DEFS.find(w => w.id === id)) {
@@ -4080,8 +4086,8 @@ function updateTomeInput(dt) {
   const confirm   = keys['l'] || keys['p'];
 
   if (tomeInputDelay <= 0) {
-    if (goLeft  && !prevTomeLeft)  { selectedTomeIdx = Math.max(0, selectedTomeIdx - 1); updateTomeHighlight(); }
-    if (goRight && !prevTomeRight) { selectedTomeIdx = Math.min(currentTomeChoices.length - 1, selectedTomeIdx + 1); updateTomeHighlight(); }
+    if (goLeft  && !prevTomeLeft)  { selectedTomeIdx = Math.max(0, selectedTomeIdx - 1); updateTomeHighlight(); tomeInputDelay = 0.18; }
+    if (goRight && !prevTomeRight) { selectedTomeIdx = Math.min(currentTomeChoices.length - 1, selectedTomeIdx + 1); updateTomeHighlight(); tomeInputDelay = 0.18; }
     if (confirm && !prevTomeConfirm) applyTome(currentTomeChoices[selectedTomeIdx].id);
   }
 
@@ -4922,7 +4928,7 @@ window.addEventListener('keydown', e => {
   // Ctrl+Shift+6+7 → debug menu (use keyCodes — Shift changes e.key value)
   if (e.ctrlKey && e.shiftKey && keyCodes['Digit6'] && keyCodes['Digit7'] && (e.code === 'Digit6' || e.code === 'Digit7')) { e.preventDefault(); toggleDebugMenu(); }
   const typing = document.activeElement?.id === 'nameInput';
-  if (!typing) resumeGame();
+  if (!typing && !_debugOpen) resumeGame();
 });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; keyCodes[e.code] = false; });
 
@@ -4934,20 +4940,70 @@ const _debugOverlay = (() => {
   el.id = 'debugMenu';
   el.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:99999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 0';
   el.innerHTML = `
-    <div style="background:#0a0f1e;border:2px solid #44aaff;border-radius:12px;padding:24px 32px;font-family:monospace;color:#aee8ff;min-width:340px;max-width:720px;width:90vw">
+    <div style="background:#0a0f1e;border:2px solid #44aaff;border-radius:12px;padding:24px 32px;font-family:monospace;color:#aee8ff;min-width:340px;max-width:480px;width:90vw">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
         <div style="font-size:18px;letter-spacing:3px;color:#44aaff">⚙ DEBUG MENU</div>
         <button id="_dbgClose" style="background:#1a0010;border:1px solid #ff4466;color:#ff8899;font-family:monospace;font-size:13px;padding:5px 14px;cursor:pointer;border-radius:6px;letter-spacing:1px">✕ CLOSE</button>
       </div>
-      <div id="_dbgList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px"></div>
-      <div style="font-size:13px;letter-spacing:2px;color:#aa66ff;margin-bottom:10px;border-top:1px solid #1a2a4a;padding-top:14px">📖 LEVEL TOMES</div>
-      <div id="_dbgTomeGrid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      <div id="_dbgList" style="display:flex;flex-direction:column;gap:10px"></div>
       <div style="margin-top:14px;font-size:11px;color:#446688;text-align:center">Ctrl+Shift+6+7 or ESC to close</div>
     </div>`;
   document.body.appendChild(el);
   el.addEventListener('click', e => { if (e.target === el) closeDebugMenu(); });
   return el;
 })();
+
+// ── Debug Tome Picker (submenu) ───────────────────────────────────────────────
+const _tomePicker = (() => {
+  const el = document.createElement('div');
+  el.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:100000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 0';
+  el.innerHTML = `
+    <div style="background:#0a0f1e;border:2px solid #aa66ff;border-radius:12px;padding:24px 32px;font-family:monospace;color:#aee8ff;max-width:680px;width:90vw">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-size:16px;letter-spacing:3px;color:#aa66ff">📖 LEVEL TOMES</div>
+        <button id="_tpClose" style="background:#1a0010;border:1px solid #ff4466;color:#ff8899;font-family:monospace;font-size:13px;padding:5px 14px;cursor:pointer;border-radius:6px;letter-spacing:1px">✕ BACK</button>
+      </div>
+      <div style="font-size:11px;color:#664488;margin-bottom:14px">Each pick grants +1 level. Window stays open for multiple picks.</div>
+      <div id="_tpGrid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if (e.target === el) closeTomePicker(); });
+  return el;
+})();
+
+function openTomePicker() {
+  const grid = document.getElementById('_tpGrid');
+  grid.innerHTML = '';
+  [...TOME_DEFS, ...WEAPON_DEFS].forEach(tome => {
+    const btn = document.createElement('button');
+    const render = () => {
+      const s = tomeStacks[tome.id] || weaponStacks[tome.id] || 0;
+      btn.textContent = `${tome.emoji} ${tome.name}${s > 0 ? ` ×${s}` : ''}`;
+    };
+    render();
+    btn.style.cssText = `background:#0d1a30;border:1px solid ${tome.color}55;color:${tome.color};font-family:monospace;font-size:12px;padding:6px 12px;cursor:pointer;border-radius:6px;transition:background 0.1s`;
+    btn.onmouseenter = () => btn.style.background = '#1a2a40';
+    btn.onmouseleave = () => btn.style.background = '#0d1a30';
+    btn.onclick = () => {
+      if (tome.isWeapon) {
+        applyWeapon(tome.id);
+      } else {
+        tome.apply(playerStats, () => {});
+        tomeStacks[tome.id] = (tomeStacks[tome.id] || 0) + 1;
+      }
+      playerLevel++;
+      updateXPBar();
+      render();
+    };
+    grid.appendChild(btn);
+  });
+  document.getElementById('_tpClose').onclick = closeTomePicker;
+  _tomePicker.style.display = 'flex';
+}
+
+function closeTomePicker() {
+  _tomePicker.style.display = 'none';
+}
 
 let _godMode = false;
 let _spawnsDisabled = false;
@@ -4993,27 +5049,14 @@ function buildDebugList() {
     list.appendChild(btn);
   });
 
-  // Tome grid — click to apply without closing
-  const grid = document.getElementById('_dbgTomeGrid');
-  grid.innerHTML = '';
-  [...TOME_DEFS, ...WEAPON_DEFS].forEach(tome => {
-    const btn = document.createElement('button');
-    const stacks = () => tomeStacks[tome.id] || (weaponStacks[tome.id] || 0);
-    const render = () => {
-      const s = stacks();
-      btn.textContent = `${tome.emoji} ${tome.name}${s > 0 ? ` ×${s}` : ''}`;
-    };
-    render();
-    btn.style.cssText = `background:#0d1a30;border:1px solid ${tome.color}55;color:${tome.color};font-family:monospace;font-size:12px;padding:6px 12px;cursor:pointer;border-radius:6px;transition:background 0.1s`;
-    btn.onmouseenter = () => btn.style.background = '#1a2a40';
-    btn.onmouseleave = () => btn.style.background = '#0d1a30';
-    btn.onclick = () => {
-      if (tome.isWeapon) { applyWeapon(tome.id); }
-      else { tome.apply(playerStats, () => {}); tomeStacks[tome.id] = (tomeStacks[tome.id] || 0) + 1; }
-      render();
-    };
-    grid.appendChild(btn);
-  });
+  // Single "Level Tomes" button — opens submenu
+  const tomeBtn = document.createElement('button');
+  tomeBtn.textContent = '📖  Level Tomes';
+  tomeBtn.style.cssText = 'background:#0d1a30;border:1px solid #aa66ff55;color:#cc99ff;font-family:monospace;font-size:14px;padding:9px 16px;cursor:pointer;border-radius:6px;text-align:left;transition:background 0.1s';
+  tomeBtn.onmouseenter = () => tomeBtn.style.background = '#1a1040';
+  tomeBtn.onmouseleave = () => tomeBtn.style.background = '#0d1a30';
+  tomeBtn.onclick = () => openTomePicker();
+  list.appendChild(tomeBtn);
 
   document.getElementById('_dbgClose').onclick = closeDebugMenu;
 }
@@ -5542,14 +5585,14 @@ function pollGamepad() {
     if (pressed(0) || pressed(1) || pressed(2) || pressed(3) || pressed(9)) {
       const intro = document.getElementById('introScreen');
       if (intro) intro.style.display = 'none';
-      window.bgm?.play().catch(() => {});
+      if (window.startBGM) window.startBGM(); else window.bgm?.play().catch(() => {});
     }
     gp.buttons.forEach((b, i) => { _gpPrev[i] = b.pressed; });
     return;
   }
 
   // Any button — resume after tome pick
-  if (waitingToResume && gp.buttons.some(b => b.pressed)) resumeGame();
+  if (waitingToResume && !_debugOpen && gp.buttons.some(b => b.pressed)) resumeGame();
 
   // Start / Options / Plus — retry when dead (always back to level 1)
   if (pressed(9) && playerState.dead) {
@@ -5597,6 +5640,10 @@ function loop() {
   checkPortalEntry(dt);
   renderer.render(scene, camera);
 }
+// Spawn one XP diamond near the player start position
+{ const _a = Math.random() * Math.PI * 2, _r = 5 + Math.random() * 15;
+  spawnXpOrb(player.position.x + Math.cos(_a) * _r, player.position.z + Math.sin(_a) * _r, 1); }
+
 loop();
 
 // Keep game logic ticking when alt-tabbed so player still takes damage

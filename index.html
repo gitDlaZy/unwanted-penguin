@@ -146,21 +146,24 @@
     const _vol = parseFloat(localStorage.getItem('bgmVolume') ?? '0.4');
 
     const _playlist = [
-      'sounds/BGM/Gavel%20Penguin%20Intro.mp3',
-      'sounds/BGM/Gavel%20Penguin.mp3',
-      'sounds/BGM/Penguin%20Glitch-Quest%20Adventure.mp3',
-      'sounds/BGM/Penguin%20Glitch-Quest.mp3',
-      'sounds/BGM/Penguin%20Glockspiel.mp3',
-      'sounds/BGM/Penguin%20Glockspiel2.mp3',
-      'sounds/BGM/Arctic%20Ascent.mp3',
-      'sounds/BGM/Floe%20Flow.mp3',
-      'sounds/BGM/Ice%20Capades.mp3',
-      'sounds/BGM/Penguin%20Glockenspiel.mp3',
-      'sounds/BGM/Penguin%20Overdrive.mp3',
-      'sounds/BGM/Penguin%20Rookery.mp3',
-      'sounds/BGM/Snowball%20Scramble.mp3',
-      'sounds/BGM/Snowbound.mp3',
-      'sounds/BGM/Waddle%20Onward.mp3',
+      'sounds/BGM/Winter/Gavel%20Penguin%20Intro.mp3',
+      'sounds/BGM/Winter/Gavel%20Penguin.mp3',
+      'sounds/BGM/Winter/Penguin%20Glitch-Quest%20Adventure.mp3',
+      'sounds/BGM/Winter/Penguin%20Glitch-Quest.mp3',
+      'sounds/BGM/Winter/Penguin%20Glockspiel.mp3',
+      'sounds/BGM/Winter/Penguin%20Glockspiel2.mp3',
+      'sounds/BGM/Winter/Arctic%20Ascent.mp3',
+      'sounds/BGM/Winter/Floe%20Flow.mp3',
+      'sounds/BGM/Winter/Ice%20Capades.mp3',
+      'sounds/BGM/Winter/Penguin%20Glockenspiel.mp3',
+      'sounds/BGM/Winter/Penguin%20Overdrive.mp3',
+      'sounds/BGM/Winter/Penguin%20Rookery.mp3',
+      'sounds/BGM/Winter/Snowball%20Scramble.mp3',
+      'sounds/BGM/Winter/Snowbound.mp3',
+      'sounds/BGM/Winter/Waddle%20Onward.mp3',
+      'sounds/BGM/Winter/Waddle%20You%20Doing%20Here.mp3',
+      'sounds/BGM/Winter/Arctic%20Penguin%20Jump.mp3',
+      'sounds/BGM/Winter/Penguin%20Glitchbreak.mp3',
     ];
     let _trackIdx = 0, _shuffled = [];
     function _shufflePlaylist() { _shuffled = _playlist.slice().sort(() => Math.random() - 0.5); _trackIdx = 0; }
@@ -198,6 +201,7 @@
       _gameTrack.src = _shuffled[_trackIdx];
       _gameTrack.play().catch(() => {});
     }
+    window.startBGM = _startMusic; // expose for controller music fix
     function dismissIntro() {
       const el = document.getElementById('introScreen');
       if (el) el.style.display = 'none';
