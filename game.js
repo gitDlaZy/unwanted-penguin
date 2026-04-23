@@ -1533,13 +1533,11 @@ function updateGhostPirate(dt) {
   const dx = px - gp.mesh.position.x, dz = pz - gp.mesh.position.z;
   const dist = Math.hypot(dx, dz);
 
-  gp.chasing = dist < 22;
+  gp.chasing = dist < 40;
   if (gp.chasing && dist > 1.4) {
     const spd = gp.speed;
-    const nx = gp.mesh.position.x + (dx/dist)*spd*dt;
-    const nz = gp.mesh.position.z + (dz/dist)*spd*dt;
-    // Stay on island and land only
-    if (_l2OnIce(nx, nz)) { gp.mesh.position.x = nx; gp.mesh.position.z = nz; }
+    gp.mesh.position.x += (dx/dist)*spd*dt;
+    gp.mesh.position.z += (dz/dist)*spd*dt;
     gp.mesh.rotation.y = Math.atan2(-dx, -dz);
   }
 
@@ -3331,7 +3329,7 @@ function updateSnowballs(dt) {
     }
 
     // Normal snowball: remove on hit or out of range
-    if (hit || s.mesh.position.distanceTo(player.position) > 12) {
+    if (hit || s.mesh.position.distanceTo(player.position) > 22) {
       disposeMesh(s.mesh); scene.remove(s.mesh);
       snowballs.splice(i, 1);
     }
