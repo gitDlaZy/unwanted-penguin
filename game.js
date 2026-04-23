@@ -350,8 +350,16 @@ const _l2SharkAlertEl = { style: { display: '' } }; // removed shark alert
 let   _ghostPirate     = null;   // { mesh, hp, state, timers… }
 const _ghostBullets    = [];
 let   _rustyKeyMesh    = null;
-let   _hasRustyKey     = false;
-let   _chestOpened     = false;
+let   _hasRustyKey           = false;
+let   _hasAntiHeatSunglasses = false;
+let   _chestOpened           = false;
+let   _sharkEscapeCooldown   = 0;
+let   _desertPortalStandTimer = 0;
+let   _desertPortalGroup      = null;
+let   _desertPortalShimmer1   = null;
+let   _desertPortalShimmer2   = null;
+let   _desertPortalLight      = null;
+const _desertPortalDebris     = [];
 const _l2ClueEl = (() => {
   const el = document.createElement('div');
   el.style.cssText = 'display:none;position:fixed;bottom:50px;left:50%;transform:translateX(-50%);background:rgba(10,5,0,0.88);border:2px solid #aa8833;border-radius:10px;padding:14px 28px;font-family:monospace;font-size:15px;color:#f0d080;text-shadow:0 0 6px #aa7700;pointer-events:none;z-index:9999;text-align:center;max-width:460px';
@@ -440,15 +448,15 @@ if (CURRENT_LEVEL === 2) {
     _l2Ships.push(g);
     return g;
   }
-  _buildShip( 50,  8,  0.3,  0.12, "X marks the spot — three paces from the mast, one from the chest.");
-  _buildShip(-46, 22, -0.5, -0.18, "They came from the north. We never saw the storm coming.");
-  _buildShip( 32,-38,  1.1,  0.22, "The portal was here long before us. Do NOT enter alone.");
-  _buildShip(-28,-42, -1.8, -0.15, "Captain's log — Day 47: The water whispers at night. We are not the first.");
+  _buildShip( 50,  8,  0.3,  0.12, "The ghost pirate... I saw him to the west. His island rose from the fog — pale sand where there should be ice. He carries something that doesn't belong to him.");
+  _buildShip(-46, 22, -0.5, -0.18, "Sail southwest and you'll find his cursed isle. A spirit in a tricorne hat, sword drawn, muttering about a key. We didn't dare linger.");
+  _buildShip( 32,-38,  1.1,  0.22, "Three nights his laughter came from the northwest — from an island of unnatural warmth. Only the brave will face him. He holds a key to something greater.");
+  _buildShip(-28,-42, -1.8, -0.15, "Day 47: The ghost pirate drifts south-southwest of here, guarding an isle of cursed sand. His key, they say, opens an ancient chest. We lacked the courage. Perhaps you don't.");
 
   // Jellyfish
   const _jBodyMat = new THREE.MeshStandardMaterial({ color: 0x88aaff, emissive: 0x4466ff, emissiveIntensity: 0.7, transparent: true, opacity: 0.55 });
   const _jTentMat = new THREE.MeshStandardMaterial({ color: 0xaabbff, emissive: 0x3355ff, emissiveIntensity: 0.5, transparent: true, opacity: 0.4 });
-  for (let i = 0; i < 28; i++) {
+  for (let i = 0; i < 45; i++) {
     let jx, jz, tries = 0;
     do { jx = (Math.random()-0.5)*140; jz = (Math.random()-0.5)*140; tries++; }
     while ((_l2OnIce(jx,jz) || Math.hypot(jx-35,jz-25)<9 || Math.hypot(jx+64,jz-50)<10) && tries < 30);
@@ -579,6 +587,76 @@ if (CURRENT_LEVEL === 2) {
 
   // North beach
   buildBeachL2();
+
+  // Desert portal at (47, -85) — sandy/warm themed
+  (() => {
+    const sandStoneMat = new THREE.MeshStandardMaterial({ color: 0xc8a060, roughness: 0.9 });
+    const sandVoidMat  = new THREE.MeshStandardMaterial({ color: 0x3a1a00, emissive: 0xcc6600, emissiveIntensity: 0.9, transparent: true, opacity: 0.92, side: THREE.DoubleSide });
+    const sandSwirl1   = new THREE.MeshStandardMaterial({ color: 0xff9933, emissive: 0xdd6600, emissiveIntensity: 1.1, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
+    const sandSwirl2   = new THREE.MeshStandardMaterial({ color: 0xffcc44, emissive: 0xffaa00, emissiveIntensity: 0.9, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
+    const sandRingMat  = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff9900, emissiveIntensity: 1.6, roughness: 0.3, metalness: 0.4 });
+
+    const pg = new THREE.Group();
+    pg.position.set(47, 0, -85);
+
+    // Sandy stone pillars
+    const pL = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.32, 5.0, 6), sandStoneMat);
+    pL.position.set(-1.4, 2.5, 0); pL.rotation.z = 0.05; pg.add(pL);
+    const pR = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.3, 5.0, 6), sandStoneMat);
+    pR.position.set( 1.4, 2.5, 0); pR.rotation.z = -0.04; pg.add(pR);
+
+    // Shard crown — jagged desert sandstone spires
+    [[-1.4,5.05,-0.2],[-0.6,5.4,0.1],[0,5.6,-0.05],[0.65,5.35,0.15],[1.4,5.0,-0.1]].forEach(([x,y,rz]) => {
+      const sh = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.85, 5), sandStoneMat);
+      sh.position.set(x, y, 0); sh.rotation.z = rz; pg.add(sh);
+    });
+
+    // Void center — warm amber darkness
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(1.32, 64), sandVoidMat);
+    disc.position.z = 0; pg.add(disc);
+
+    // Swirl layers
+    const sw1 = new THREE.Mesh(new THREE.CircleGeometry(1.32, 48), sandSwirl1);
+    sw1.position.z = 0.02; pg.add(sw1);
+    const sw2 = new THREE.Mesh(new THREE.CircleGeometry(1.0, 32), sandSwirl2);
+    sw2.position.z = 0.03; pg.add(sw2);
+
+    // Outer ring
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.32, 0.13, 10, 52), sandRingMat);
+    pg.add(ring);
+
+    // Orbiting sand debris
+    const debrisMat = new THREE.MeshStandardMaterial({ color: 0x8b5e1a, emissive: 0xcc8800, emissiveIntensity: 0.6, roughness: 0.7 });
+    for (let i = 0; i < 10; i++) {
+      const d = new THREE.Mesh(new THREE.BoxGeometry(0.07+Math.random()*0.08, 0.07+Math.random()*0.08, 0.04), debrisMat);
+      const angle = (i/10)*Math.PI*2;
+      d.userData.angle  = angle;
+      d.userData.radius = 1.55 + Math.random()*0.35;
+      d.userData.speed  = 0.35 + Math.random()*0.25;
+      d.userData.yOff   = (Math.random()-0.5)*1.2;
+      pg.add(d);
+      _desertPortalDebris.push(d);
+    }
+
+    // Sandy base slabs
+    [[-0.9,0],[0,0],[0.9,0]].forEach(([x]) => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.14, 0.7), sandStoneMat);
+      b.position.set(x, 0.07, 0); pg.add(b);
+    });
+
+    // Warm orange light
+    const lt = new THREE.PointLight(0xff8800, 3.5, 18);
+    lt.position.set(0, 2.5, 0.8); pg.add(lt);
+
+    scene.add(pg);
+    _desertPortalGroup   = pg;
+    _desertPortalShimmer1 = sw1;
+    _desertPortalShimmer2 = sw2;
+    _desertPortalLight    = lt;
+
+    // Register as walkable surface so player doesn't sink on approach
+    _l2IcePlatforms.push({ x: 47, z: -85, r: 4 });
+  })();
 }
 
 function updateL2Enemies(dt) {
@@ -632,8 +710,8 @@ function updateL2Enemies(dt) {
     if (nx !== undefined && !_l2OnIce(nx, nz)) { sh.mesh.position.x = nx; sh.mesh.position.z = nz; }
     sh.mesh.position.y = 0.12 + Math.sin(Date.now()/600+sh.mesh.position.x)*0.04;
 
-    // Bite → start drag
-    if (sh.chasing && pdist < 1.2 && playerState.iframes <= 0 && !_sharkDragging && !_godMode) {
+    // Bite → start drag (blocked for 0.3s after escaping)
+    if (sh.chasing && pdist < 1.2 && playerState.iframes <= 0 && !_sharkDragging && !_godMode && _sharkEscapeCooldown <= 0) {
       _sharkDragging = true; _dragShark = sh; _dragBreakCount = 0;
     }
   });
@@ -741,6 +819,9 @@ function updateL2Enemies(dt) {
   if (!showInteract && !_chestOpened && Math.hypot(px+63,pz+100)<3.5) {
     showInteract = _hasRustyKey ? 'E — Open chest' : 'E — Locked chest (need rusty key)';
   }
+  if (!showInteract && _desertPortalGroup && Math.hypot(px-47,pz+85)<4) {
+    showInteract = _hasAntiHeatSunglasses ? 'E — Enter Desert Portal' : 'E — Desert Portal (need Anti-Heat Sunglasses)';
+  }
   if (!showInteract && !_shipPopupOpen && !_bottlePopupOpen) {
     for (const ship of _l2Ships) {
       if (Math.hypot(px - ship.position.x, pz - ship.position.z) < 5.5) { showInteract = 'E — Board ship'; break; }
@@ -760,9 +841,10 @@ function updateL2Enemies(dt) {
       _dragShark.mesh.position.z = player.position.z + 0.9;
       if (playerState.iframes <= 0 && !_godMode) playerState.hp = Math.max(1, playerState.hp - playerState.maxHp * 0.10 * dt);
       updateHUD();
-      if (_dragBreakCount >= DRAG_BREAKS_NEEDED) { _sharkDragging = false; _dragShark = null; playerState.iframes = 1.5; _dragHUD.style.display = 'none'; }
+      if (_dragBreakCount >= DRAG_BREAKS_NEEDED) { _sharkDragging = false; _dragShark = null; playerState.iframes = 1.5; _sharkEscapeCooldown = 0.3; _dragHUD.style.display = 'none'; }
     } else { _sharkDragging = false; _dragShark = null; _dragHUD.style.display = 'none'; }
   } else { _dragHUD.style.display = 'none'; }
+  _sharkEscapeCooldown = Math.max(0, _sharkEscapeCooldown - dt);
 
   // North wall (can't go past beach)
   if (player.position.z < L2_NORTH_LIMIT) player.position.z = L2_NORTH_LIMIT;
@@ -862,6 +944,22 @@ function makeElite(group) {
 
 // ── Models ────────────────────────────────────────────────────────────────────
 
+function _makeSunglasses(eyeY, eyeZ, eyeX) {
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3, metalness: 0.9 });
+  const lensMat  = new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xaa7700, emissiveIntensity: 0.4, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+  const sg = new THREE.Group();
+  [-eyeX, eyeX].forEach(x => {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.014, 6, 14), frameMat);
+    ring.position.set(x, eyeY, eyeZ); sg.add(ring);
+    const fill = new THREE.Mesh(new THREE.CircleGeometry(0.08, 12), lensMat);
+    fill.position.set(x, eyeY, eyeZ + 0.001); sg.add(fill);
+  });
+  const bridgeW = Math.max(0.01, eyeX * 2 - 0.18);
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(bridgeW, 0.014, 0.014), frameMat);
+  bridge.position.set(0, eyeY, eyeZ); sg.add(bridge);
+  return sg;
+}
+
 function buildPenguin() {
   const g = new THREE.Group();
   const black  = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
@@ -903,6 +1001,7 @@ function buildPenguin() {
     foot.position.set(x, 0.025, 0.08); g.add(foot);
   });
 
+  if (_hasAntiHeatSunglasses) g.add(_makeSunglasses(1.44, 0.38, 0.12));
   return g;
 }
 
@@ -970,6 +1069,7 @@ function buildEvilPenguin() {
     foot.position.set(x, 0.025, 0.09); g.add(foot);
   });
 
+  if (_hasAntiHeatSunglasses) g.add(_makeSunglasses(1.46, 0.40, 0.14));
   return g;
 }
 
@@ -1054,6 +1154,7 @@ function buildHumanPlayer() {
   g.add(gunPivot);
   g.userData.gunPivot = gunPivot;
 
+  if (_hasAntiHeatSunglasses) g.add(_makeSunglasses(1.84, -0.25, 0.09));
   return g;
 }
 
@@ -1162,6 +1263,7 @@ function buildWizardCat() {
     g.add(foot);
   });
 
+  if (_hasAntiHeatSunglasses) g.add(_makeSunglasses(1.36, 0.40, 0.16));
   return g;
 }
 
@@ -1539,7 +1641,7 @@ function buildBeachL2() {
   }
 
   // Pirates — active, face player and shoot
-  const _piratePoses = [[-30, -80], [-10, -85], [24, -78], [44, -90], [-50, -86]];
+  const _piratePoses = [[-30,-80],[-10,-85],[24,-78],[44,-90],[-50,-86],[15,-92],[-38,-75],[55,-82],[-18,-100],[36,-95]];
   _piratePoses.forEach(([bpx, bpz]) => {
     const p = buildHumanPlayer();
     p.scale.setScalar(0.9);
@@ -1556,7 +1658,7 @@ function buildBeachL2() {
   _l2Bottle = { mesh: bot, x: 8, z: -67 };
 
   // Crabs
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 20; i++) {
     const c = buildCrab();
     const cx = (Math.random() - 0.5) * 110;
     const cz = -66 - Math.random() * 42;
@@ -3191,6 +3293,12 @@ function updateSnowballs(dt) {
           _ghostBullets.length = 0;
           killCount++; spawnXpOrb(_ghostPirate.mesh.position.x, _ghostPirate.mesh.position.z, 10); updateHUD();
           _ghostPirate = null;
+          // Show death riddle pointing to the chest
+          const _riddle = document.createElement('div');
+          _riddle.style.cssText = 'position:fixed;top:28%;left:50%;transform:translateX(-50%);background:rgba(5,0,20,0.92);border:2px solid #6688aa;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:16px;color:#aaccee;text-shadow:0 0 10px #4488bb;pointer-events:none;z-index:9999;text-align:center;max-width:500px;line-height:1.6';
+          _riddle.innerHTML = '<span style="color:#88aacc;font-size:12px;letter-spacing:3px;display:block;margin-bottom:8px">👻 GHOST PIRATE\'S LAST WORDS</span>Ha... ha ha... you bested me, bird...<br>The chest awaits on the cold northern shore...<br><em style="color:#88ccee">Head north past the pirates, west along the sand...</em><br>Where the beach grows quiet and dark...<br>My key will show you the way... <span style="color:#aaddff">find it...</span><br><span style="font-size:12px;color:#668899;margin-top:6px;display:block">(Press E near the key to pick it up)</span>';
+          document.body.appendChild(_riddle);
+          setTimeout(() => _riddle.remove(), 8000);
         }
         if (!s.boomerang) hit = true;
       }
@@ -4939,24 +5047,38 @@ window.addEventListener('keydown', e => {
       if (_hasRustyKey) {
         _chestOpened = true;
         if (window._l2ChestGroup) {
-          // Open lid visually
           const lid = window._l2ChestGroup.children[1];
           if (lid) lid.rotation.x = -Math.PI/2;
-          if (window._l2ChestGlow) window._l2ChestGlow.color.set(0xffffff);
+          if (window._l2ChestGlow) window._l2ChestGlow.color.set(0xffee88);
         }
-        playerState.hp = Math.min(playerState.maxHp, playerState.hp + playerState.maxHp * 0.5);
-        updateHUD();
+        // Grant Anti-Heat Sunglasses and rebuild skin with glasses
+        _hasAntiHeatSunglasses = true;
+        penguinMesh.clear();
+        const _newModel = activeSkin === 'evil' ? buildEvilPenguin() : activeSkin === 'wizard' ? buildWizardCat() : activeSkin === 'human' ? buildHumanPlayer() : buildPenguin();
+        penguinMesh.add(_newModel);
+        _humanGunPivot = _newModel.userData.gunPivot ?? null;
+        // Show reward popup with portal note
         const el = document.createElement('div');
-        el.style.cssText = 'position:fixed;top:36%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:22px;color:#ffd700;text-shadow:0 0 16px #ffaa00;pointer-events:none;z-index:9999;text-align:center';
-        el.innerHTML = '💰 Ancient chest opened!<br><span style="font-size:16px;color:#aaffaa">+50% HP restored</span>';
+        el.style.cssText = 'position:fixed;top:32%;left:50%;transform:translateX(-50%);background:rgba(10,5,0,0.92);border:2px solid #ffcc44;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:18px;color:#ffd700;text-shadow:0 0 14px #ffaa00;pointer-events:none;z-index:9999;text-align:center;max-width:480px;line-height:1.7';
+        el.innerHTML = '🕶️ <strong>Anti-Heat Sunglasses</strong> obtained!<br><span style="font-size:14px;color:#ffeeaa">These will protect you from extreme desert heat.</span><br><hr style="border-color:#886600;margin:8px 0"><span style="font-size:13px;color:#ccaa66;font-style:italic">"A tattered note falls from the chest:<br><em>\'I once glimpsed a shimmering portal to the east...<br>strange and warm, unlike anything on these frozen seas.\'</em>"</span>';
         document.body.appendChild(el);
-        setTimeout(() => el.remove(), 3000);
+        setTimeout(() => el.remove(), 7000);
       } else {
         const el = document.createElement('div');
         el.style.cssText = 'position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:18px;color:#ff8844;text-shadow:0 0 8px #ff4400;pointer-events:none;z-index:9999';
         el.textContent = '🔒 This chest is locked. You need a rusty key.';
         document.body.appendChild(el);
         setTimeout(() => el.remove(), 2000);
+      }
+    } else if (_desertPortalGroup && Math.hypot(px-47,pz+85)<2.5) {
+      if (_hasAntiHeatSunglasses) {
+        window.location.href = 'desert.html';
+      } else {
+        const el = document.createElement('div');
+        el.style.cssText = 'position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:18px;color:#ff8844;text-shadow:0 0 10px #ff6600;pointer-events:none;z-index:9999;text-align:center';
+        el.textContent = '🔥 The desert heat is too intense! You need Anti-Heat Sunglasses.';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 2500);
       }
     } else {
       for (const ship of _l2Ships) {
@@ -5682,6 +5804,20 @@ function loop() {
   portalShimmer2.rotation.z -= 0.022;
   portalLight.intensity  = 3.5 + 1.2 * Math.sin(_pt / 180) + 0.5 * Math.sin(_pt / 70);
   portalLight2.intensity = 1.2 + 0.5 * Math.sin(_pt / 250);
+  if (_desertPortalShimmer1) {
+    _desertPortalShimmer1.rotation.z += 0.011;
+    _desertPortalShimmer2.rotation.z -= 0.017;
+    _desertPortalLight.intensity = 3.0 + 0.9 * Math.sin(_pt / 200) + 0.4 * Math.sin(_pt / 80);
+    _desertPortalDebris.forEach(d => {
+      d.userData.angle += d.userData.speed * 0.016;
+      d.position.set(
+        Math.cos(d.userData.angle) * d.userData.radius,
+        2.5 + d.userData.yOff + Math.sin(d.userData.angle * 1.3) * 0.3,
+        Math.sin(d.userData.angle) * d.userData.radius * 0.25
+      );
+      d.rotation.z += 0.03;
+    });
+  }
   portalDebris.forEach(d => {
     d.userData.angle += d.userData.speed * 0.016;
     d.position.set(
