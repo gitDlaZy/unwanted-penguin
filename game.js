@@ -3047,7 +3047,7 @@ function findNearestEnemy() {
   if (boss) {
     const bdx = boss.mesh.position.x - player.position.x;
     const bdz = boss.mesh.position.z - player.position.z;
-    if (bdx*bdx + bdz*bdz <= 400) return boss; // 20-unit radius
+    if (bdx*bdx + bdz*bdz <= 400) return boss;
   }
   let nearest = null, bestDist = ATTACK_RANGE * ATTACK_RANGE;
   for (const e of enemies) {
@@ -3055,6 +3055,20 @@ function findNearestEnemy() {
     const dz = e.mesh.position.z - player.position.z;
     const d = dx*dx + dz*dz;
     if (d < bestDist) { bestDist = d; nearest = e; }
+  }
+  // Level 2 enemies
+  if (CURRENT_LEVEL === 2) {
+    const l2Targets = [];
+    if (_ghostPirate) l2Targets.push(_ghostPirate);
+    for (const sh of _l2Sharks)       l2Targets.push(sh);
+    for (const o  of _l2Orcas)        l2Targets.push(o);
+    for (const bp of _l2BeachPirates) l2Targets.push(bp);
+    for (const t of l2Targets) {
+      const dx = t.mesh.position.x - player.position.x;
+      const dz = t.mesh.position.z - player.position.z;
+      const d = dx*dx + dz*dz;
+      if (d < bestDist) { bestDist = d; nearest = t; }
+    }
   }
   return nearest;
 }
@@ -5665,7 +5679,8 @@ function update(dt) {
   pos.needsUpdate = true;
 
   // Auto-attack (boomerang waits for return before firing again)
-  if ((enemies.length > 0 || boss) && !boomerangInFlight && movementLockout !== Infinity) {
+  const _hasL2Targets = CURRENT_LEVEL === 2 && (_ghostPirate || _l2Sharks.length > 0 || _l2Orcas.length > 0 || _l2BeachPirates.length > 0);
+  if ((enemies.length > 0 || boss || _hasL2Targets) && !boomerangInFlight && movementLockout !== Infinity) {
     attackTimer -= dt;
     if (attackTimer <= 0) {
       const target = findNearestEnemy();
