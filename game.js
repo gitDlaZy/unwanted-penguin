@@ -2808,13 +2808,15 @@ function spawnSwarmWave() {
 
 function updateEnemies(dt) {
   gameTime += dt;
-  if (gameTime >= 300 && !boss && !bossDefeated && !playerState.dead) { spawnBoss(); }
-  const remaining = Math.max(0, 300 - gameTime);
-  const secs = Math.floor(remaining % 60);
-  if (timerHUDEl && secs !== _lastTimerSec) {
-    _lastTimerSec = secs;
-    if (gameTime >= 4) timerHUDEl.style.display = 'block';
-    timerHUDEl.textContent = `⏱ ${Math.floor(remaining / 60)}:${String(secs).padStart(2,'0')}`;
+  if (CURRENT_LEVEL === 1) {
+    if (gameTime >= 300 && !boss && !bossDefeated && !playerState.dead) { spawnBoss(); }
+    const remaining = Math.max(0, 300 - gameTime);
+    const secs = Math.floor(remaining % 60);
+    if (timerHUDEl && secs !== _lastTimerSec) {
+      _lastTimerSec = secs;
+      if (gameTime >= 4) timerHUDEl.style.display = 'block';
+      timerHUDEl.textContent = `⏱ ${Math.floor(remaining / 60)}:${String(secs).padStart(2,'0')}`;
+    }
   }
 
   // Pressure ramps gradually over 5 min (k=150), floors at 0.1; cursed stacks each add 25% spawn rate
@@ -5704,10 +5706,10 @@ function update(dt) {
     updateFish(dt);
     updateThinIce(dt);
     updateStorm(dt);
-    sepFrame ^= 1;
-    updateEnemies(dt);
     updateBoss(dt);
   }
+  sepFrame ^= 1;
+  updateEnemies(dt);
   updateXpOrbs(dt);
   updateL2Enemies(dt);
   if (CURRENT_LEVEL === 2) updateGhostPirate(dt);
