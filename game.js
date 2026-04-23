@@ -1517,6 +1517,19 @@ function buildGhostPirate() {
   return g;
 }
 
+const _gpHUD      = document.getElementById('ghostPirateHUD');
+const _gpBarInner = document.getElementById('ghostPirateBarInner');
+
+function _updateGhostPirateHUD() {
+  if (!_gpHUD) return;
+  if (_ghostPirate) {
+    _gpHUD.style.display = 'block';
+    _gpBarInner.style.width = Math.max(0, _ghostPirate.hp / _ghostPirate.maxHp * 100) + '%';
+  } else {
+    _gpHUD.style.display = 'none';
+  }
+}
+
 function spawnGhostPirate() {
   const mesh = buildGhostPirate();
   mesh.position.set(-64, 0, 50);
@@ -1524,6 +1537,7 @@ function spawnGhostPirate() {
   _ghostPirate = { mesh, hp: 750, maxHp: 750, speed: 5,
     shootTimer: 3.0, bombTimer: 7.0, swordTimer: 0,
     chasing: false };
+  _updateGhostPirateHUD();
 }
 
 function updateGhostPirate(dt) {
@@ -3058,12 +3072,10 @@ function findNearestEnemy() {
     const d = dx*dx + dz*dz;
     if (d < bestDist) { bestDist = d; nearest = e; }
   }
-  // Level 2 enemies
+  // Level 2 enemies (sharks/orcas excluded — hazards, not targets)
   if (CURRENT_LEVEL === 2) {
     const l2Targets = [];
     if (_ghostPirate) l2Targets.push(_ghostPirate);
-    for (const sh of _l2Sharks)       l2Targets.push(sh);
-    for (const o  of _l2Orcas)        l2Targets.push(o);
     for (const bp of _l2BeachPirates) l2Targets.push(bp);
     for (const t of l2Targets) {
       const dx = t.mesh.position.x - player.position.x;
@@ -3290,6 +3302,7 @@ function updateSnowballs(dt) {
         const isCrit = Math.random() < playerStats.critChance;
         _ghostPirate.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
         spawnImpact(s.mesh.position.x, 0.8, s.mesh.position.z, isCrit);
+        _updateGhostPirateHUD();
         if (_ghostPirate.hp <= 0) {
           // Death — drop rusty key
           const keyMesh = new THREE.Group();
