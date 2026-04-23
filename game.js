@@ -336,6 +336,7 @@ const _l2Crabs    = [];
 const _l2Currents = [];
 let   _l2Bottle   = null;
 const _l2BeachPirates = [];
+const _beachPirateBullets = [];
 // Shark drag state
 let _sharkDragging  = false;
 let _dragShark      = null;
@@ -632,7 +633,7 @@ function updateL2Enemies(dt) {
     sh.mesh.position.y = 0.12 + Math.sin(Date.now()/600+sh.mesh.position.x)*0.04;
 
     // Bite → start drag
-    if (sh.chasing && pdist < 1.2 && playerState.iframes <= 0 && !_sharkDragging) {
+    if (sh.chasing && pdist < 1.2 && playerState.iframes <= 0 && !_sharkDragging && !_godMode) {
       _sharkDragging = true; _dragShark = sh; _dragBreakCount = 0;
     }
   });
@@ -665,6 +666,41 @@ function updateL2Enemies(dt) {
     o.mesh.rotation.y = Math.atan2(-(pz - o.mesh.position.z), px - o.mesh.position.x);
     o.mesh.position.y = 0.18 + Math.sin(Date.now() / 700 + o.patrolAngle) * 0.05;
   });
+
+  // Beach pirates — face player and shoot
+  for (let bi = _l2BeachPirates.length - 1; bi >= 0; bi--) {
+    const bp = _l2BeachPirates[bi];
+    const bdx = px - bp.mesh.position.x, bdz = pz - bp.mesh.position.z;
+    const bdist = Math.hypot(bdx, bdz);
+    if (bdist < 35) {
+      bp.mesh.rotation.y = Math.atan2(-bdx, -bdz);
+      bp.shootTimer -= dt;
+      if (bp.shootTimer <= 0) {
+        bp.shootTimer = 2.5 + Math.random() * 2;
+        const bMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.14, 5, 5),
+          new THREE.MeshBasicMaterial({ color: 0xff6600 })
+        );
+        bMesh.position.set(bp.mesh.position.x + bdx / bdist * 1.1, 0.8, bp.mesh.position.z + bdz / bdist * 1.1);
+        scene.add(bMesh);
+        _beachPirateBullets.push({ mesh: bMesh, vx: bdx / bdist * 9, vz: bdz / bdist * 9, life: 4 });
+      }
+    }
+  }
+  // Beach pirate bullets
+  for (let i = _beachPirateBullets.length - 1; i >= 0; i--) {
+    const b = _beachPirateBullets[i];
+    b.mesh.position.x += b.vx * dt;
+    b.mesh.position.z += b.vz * dt;
+    b.life -= dt;
+    const bpdx = b.mesh.position.x - px, bpdz = b.mesh.position.z - pz;
+    if (bpdx * bpdx + bpdz * bpdz < 0.5 && playerState.iframes <= 0) {
+      damagePlayer(12);
+      scene.remove(b.mesh); _beachPirateBullets.splice(i, 1);
+    } else if (b.life <= 0) {
+      scene.remove(b.mesh); _beachPirateBullets.splice(i, 1);
+    }
+  }
 
   // Crabs — wander on beach
   _l2Crabs.forEach(c => {
@@ -722,7 +758,7 @@ function updateL2Enemies(dt) {
       player.position.x += (_dragShark.mesh.position.x - player.position.x) * 0.3 * dt;
       _dragShark.mesh.position.x = player.position.x;
       _dragShark.mesh.position.z = player.position.z + 0.9;
-      if (playerState.iframes <= 0) playerState.hp = Math.max(1, playerState.hp - playerState.maxHp * 0.10 * dt);
+      if (playerState.iframes <= 0 && !_godMode) playerState.hp = Math.max(1, playerState.hp - playerState.maxHp * 0.10 * dt);
       updateHUD();
       if (_dragBreakCount >= DRAG_BREAKS_NEEDED) { _sharkDragging = false; _dragShark = null; playerState.iframes = 1.5; _dragHUD.style.display = 'none'; }
     } else { _sharkDragging = false; _dragShark = null; _dragHUD.style.display = 'none'; }
@@ -1366,9 +1402,11 @@ function buildGhostPirate() {
   // Arms
   const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.72,6), ghostMat); armL.position.set(-0.55,0.9,0); armL.rotation.z=0.7; g.add(armL);
   const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.72,6), ghostMat); armR.position.set( 0.55,0.9,0); armR.rotation.z=-0.7; g.add(armR);
-  // Sword on right arm
-  const blade= new THREE.Mesh(new THREE.BoxGeometry(0.07,0.85,0.04), swordMat); blade.position.set(0.95,0.55,0); g.add(blade);
-  const guard= new THREE.Mesh(new THREE.BoxGeometry(0.3,0.07,0.07), swordMat); guard.position.set(0.95,0.97,0); g.add(guard);
+  // Sword on right arm — pommel, grip, crossguard, tapered blade
+  const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.08,6,5), swordMat); pommel.position.set(0.95,0.28,0); g.add(pommel);
+  const grip   = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.34,6), swordMat); grip.position.set(0.95,0.48,0); g.add(grip);
+  const guard  = new THREE.Mesh(new THREE.BoxGeometry(0.52,0.07,0.09), swordMat); guard.position.set(0.95,0.67,0); g.add(guard);
+  const blade  = new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.058,1.15,4), swordMat); blade.position.set(0.95,1.26,0); g.add(blade);
   // Eye glow
   [[-0.12,1.48],[0.12,1.48]].forEach(([ex,ey]) => {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06,5,5), new THREE.MeshBasicMaterial({color:0xff2200}));
@@ -1381,7 +1419,7 @@ function spawnGhostPirate() {
   const mesh = buildGhostPirate();
   mesh.position.set(-64, 0, 50);
   scene.add(mesh);
-  _ghostPirate = { mesh, hp: 220, maxHp: 220, speed: 5,
+  _ghostPirate = { mesh, hp: 750, maxHp: 750, speed: 5,
     shootTimer: 3.0, bombTimer: 7.0, swordTimer: 0,
     chasing: false };
 }
@@ -1417,7 +1455,7 @@ function updateGhostPirate(dt) {
   if (gp.chasing) {
     gp.shootTimer -= dt;
     if (gp.shootTimer <= 0) {
-      gp.shootTimer = 2.5 + Math.random();
+      gp.shootTimer = 0.8 + Math.random() * 0.33;
       if (dist > 0.1) {
         const speed = 9;
         const bMesh = new THREE.Mesh(
@@ -1500,15 +1538,15 @@ function buildBeachL2() {
     scene.add(dune);
   }
 
-  // Pirates (3 static figures using buildHuman with pirate palette — just placed standing)
+  // Pirates — active, face player and shoot
   const _piratePoses = [[-30, -80], [-10, -85], [24, -78], [44, -90], [-50, -86]];
-  _piratePoses.forEach(([px, pz]) => {
+  _piratePoses.forEach(([bpx, bpz]) => {
     const p = buildHumanPlayer();
     p.scale.setScalar(0.9);
-    p.position.set(px, 0, pz);
+    p.position.set(bpx, 0, bpz);
     p.rotation.y = Math.random() * Math.PI * 2;
     scene.add(p);
-    _l2BeachPirates.push(p);
+    _l2BeachPirates.push({ mesh: p, hp: 80, maxHp: 80, shootTimer: 2 + Math.random() * 2 });
   });
 
   // Bottle
@@ -3130,8 +3168,8 @@ function updateSnowballs(dt) {
       }
     }
 
-    // Ghost pirate hit
-    if (!hit && CURRENT_LEVEL === 2 && _ghostPirate) {
+    // Ghost pirate hit — always check regardless of other hits
+    if (CURRENT_LEVEL === 2 && _ghostPirate) {
       if (Math.hypot(s.mesh.position.x - _ghostPirate.mesh.position.x, s.mesh.position.z - _ghostPirate.mesh.position.z) < 1.8 * playerStats.projSize) {
         const isCrit = Math.random() < playerStats.critChance;
         _ghostPirate.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
@@ -3155,6 +3193,25 @@ function updateSnowballs(dt) {
           _ghostPirate = null;
         }
         if (!s.boomerang) hit = true;
+      }
+    }
+
+    // Beach pirate hit
+    if (!hit && CURRENT_LEVEL === 2) {
+      for (let bi = _l2BeachPirates.length - 1; bi >= 0; bi--) {
+        const bp = _l2BeachPirates[bi];
+        if (Math.hypot(s.mesh.position.x - bp.mesh.position.x, s.mesh.position.z - bp.mesh.position.z) < 1.2 * playerStats.projSize) {
+          const isCrit = Math.random() < playerStats.critChance;
+          bp.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
+          spawnImpact(s.mesh.position.x, 0.5, s.mesh.position.z, isCrit);
+          if (bp.hp <= 0) {
+            scene.remove(bp.mesh);
+            _l2BeachPirates.splice(bi, 1);
+            killCount++; spawnXpOrb(bp.mesh.position.x, bp.mesh.position.z, 2); updateHUD();
+          }
+          if (!s.boomerang) hit = true;
+          break;
+        }
       }
     }
 
@@ -3623,7 +3680,7 @@ document.body.appendChild(deathScreen);
 function showDeathScreen() {
   if (window.bgm) { window.bgm.pause(); window.bgm.currentTime = 0; }
   const _nootSfx = new Audio('sounds/Pingu%20-%20Noot%20Noot%20Sound%20Effect.mp3');
-  _nootSfx.volume = parseFloat(localStorage.getItem('bgmVolume') ?? '0.4');
+  _nootSfx.volume = parseFloat(localStorage.getItem('bgmVolume') ?? '0.1');
   _nootSfx.play().catch(() => {});
   deathScreen.innerHTML = `
     <div style="font-size:46px;font-weight:bold;letter-spacing:6px;text-shadow:0 0 30px #00aaff">YOU FROZE</div>

@@ -143,7 +143,7 @@
     window.introNav = introNav;
 
     // ── Audio system ─────────────────────────────────────────────────────────────
-    const _vol = parseFloat(localStorage.getItem('bgmVolume') ?? '0.4');
+    const _vol = parseFloat(localStorage.getItem('bgmVolume') ?? '0.1');
 
     const _playlist = [
       'sounds/BGM/Winter/Gavel%20Penguin%20Intro.mp3',
@@ -181,12 +181,13 @@
     // Volume slider
     const volWrap = document.createElement('div');
     volWrap.style.cssText = 'position:fixed;bottom:16px;right:16px;display:flex;align-items:center;gap:6px;font-family:monospace;font-size:12px;color:#668899;pointer-events:auto;z-index:50';
-    volWrap.innerHTML = `🎵 <input id="volSlider" type="range" min="0" max="1" step="0.05" value="${_vol}" style="width:72px;accent-color:#44aaff;cursor:pointer">`;
+    volWrap.innerHTML = `🎵 <input id="volSlider" type="range" min="0" max="1" step="0.05" value="${_vol}" style="width:72px;accent-color:#44aaff;cursor:pointer"> <span id="volLabel" style="min-width:34px;display:inline-block">${Math.round(_vol*100)}%</span>`;
     document.body.appendChild(volWrap);
     document.getElementById('volSlider').addEventListener('input', e => {
       const v = parseFloat(e.target.value);
       _gameTrack.volume = v;
       localStorage.setItem('bgmVolume', v);
+      document.getElementById('volLabel').textContent = Math.round(v * 100) + '%';
     });
 
     let _audioUnlocked = false;
