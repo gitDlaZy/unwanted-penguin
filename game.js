@@ -3054,15 +3054,17 @@ function updateSnowballs(dt) {
       const dz = s.mesh.position.z - e.mesh.position.z;
       if (dx*dx + dz*dz < (1.2 * playerStats.projSize) ** 2) {
         if (s.boomerang) {
-          // Only hit on the outgoing leg — return pass deals no damage (would pull enemies toward player)
-          if (!s.returning) {
-            if (!s.hitSet) s.hitSet = { out: new Set() };
-            if (!s.hitSet.out.has(e)) {
-              const isFirstHit = s.hitSet.out.size === 0;
-              s.hitSet.out.add(e);
-              const _bm = (1 + 0.3 * ((weaponStacks['hasper'] || 1) - 1)) * 0.6;
-              hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z, _bm, !isFirstHit);
-            }
+          // Each enemy hit once per leg — pierces through all
+          if (!s.hitSet) s.hitSet = { out: new Set(), ret: new Set() };
+          const legKey = s.returning ? 'ret' : 'out';
+          const legSet = s.hitSet[legKey];
+          if (!legSet.has(e)) {
+            const isFirstHit = legSet.size === 0;
+            legSet.add(e);
+            const _bm = (1 + 0.3 * ((weaponStacks['hasper'] || 1) - 1)) * (s.returning ? 0.4 : 0.6);
+            // Knockback only on first outgoing hit — never on return (would pull enemies toward player)
+            const skipKb = s.returning || !isFirstHit;
+            hitEnemy(j, s.mesh.position.x, s.mesh.position.y, s.mesh.position.z, _bm, skipKb);
           }
           continue; // pierce — keep checking other enemies this frame
         } else {
