@@ -22,6 +22,9 @@
 - [x] Text → 3D generator (generate.html)
 - [ ] FBX skin testing + polish
 
+## 🪙 Token Reminder
+- If the user wants to start a task and the current Amsterdam time is between 14:00 and 20:00, remind them that tokens will be used and ask them to confirm before proceeding.
+
 ## ⏰ Timestamps
 - NEVER hardcode dates or times in HTML/JS — always generate them dynamically at runtime.
 - `index.html` uses a script block to set the timestamp on load. Keep it that way.

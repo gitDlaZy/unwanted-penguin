@@ -61,6 +61,10 @@ if (CURRENT_LEVEL === 2) {
   scene.background = new THREE.Color(0x020c18);
   scene.fog = new THREE.FogExp2(0x020c18, 0.014);
 }
+if (CURRENT_LEVEL === 3) {
+  scene.background = new THREE.Color(0x3a1a00);
+  scene.fog = new THREE.FogExp2(0x3a1a00, 0.01);
+}
 
 // ── Ice Floor (Level 1 only) ──────────────────────────────────────────────────
 
@@ -580,7 +584,7 @@ if (CURRENT_LEVEL === 2) {
   }
   _l2IcePlatforms.push({ x: -64, z: 50, r: 9 });
 
-  // Locked chest at (-63, -100)
+  // Locked chest at (-63, -100) — west beach (swapped from east)
   (() => {
     const g = new THREE.Group();
     const chestMat = new THREE.MeshStandardMaterial({ color: 0x6b3a10, roughness: 0.9 });
@@ -606,7 +610,7 @@ if (CURRENT_LEVEL === 2) {
   // North beach
   buildBeachL2();
 
-  // Desert portal at (47, -85) — sandy/warm themed
+  // Desert portal at (47, -85) — east beach (swapped with chest)
   (() => {
     const sandStoneMat = new THREE.MeshStandardMaterial({ color: 0xc8a060, roughness: 0.9 });
     const sandVoidMat  = new THREE.MeshStandardMaterial({ color: 0x3a1a00, emissive: 0xcc6600, emissiveIntensity: 0.9, transparent: true, opacity: 0.92, side: THREE.DoubleSide });
@@ -785,9 +789,11 @@ if (CURRENT_LEVEL === 3) {
     _l3Lamp = { group: pg, x: 0, z: -128 };
   })();
 
-  // Spawn initial outside enemies
-  for (let i = 0; i < 5; i++) _l3SpawnBandit();
-  for (let i = 0; i < 3; i++) _l3SpawnReptilian();
+  // Defer initial spawns — player isn't defined yet (TDZ) at map-setup time
+  setTimeout(() => {
+    for (let i = 0; i < 5; i++) _l3SpawnBandit();
+    for (let i = 0; i < 3; i++) _l3SpawnReptilian();
+  }, 0);
 }
 
 function _l3SpawnBandit() {
@@ -2109,7 +2115,7 @@ function updateGhostPirate(dt) {
   const dx = px - gp.mesh.position.x, dz = pz - gp.mesh.position.z;
   const dist = Math.hypot(dx, dz);
 
-  gp.chasing = dist < 40;
+  gp.chasing = dist < 15;
   if (gp.chasing && dist > 1.4) {
     const spd = gp.speed;
     gp.mesh.position.x += (dx/dist)*spd*dt;
@@ -3890,11 +3896,11 @@ function updateSnowballs(dt) {
           _ghostBullets.forEach(b => scene.remove(b.mesh));
           _ghostBullets.length = 0;
           killCount++; spawnXpOrb(_ghostPirate.mesh.position.x, _ghostPirate.mesh.position.z, 10); updateHUD();
-          _ghostPirate = null;
+          _ghostPirate = null; _updateGhostPirateHUD(); // hide bar immediately
           // Show death riddle pointing to the chest
           const _riddle = document.createElement('div');
           _riddle.style.cssText = 'position:fixed;top:28%;left:50%;transform:translateX(-50%);background:rgba(5,0,20,0.92);border:2px solid #6688aa;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:16px;color:#aaccee;text-shadow:0 0 10px #4488bb;pointer-events:none;z-index:9999;text-align:center;max-width:500px;line-height:1.6';
-          _riddle.innerHTML = '<span style="color:#88aacc;font-size:12px;letter-spacing:3px;display:block;margin-bottom:8px">👻 GHOST PIRATE\'S LAST WORDS</span>Ha... ha ha... you bested me, bird...<br>The chest awaits on the cold northern shore...<br><em style="color:#88ccee">Head north past the pirates, west along the sand...</em><br>Where the beach grows quiet and dark...<br>My key will show you the way... <span style="color:#aaddff">find it...</span><br><span style="font-size:12px;color:#668899;margin-top:6px;display:block">(Press E near the key to pick it up)</span><br><span style="font-size:11px;color:#445566;margin-top:10px;display:block;letter-spacing:2px;animation:pulse 1s infinite">PRESS ANY KEY TO CONTINUE</span>';
+          _riddle.innerHTML = '<span style="color:#88aacc;font-size:12px;letter-spacing:3px;display:block;margin-bottom:8px">👻 GHOST PIRATE\'S LAST WORDS</span>Ha... ha ha... you bested me, bird...<br>The chest awaits on the cold northern shore...<br><em style="color:#88ccee">Head north along the western shore...</em><br>Where the dark sand grows quiet and still...<br>My key will show you the way... <span style="color:#aaddff">find it...</span><br><span style="font-size:12px;color:#668899;margin-top:6px;display:block">(Press E near the key to pick it up)</span><br><span style="font-size:11px;color:#445566;margin-top:10px;display:block;letter-spacing:2px;animation:pulse 1s infinite">PRESS ANY KEY TO CONTINUE</span>';
           document.body.appendChild(_riddle);
           // Pause the whole game loop; block general keydown→resumeGame
           waitingToResume = true; playerState.iframes = 999; _popupPaused = true;
@@ -5711,7 +5717,7 @@ window.addEventListener('keydown', e => {
         // Show reward popup with portal note — pause game until dismissed
         const el = document.createElement('div');
         el.style.cssText = 'position:fixed;top:32%;left:50%;transform:translateX(-50%);background:rgba(10,5,0,0.92);border:2px solid #ffcc44;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:18px;color:#ffd700;text-shadow:0 0 14px #ffaa00;pointer-events:none;z-index:9999;text-align:center;max-width:480px;line-height:1.7';
-        el.innerHTML = '🕶️ <strong>Anti-Heat Sunglasses</strong> obtained!<br><span style="font-size:14px;color:#ffeeaa">These will protect you from extreme desert heat.</span><br><hr style="border-color:#886600;margin:8px 0"><span style="font-size:13px;color:#ccaa66;font-style:italic">"A tattered note falls from the chest:<br><em>\'I once glimpsed a shimmering portal to the east...<br>strange and warm, unlike anything on these frozen seas.\'</em>"</span><br><span style="font-size:11px;color:#886600;margin-top:10px;display:block;letter-spacing:2px;animation:pulse 1s infinite">PRESS ANY KEY TO CONTINUE</span>';
+        el.innerHTML = '🕶️ <strong>Anti-Heat Sunglasses</strong> obtained!<br><span style="font-size:14px;color:#ffeeaa">These will protect you from extreme desert heat.</span><br><hr style="border-color:#886600;margin:8px 0"><span style="font-size:13px;color:#ccaa66;font-style:italic">"A tattered note falls from the chest:<br><em>\'Cross the entire beach to the east — a burning portal awaits.<br>Strange and warm, unlike anything on these frozen seas.\'</em>"</span><br><span style="font-size:11px;color:#886600;margin-top:10px;display:block;letter-spacing:2px;animation:pulse 1s infinite">PRESS ANY KEY TO CONTINUE</span>';
         document.body.appendChild(el);
         waitingToResume = true; playerState.iframes = 999; _popupPaused = true;
         setTimeout(() => {
@@ -5736,7 +5742,7 @@ window.addEventListener('keydown', e => {
         const _ds = { hp: playerState.hp, maxHp: playerState.maxHp, stats: {...playerStats}, tomeStacks: {...tomeStacks}, weapons: [...equippedWeapons], level: playerLevel, pendingTomes, skin: localStorage.getItem('playerSkin')||'normal', activeSkinVal: activeSkin, sunglasses: true };
         sessionStorage.setItem('levelProgress', JSON.stringify(_ds));
         sessionStorage.setItem('bgmAutoStart','1');
-        window.location.href = 'desert.html';
+        window.location.href = 'level3.html';
       } else {
         const el = document.createElement('div');
         el.style.cssText = 'position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:18px;color:#ff8844;text-shadow:0 0 10px #ff6600;pointer-events:none;z-index:9999;text-align:center';
@@ -5896,7 +5902,7 @@ const _debugActions = [
   { label: '🐱  Trigger Level 1 End',  fn: () => { triggerLevel1End(); } },
   { label: () => _godMode ? '🛡  God Mode  [ON]' : '🛡  God Mode  [OFF]', fn: () => { _godMode = !_godMode; setGodModeVisual(_godMode); }, noClose: true },
   { label: '🌊  Go to Level 2',           fn: () => { saveProgressAndUnlockPortal(); sessionStorage.setItem('bgmAutoStart','1'); setTimeout(() => { window.location.href = 'level2.html'; }, 100); } },
-  { label: '🏜  Go to Level 3',           fn: () => { const _ds={hp:playerState.hp,maxHp:playerState.maxHp,stats:{...playerStats},tomeStacks:{...tomeStacks},weapons:[...equippedWeapons],level:playerLevel,pendingTomes,skin:localStorage.getItem('playerSkin')||'normal',activeSkinVal:activeSkin,sunglasses:true}; sessionStorage.setItem('levelProgress',JSON.stringify(_ds)); sessionStorage.setItem('bgmAutoStart','1'); window.location.href='desert.html'; } },
+  { label: '🏜  Go to Level 3',           fn: () => { const _ds={hp:playerState.hp,maxHp:playerState.maxHp,stats:{...playerStats},tomeStacks:{...tomeStacks},weapons:[...equippedWeapons],level:playerLevel,pendingTomes,skin:localStorage.getItem('playerSkin')||'normal',activeSkinVal:activeSkin,sunglasses:true}; sessionStorage.setItem('levelProgress',JSON.stringify(_ds)); sessionStorage.setItem('bgmAutoStart','1'); window.location.href='level3.html'; } },
 ];
 
 function buildDebugList() {
