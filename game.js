@@ -1553,11 +1553,11 @@ function buildBeachPirate() {
   const skullBadge = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 5), silver);
   skullBadge.position.set(0, 2.05, -0.28); g.add(skullBadge);
 
-  // Left arm (sword arm) — angled out holding sword
+  // Left arm — raised, holding flintlock pistol
   const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.62, 8), coat);
-  armL.rotation.z = -0.6; armL.position.set(-0.45, 1.18, 0); g.add(armL);
+  armL.rotation.z = -0.5; armL.rotation.x = 0.3; armL.position.set(-0.44, 1.22, -0.08); g.add(armL);
 
-  // Right arm — raised holding sword
+  // Right arm — angled out holding sword
   const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.6, 8), coat);
   armR.rotation.z = 0.7; armR.rotation.x = -0.4; armR.position.set(0.44, 1.28, -0.1); g.add(armR);
 
@@ -1568,6 +1568,28 @@ function buildBeachPirate() {
   guard.position.set(0.57, 0.97, -0.1); guard.rotation.z = 0.8; g.add(guard);
   const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, 0.2, 6), wood);
   grip.rotation.z = 0.8; grip.position.set(0.47, 0.85, -0.08); g.add(grip);
+
+  // Flintlock pistol in left hand
+  const flintMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5, metalness: 0.8 });
+  const flintWood = new THREE.MeshStandardMaterial({ color: 0x5a2a0a, roughness: 0.9 });
+  const flintBrass = new THREE.MeshStandardMaterial({ color: 0xcc8800, roughness: 0.4, metalness: 0.7 });
+  // Barrel — short and wide
+  const flBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.42, 7), flintMat);
+  flBarrel.rotation.x = Math.PI / 2; flBarrel.rotation.z = -0.5;
+  flBarrel.position.set(-0.72, 1.28, -0.22); g.add(flBarrel);
+  // Stock (wooden grip)
+  const flStock = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.22, 0.1), flintWood);
+  flStock.rotation.z = -0.5; flStock.position.set(-0.6, 1.06, -0.12); g.add(flStock);
+  // Trigger guard
+  const flGuard = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 5, 8, Math.PI), flintBrass);
+  flGuard.rotation.x = Math.PI / 2; flGuard.position.set(-0.62, 1.12, -0.12); g.add(flGuard);
+  // Flintlock hammer
+  const flHammer = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 0.04), flintMat);
+  flHammer.rotation.z = 0.6; flHammer.position.set(-0.68, 1.25, -0.12); g.add(flHammer);
+  // Muzzle flash accent (brass ring)
+  const flMuzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.03, 7), flintBrass);
+  flMuzzle.rotation.x = Math.PI / 2; flMuzzle.rotation.z = -0.5;
+  flMuzzle.position.set(-0.82, 1.32, -0.28); g.add(flMuzzle);
 
   return g;
 }
@@ -2064,7 +2086,7 @@ function spawnGhostPirate() {
   _ghostPirate = { mesh, hp: 750, maxHp: 750, speed: 5,
     shootTimer: 3.0, bombTimer: 7.0, swordTimer: 0,
     chasing: false };
-  _updateGhostPirateHUD();
+  // Don't call _updateGhostPirateHUD here — player isn't defined yet at load time (TDZ)
 }
 
 function updateGhostPirate(dt) {
@@ -3872,10 +3894,19 @@ function updateSnowballs(dt) {
           // Show death riddle pointing to the chest
           const _riddle = document.createElement('div');
           _riddle.style.cssText = 'position:fixed;top:28%;left:50%;transform:translateX(-50%);background:rgba(5,0,20,0.92);border:2px solid #6688aa;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:16px;color:#aaccee;text-shadow:0 0 10px #4488bb;pointer-events:none;z-index:9999;text-align:center;max-width:500px;line-height:1.6';
-          _riddle.innerHTML = '<span style="color:#88aacc;font-size:12px;letter-spacing:3px;display:block;margin-bottom:8px">👻 GHOST PIRATE\'S LAST WORDS</span>Ha... ha ha... you bested me, bird...<br>The chest awaits on the cold northern shore...<br><em style="color:#88ccee">Head north past the pirates, west along the sand...</em><br>Where the beach grows quiet and dark...<br>My key will show you the way... <span style="color:#aaddff">find it...</span><br><span style="font-size:12px;color:#668899;margin-top:6px;display:block">(Press E near the key to pick it up)</span>';
+          _riddle.innerHTML = '<span style="color:#88aacc;font-size:12px;letter-spacing:3px;display:block;margin-bottom:8px">👻 GHOST PIRATE\'S LAST WORDS</span>Ha... ha ha... you bested me, bird...<br>The chest awaits on the cold northern shore...<br><em style="color:#88ccee">Head north past the pirates, west along the sand...</em><br>Where the beach grows quiet and dark...<br>My key will show you the way... <span style="color:#aaddff">find it...</span><br><span style="font-size:12px;color:#668899;margin-top:6px;display:block">(Press E near the key to pick it up)</span><br><span style="font-size:11px;color:#445566;margin-top:10px;display:block;letter-spacing:2px;animation:pulse 1s infinite">PRESS ANY KEY TO CONTINUE</span>';
           document.body.appendChild(_riddle);
-          movementLockout = 8; // freeze player so they can read the riddle
-          setTimeout(() => { _riddle.remove(); movementLockout = 0; }, 8000);
+          movementLockout = Infinity; // freeze player while riddle is showing
+          let _riddleDismissed = false;
+          const _riddleKey = () => {
+            if (_riddleDismissed) return;
+            _riddleDismissed = true;
+            window.removeEventListener('keydown', _riddleKey);
+            _riddle.remove();
+            movementLockout = 0;
+          };
+          // 1-second delay so player can't accidentally skip it
+          setTimeout(() => window.addEventListener('keydown', _riddleKey), 1000);
         }
         if (!s.boomerang) hit = true;
       }
