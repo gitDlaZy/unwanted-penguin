@@ -1490,6 +1490,88 @@ function buildHumanPlayer() {
   return g;
 }
 
+function buildBeachPirate() {
+  const g = new THREE.Group();
+  g.rotation.y = Math.PI;
+  const skin    = new THREE.MeshStandardMaterial({ color: 0xd4a070, roughness: 0.7 });
+  const coat    = new THREE.MeshStandardMaterial({ color: 0x8b1a1a, roughness: 0.85 }); // dark red coat
+  const pants   = new THREE.MeshStandardMaterial({ color: 0x3b2a18, roughness: 0.9 });
+  const black   = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6 });
+  const hatMat  = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.8 });
+  const silver  = new THREE.MeshStandardMaterial({ color: 0xbbbbbb, roughness: 0.3, metalness: 0.9 });
+  const brass   = new THREE.MeshStandardMaterial({ color: 0xcc8800, roughness: 0.4, metalness: 0.8 });
+  const wood    = new THREE.MeshStandardMaterial({ color: 0x6b3a1a, roughness: 0.9 });
+
+  // Legs
+  [-0.15, 0.15].forEach(x => {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.7, 8), pants);
+    leg.position.set(x, 0.55, 0); g.add(leg);
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.3), black);
+    boot.position.set(x, 0.17, -0.04); g.add(boot);
+    // Boot cuff
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.11, 0.06, 8), silver);
+    cuff.position.set(x, 0.27, 0); g.add(cuff);
+  });
+
+  // Torso
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.56, 0.34), coat);
+  chest.position.y = 1.12; g.add(chest);
+  // Coat lapels (cream stripe)
+  const lapelMat = new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.8 });
+  const lapel = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.4, 0.05), lapelMat);
+  lapel.position.set(0, 1.15, -0.175); g.add(lapel);
+  // Brass buttons
+  [1.32, 1.12, 0.92].forEach(y => {
+    const btn = new THREE.Mesh(new THREE.SphereGeometry(0.03, 5, 4), brass);
+    btn.position.set(0, y, -0.175); g.add(btn);
+  });
+
+  // Neck
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.14, 8), skin);
+  neck.position.y = 1.52; g.add(neck);
+
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), skin);
+  head.scale.set(1.0, 1.1, 1.0); head.position.y = 1.78; g.add(head);
+
+  // Stubble / beard (dark patch on lower face)
+  const beard = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), new THREE.MeshStandardMaterial({color:0x331a00,roughness:0.9}));
+  beard.scale.set(1.1, 0.6, 0.55); beard.position.set(0, 1.68, -0.18); g.add(beard);
+
+  // Eyes
+  [-0.08, 0.08].forEach(x => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), black);
+    eye.position.set(x, 1.8, -0.2); g.add(eye);
+  });
+
+  // Pirate hat — tricorn style
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.36, 0.05, 10), hatMat);
+  brim.position.y = 1.96; g.add(brim);
+  const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.26, 8), hatMat);
+  crown.position.y = 2.12; g.add(crown);
+  // Skull & crossbones badge
+  const skullBadge = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 5), silver);
+  skullBadge.position.set(0, 2.05, -0.28); g.add(skullBadge);
+
+  // Left arm (sword arm) — angled out holding sword
+  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.62, 8), coat);
+  armL.rotation.z = -0.6; armL.position.set(-0.45, 1.18, 0); g.add(armL);
+
+  // Right arm — raised holding sword
+  const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.6, 8), coat);
+  armR.rotation.z = 0.7; armR.rotation.x = -0.4; armR.position.set(0.44, 1.28, -0.1); g.add(armR);
+
+  // Sword — blade + guard + grip in right hand
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.72, 0.02), silver);
+  blade.position.set(0.72, 1.2, -0.12); blade.rotation.z = 0.8; g.add(blade);
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.06), brass);
+  guard.position.set(0.57, 0.97, -0.1); guard.rotation.z = 0.8; g.add(guard);
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, 0.2, 6), wood);
+  grip.rotation.z = 0.8; grip.position.set(0.47, 0.85, -0.08); g.add(grip);
+
+  return g;
+}
+
 function buildWizardCat() {
   const g = new THREE.Group();
   const purple     = new THREE.MeshStandardMaterial({ color: 0x7b3fa0, roughness: 0.8 });
@@ -1963,7 +2045,11 @@ function _updateGhostPirateHUD() {
   const el  = document.getElementById('ghostPirateHUD');
   const bar = document.getElementById('ghostPirateBarInner');
   if (!el) return;
-  if (_ghostPirate) {
+  const nearEnough = _ghostPirate && Math.hypot(
+    player.position.x - _ghostPirate.mesh.position.x,
+    player.position.z - _ghostPirate.mesh.position.z
+  ) <= 40;
+  if (nearEnough) {
     el.style.display  = 'block';
     bar.style.width   = Math.max(0, _ghostPirate.hp / _ghostPirate.maxHp * 100) + '%';
   } else {
@@ -1982,9 +2068,22 @@ function spawnGhostPirate() {
 }
 
 function updateGhostPirate(dt) {
+  const px = player.position.x, pz = player.position.z;
+
+  // Rusty key pickup — works even after ghost pirate is dead
+  if (_rustyKeyMesh && !_hasRustyKey) {
+    if (Math.hypot(px - _rustyKeyMesh.position.x, pz - _rustyKeyMesh.position.z) < 1.8) {
+      scene.remove(_rustyKeyMesh); _rustyKeyMesh = null;
+      _hasRustyKey = true;
+      const _ke = document.createElement('div');
+      _ke.style.cssText = 'position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:24px;color:#ffd700;text-shadow:0 0 12px #ffaa00;pointer-events:none;z-index:9999';
+      _ke.textContent = '🗝 Rusty Key obtained!';
+      document.body.appendChild(_ke); setTimeout(() => _ke.remove(), 2500);
+    }
+  }
+
   if (!_ghostPirate || playerState.dead) return;
   const gp = _ghostPirate;
-  const px = player.position.x, pz = player.position.z;
   const dx = px - gp.mesh.position.x, dz = pz - gp.mesh.position.z;
   const dist = Math.hypot(dx, dz);
 
@@ -2046,20 +2145,6 @@ function updateGhostPirate(dt) {
     }
   }
 
-  // Rusty key pickup
-  if (_rustyKeyMesh && !_hasRustyKey) {
-    if (Math.hypot(px - _rustyKeyMesh.position.x, pz - _rustyKeyMesh.position.z) < 1.8) {
-      scene.remove(_rustyKeyMesh); _rustyKeyMesh = null;
-      _hasRustyKey = true;
-      // Brief on-screen message
-      const el = document.createElement('div');
-      el.style.cssText = 'position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:24px;color:#ffd700;text-shadow:0 0 12px #ffaa00;pointer-events:none;z-index:9999';
-      el.textContent = '🗝 Rusty Key obtained!';
-      document.body.appendChild(el);
-      setTimeout(() => el.remove(), 2500);
-    }
-  }
-
   // Pulse chest glow
   if (window._l2ChestGlow) {
     window._l2ChestGlow.intensity = 0.7 + Math.sin(Date.now()/600)*0.4;
@@ -2094,9 +2179,14 @@ function buildBeachL2() {
   }
 
   // Pirates — active, face player and shoot
-  const _piratePoses = [[-30,-80],[-10,-85],[24,-78],[44,-90],[-50,-86],[15,-92],[-38,-75],[55,-82],[-18,-100],[36,-95]];
+  const _piratePoses = [
+    [-30,-80],[-10,-85],[24,-78],[44,-90],[-50,-86],
+    [15,-92],[-38,-75],[55,-82],[-18,-100],[36,-95],
+    [-60,-78],[0,-88],[32,-72],[-24,-94],[48,-84],
+    [-42,-97],[20,-102],[-8,-76],[60,-90],[-52,-105],
+  ];
   _piratePoses.forEach(([bpx, bpz]) => {
-    const p = buildHumanPlayer();
+    const p = buildBeachPirate();
     p.scale.setScalar(0.9);
     p.position.set(bpx, 0, bpz);
     p.rotation.y = Math.random() * Math.PI * 2;
@@ -3284,8 +3374,9 @@ function updateEnemies(dt) {
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
   const hpScale = (gameTime >= 60 ? 1.1 + (gameTime - 60) / 600 : 1) * Math.pow(1.3, playerStats.cursed) * (_pebblesActive ? 1.1 : 1.0);
-  if (!bossDefeated && !_spawnsDisabled && sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (0.9 + Math.random() * 0.5) * pressure; }
-  if (!bossDefeated && !_spawnsDisabled && skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (1.75 + Math.random() * 1) * pressure; }
+  const _l2SpawnMult = CURRENT_LEVEL === 2 ? 4.0 : 1.0; // L2: 25% spawn rate (4× longer timers)
+  if (CURRENT_LEVEL !== 3 && !bossDefeated && !_spawnsDisabled && sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (0.9 + Math.random() * 0.5) * pressure * _l2SpawnMult; }
+  if (CURRENT_LEVEL !== 3 && !bossDefeated && !_spawnsDisabled && skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (1.75 + Math.random() * 1) * pressure * _l2SpawnMult; }
 
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
@@ -3395,11 +3486,13 @@ function updateEnemies(dt) {
     }
   }
 
-  // Swarm timer — independent of storm
-  swarmTimer -= dt;
-  if (swarmTimer <= 0) {
-    spawnSwarmWave();
-    swarmTimer = 90;
+  // Swarm timer — L1 only (belgica doesn't spawn in L2/L3)
+  if (CURRENT_LEVEL === 1) {
+    swarmTimer -= dt;
+    if (swarmTimer <= 0) {
+      spawnSwarmWave();
+      swarmTimer = 90;
+    }
   }
 }
 
@@ -3781,7 +3874,8 @@ function updateSnowballs(dt) {
           _riddle.style.cssText = 'position:fixed;top:28%;left:50%;transform:translateX(-50%);background:rgba(5,0,20,0.92);border:2px solid #6688aa;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:16px;color:#aaccee;text-shadow:0 0 10px #4488bb;pointer-events:none;z-index:9999;text-align:center;max-width:500px;line-height:1.6';
           _riddle.innerHTML = '<span style="color:#88aacc;font-size:12px;letter-spacing:3px;display:block;margin-bottom:8px">👻 GHOST PIRATE\'S LAST WORDS</span>Ha... ha ha... you bested me, bird...<br>The chest awaits on the cold northern shore...<br><em style="color:#88ccee">Head north past the pirates, west along the sand...</em><br>Where the beach grows quiet and dark...<br>My key will show you the way... <span style="color:#aaddff">find it...</span><br><span style="font-size:12px;color:#668899;margin-top:6px;display:block">(Press E near the key to pick it up)</span>';
           document.body.appendChild(_riddle);
-          setTimeout(() => _riddle.remove(), 8000);
+          movementLockout = 8; // freeze player so they can read the riddle
+          setTimeout(() => { _riddle.remove(); movementLockout = 0; }, 8000);
         }
         if (!s.boomerang) hit = true;
       }
@@ -4866,7 +4960,8 @@ function spawnXpOrb(x, z, amount = 1) {
   group.add(orb);
   group.position.set(x, 0.5, z);
   scene.add(group);
-  xpOrbs.push({ group, orb, amount, bobOffset: Math.random() * Math.PI * 2, spawnDelay: 0.6 });
+  // In L2+ orbs auto-magnetize since the player can't chase them into hostile water
+  xpOrbs.push({ group, orb, amount, bobOffset: Math.random() * Math.PI * 2, spawnDelay: 0.6, magnetize: CURRENT_LEVEL > 1 });
 }
 
 function gainXP(amount) {
@@ -6240,11 +6335,11 @@ function update(dt) {
     updateOrcas(dt);
     updateHumans(dt);
     updateItems(dt);
-    updateFish(dt);
     updateThinIce(dt);
     updateStorm(dt);
     updateBoss(dt);
   }
+  updateFish(dt);  // fish pickups active on all levels
   sepFrame ^= 1;
   updateEnemies(dt);
   updateXpOrbs(dt);
