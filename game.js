@@ -748,9 +748,77 @@ if (CURRENT_LEVEL === 3) {
     const col = new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.5,5.5,8), stoneMat); col.position.set(cx, 2.75, cz); scene.add(col); mountainColliders.push({ x:cx, z:cz, r:1.8 });
     const pile = new THREE.Mesh(new THREE.SphereGeometry(0.9,6,4), goldMat); pile.scale.y=0.4; pile.position.set(cx, 0.2, cz+2); scene.add(pile);
   });
-  for (let i = 0; i < 18; i++) {
-    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.04,8), goldMat);
-    coin.position.set((Math.random()-0.5)*55, 0.02, -5-Math.random()*40); scene.add(coin);
+  // ── Gold mine decoration — coins, cups, statues, nuggets, veins everywhere ──
+  const _gm  = goldMat;
+  const _gDk = new THREE.MeshStandardMaterial({ color:0xcc8800, emissive:0x884400, emissiveIntensity:0.4, roughness:0.4, metalness:0.9 });
+  const _gBr = new THREE.MeshStandardMaterial({ color:0xffee88, emissive:0xddcc00, emissiveIntensity:0.6, roughness:0.2, metalness:1.0 });
+
+  // 80 floor coins scattered throughout entire level
+  for (let i = 0; i < 80; i++) {
+    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.04,10), _gBr);
+    const zRange = Math.random(); const cz = zRange < 0.4 ? 10+Math.random()*60 : -2-Math.random()*48;
+    coin.position.set((Math.random()-0.5)*58, 0.02, cz); coin.rotation.y = Math.random()*Math.PI; scene.add(coin);
+  }
+
+  // Gold cups (chalice shape) — 12 scattered
+  for (let i = 0; i < 12; i++) {
+    const cg = new THREE.Group();
+    const base  = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.22,0.07,10), _gBr); base.position.y=0.035; cg.add(base);
+    const stem  = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.08,0.22,8), _gm);   stem.position.y=0.145; cg.add(stem);
+    const cup   = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.1,0.3,10,1,true), _gBr); cup.position.y=0.38; cg.add(cup);
+    const rim   = new THREE.Mesh(new THREE.TorusGeometry(0.22,0.03,6,16), _gDk); rim.position.y=0.53; cg.add(rim);
+    const cz2   = Math.random() < 0.5 ? 15+Math.random()*50 : -4-Math.random()*44;
+    cg.position.set((Math.random()-0.5)*54, 0, cz2); cg.rotation.y=Math.random()*Math.PI; scene.add(cg);
+  }
+
+  // Gold nuggets/chunks — 30 small lumps on the floor
+  for (let i = 0; i < 30; i++) {
+    const ng = new THREE.Mesh(new THREE.SphereGeometry(0.08+Math.random()*0.1,5,4), _gDk);
+    ng.scale.set(1.5+Math.random(),0.8+Math.random()*0.5,1.2+Math.random());
+    const cz3 = Math.random() < 0.45 ? 10+Math.random()*58 : -3-Math.random()*46;
+    ng.position.set((Math.random()-0.5)*56, 0.06, cz3); ng.rotation.y=Math.random()*Math.PI; scene.add(ng);
+  }
+
+  // Gold statues (simple penguin-shaped gold idol, 6 of them)
+  for (let i = 0; i < 6; i++) {
+    const sg = new THREE.Group();
+    const sb = new THREE.Mesh(new THREE.SphereGeometry(0.28,7,6), _gBr); sb.scale.set(1,1.2,0.9); sb.position.y=0.45; sg.add(sb);
+    const sh = new THREE.Mesh(new THREE.SphereGeometry(0.2,7,6), _gBr);  sh.position.y=0.88; sg.add(sh);
+    const st = new THREE.Mesh(new THREE.SphereGeometry(0.06,5,5), _gDk); st.position.set(0.09,0.91,0.17); sg.add(st);
+    const st2= st.clone(); st2.position.set(-0.09,0.91,0.17); sg.add(st2);
+    const ped2= new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.38,0.22,8), stoneMat); ped2.position.y=0.11; sg.add(ped2);
+    const cz4 = Math.random() < 0.5 ? 18+Math.random()*44 : -4-Math.random()*38;
+    sg.position.set((Math.random()-0.5)*46, 0, cz4); sg.rotation.y=Math.random()*Math.PI*2; scene.add(sg);
+    // Glow
+    const sl = new THREE.PointLight(0xffcc44, 0.7, 6); sl.position.set(sg.position.x, 1.2, sg.position.z); scene.add(sl);
+  }
+
+  // Gold vein streaks on cave walls (boss arena + puzzle room)
+  for (let i = 0; i < 20; i++) {
+    const vein = new THREE.Mesh(new THREE.BoxGeometry(0.08+Math.random()*0.12, 0.6+Math.random()*1.2, 0.06), _gDk);
+    const side = Math.random() < 0.5 ? -34.5 : 34.5;
+    vein.position.set(side, 1+Math.random()*3, -5-Math.random()*42); vein.rotation.z=(Math.random()-0.5)*0.6; scene.add(vein);
+  }
+
+  // Large gold pile mounds (3 big piles in corners of puzzle room)
+  [[-24,-8],[24,-8],[0,-48]].forEach(([px2,pz2]) => {
+    for (let j = 0; j < 8; j++) {
+      const lump = new THREE.Mesh(new THREE.SphereGeometry(0.15+Math.random()*0.2,6,5), j%2===0?_gBr:_gDk);
+      lump.scale.y = 0.5+Math.random()*0.5; lump.position.set(px2+(Math.random()-0.5)*1.8, 0.12, pz2+(Math.random()-0.5)*1.8); scene.add(lump);
+    }
+    const pl = new THREE.PointLight(0xffaa00, 0.6, 5); pl.position.set(px2, 0.8, pz2); scene.add(pl);
+  });
+
+  // Arena gold: coins and cups on the boss arena floor
+  for (let i = 0; i < 25; i++) {
+    const angle = Math.random()*Math.PI*2; const r = Math.random()*18;
+    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.04,10), _gBr);
+    coin.position.set(Math.sin(angle)*r, 0.02, -140+Math.cos(angle)*r); scene.add(coin);
+  }
+  for (let i = 0; i < 6; i++) {
+    const angle = Math.random()*Math.PI*2; const r = 5+Math.random()*14;
+    const ng2 = new THREE.Mesh(new THREE.SphereGeometry(0.1+Math.random()*0.12,5,4), _gDk);
+    ng2.scale.set(1.4,0.7,1.2); ng2.position.set(Math.sin(angle)*r, 0.05, -140+Math.cos(angle)*r); scene.add(ng2);
   }
 
   // ── Sandstone ruins outside ────────────────────────────────────────────────
@@ -761,14 +829,14 @@ if (CURRENT_LEVEL === 3) {
 
   // ── Riddle stone (engraved slab near cave entrance) ────────────────────────
   (() => {
-    const rs = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.2, 0.3), stoneMat); rs.position.set(-12, 1.1, 3); scene.add(rs);
-    const gl = new THREE.PointLight(0xffcc44, 0.8, 5); gl.position.set(-12, 2.2, 3); scene.add(gl);
+    const rs = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.2, 0.3), stoneMat); rs.position.set(-12, 1.1, -3); scene.add(rs);
+    const gl = new THREE.PointLight(0xffcc44, 0.8, 5); gl.position.set(-12, 2.2, -3); scene.add(gl);
   })();
 
   // ── Pressure plate — jump on it twice to unlock torches ───────────────────
   (() => {
     const plateMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.7, emissive: 0x221100, emissiveIntensity: 0.4 });
-    const plate = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.1, 2.6), plateMat); plate.position.set(0, 0.05, -28); scene.add(plate);
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.1, 2.6), plateMat); plate.position.set(0, 0.05, -28); scene.add(plate); window._l3PlateMesh = plate;
     [[-0.4,0.06,0.3],[0.5,0.06,-0.3],[-0.1,0.06,0.7]].forEach(([ox,oy,oz]) => {
       const c = new THREE.Mesh(new THREE.BoxGeometry(1.0+Math.random()*0.5, 0.04, 0.07), new THREE.MeshBasicMaterial({color:0x221100}));
       c.rotation.y = Math.random()*Math.PI; c.position.set(ox,oy,oz); plate.add(c);
@@ -1147,15 +1215,22 @@ function updateL3(dt) {
 
   // ── Pressure plate: detect jump landings ──────────────────────────────────
   if (!_l3JumpPlatActivated) {
-    if (Math.hypot(px, pz + 28) < 2.2 && _l3PlateLastY > 1.5 && playerY < 0.15) {
+    const nearPlate = Math.hypot(px, pz + 28) < 2.2;
+    if (nearPlate && _l3PlateLastY > 0.5 && playerY < 0.1) {
       _l3JumpPlatCount++;
-      if (window._l3PlateGlow) window._l3PlateGlow.intensity = 0.5 + _l3JumpPlatCount * 1.5;
+      if (window._l3PlateGlow) window._l3PlateGlow.intensity = 0.5 + _l3JumpPlatCount * 2.0;
+      // Visual: briefly press the plate down
+      if (window._l3PlateMesh) { window._l3PlateMesh.position.y = 0.02; setTimeout(() => { if(window._l3PlateMesh) window._l3PlateMesh.position.y = 0.05; }, 200); }
       if (_l3JumpPlatCount >= 2) {
         _l3JumpPlatActivated = true;
-        if (window._l3PlateGlow) { window._l3PlateGlow.intensity = 4.0; window._l3PlateGlow.color.set(0xffee44); }
+        if (window._l3PlateGlow) { window._l3PlateGlow.intensity = 5.0; window._l3PlateGlow.color.set(0xffee44); }
         const pa = document.createElement('div');
         pa.style.cssText = 'position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:22px;color:#ffee44;text-shadow:0 0 14px #ffaa00;pointer-events:none;z-index:9999;letter-spacing:2px';
         pa.textContent = '⚡ The ancient stone awakens...'; document.body.appendChild(pa); setTimeout(() => pa.remove(), 2800);
+      } else {
+        const pa = document.createElement('div');
+        pa.style.cssText = 'position:fixed;top:42%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:16px;color:#cc9944;text-shadow:0 0 8px #886600;pointer-events:none;z-index:9999';
+        pa.textContent = '🪨 One more...'; document.body.appendChild(pa); setTimeout(() => pa.remove(), 1500);
       }
     }
     _l3PlateLastY = playerY;
@@ -1200,6 +1275,7 @@ function updateL3(dt) {
         _l3Bullets.push({ mesh:bm, vx:dx/dist*9, vz:dz/dist*9, life:4 });
       }
     } else if (e.type === 'reptilian') {
+      e.mesh.rotation.y = Math.atan2(dx, dz); // model faces +Z so flip sign vs default
       if (dist > 1.2) { e.mesh.position.x += (dx/dist)*4*dt; e.mesh.position.z += (dz/dist)*4*dt; }
       if (dist < 1.5 && playerState.iframes <= 0 && !_godMode) damagePlayer(15);
     } else if (e.type === 'scorpion3') {
@@ -1382,7 +1458,7 @@ function updateL3(dt) {
 
   // ── Interact prompts ──────────────────────────────────────────────────────
   _l3InteractPrompt = '';
-  if (Math.hypot(px+12, pz-3) < 3.5) _l3InteractPrompt = 'E — Read ancient inscription';
+  if (Math.hypot(px+12, pz+3) < 3.5) _l3InteractPrompt = 'E — Read ancient inscription';
   if (!_l3InteractPrompt) {
     for (const t of _l3Torches) {
       if (!t.lit && Math.hypot(px-t.group.position.x, pz-t.group.position.z) < 2.5) { _l3InteractPrompt = `E — Light the ${t.name} torch`; break; }
@@ -5954,7 +6030,7 @@ window.addEventListener('keydown', e => {
     const px = player.position.x, pz = player.position.z;
 
     // ── Read riddle stone ────────────────────────────────────────────────────
-    if (Math.hypot(px+12, pz-3) < 3.5) {
+    if (Math.hypot(px+12, pz+3) < 3.5) {
       const rd = document.createElement('div');
       rd.style.cssText = 'position:fixed;top:22%;left:50%;transform:translateX(-50%);background:rgba(10,5,0,0.93);border:2px solid #aa8844;border-radius:12px;padding:20px 34px;font-family:monospace;font-size:15px;color:#e8d4aa;text-shadow:0 0 8px #aa7700;pointer-events:none;z-index:9999;text-align:center;max-width:480px;line-height:1.9';
       rd.innerHTML = '<span style="color:#cc9944;font-size:12px;letter-spacing:3px;display:block;margin-bottom:10px">👁 ANCIENT INSCRIPTION</span><em>Where moonlight fades, the cycle turns to first light\'s breath,<br>then climbs to noon\'s harsh crown,<br>until day surrenders where it last glows.</em><br><br><span style="color:#886644;font-size:13px">But the <strong style="color:#ffcc44">eye of the stone</strong> must blink twice<br>before the fires will answer.</span><br><br><span style="font-size:11px;color:#665533;letter-spacing:2px;animation:pulse 1s infinite">PRESS ANY KEY TO CONTINUE</span>';
