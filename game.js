@@ -3896,13 +3896,14 @@ function updateSnowballs(dt) {
           _riddle.style.cssText = 'position:fixed;top:28%;left:50%;transform:translateX(-50%);background:rgba(5,0,20,0.92);border:2px solid #6688aa;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:16px;color:#aaccee;text-shadow:0 0 10px #4488bb;pointer-events:none;z-index:9999;text-align:center;max-width:500px;line-height:1.6';
           _riddle.innerHTML = '<span style="color:#88aacc;font-size:12px;letter-spacing:3px;display:block;margin-bottom:8px">👻 GHOST PIRATE\'S LAST WORDS</span>Ha... ha ha... you bested me, bird...<br>The chest awaits on the cold northern shore...<br><em style="color:#88ccee">Head north past the pirates, west along the sand...</em><br>Where the beach grows quiet and dark...<br>My key will show you the way... <span style="color:#aaddff">find it...</span><br><span style="font-size:12px;color:#668899;margin-top:6px;display:block">(Press E near the key to pick it up)</span><br><span style="font-size:11px;color:#445566;margin-top:10px;display:block;letter-spacing:2px;animation:pulse 1s infinite">PRESS ANY KEY TO CONTINUE</span>';
           document.body.appendChild(_riddle);
-          // Pause the whole game loop; iframes keep player safe
-          waitingToResume = true; playerState.iframes = 999;
+          // Pause the whole game loop; block general keydown→resumeGame
+          waitingToResume = true; playerState.iframes = 999; _popupPaused = true;
           // 1-second delay so player can't accidentally skip it
           setTimeout(() => {
             const _riddleKey = () => {
               window.removeEventListener('keydown', _riddleKey);
               _riddle.remove();
+              _popupPaused = false;
               resumeGame();
             };
             window.addEventListener('keydown', _riddleKey);
@@ -4816,6 +4817,7 @@ function showChaosReveal(tome) {
 // ── Post-tome resume gate ─────────────────────────────────────────────────────
 
 let waitingToResume = false;
+let _popupPaused    = false; // blocks general keydown→resumeGame during riddle/chest popups
 
 const resumeHint = document.createElement('div');
 resumeHint.style.cssText = `
@@ -5711,11 +5713,12 @@ window.addEventListener('keydown', e => {
         el.style.cssText = 'position:fixed;top:32%;left:50%;transform:translateX(-50%);background:rgba(10,5,0,0.92);border:2px solid #ffcc44;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:18px;color:#ffd700;text-shadow:0 0 14px #ffaa00;pointer-events:none;z-index:9999;text-align:center;max-width:480px;line-height:1.7';
         el.innerHTML = '🕶️ <strong>Anti-Heat Sunglasses</strong> obtained!<br><span style="font-size:14px;color:#ffeeaa">These will protect you from extreme desert heat.</span><br><hr style="border-color:#886600;margin:8px 0"><span style="font-size:13px;color:#ccaa66;font-style:italic">"A tattered note falls from the chest:<br><em>\'I once glimpsed a shimmering portal to the east...<br>strange and warm, unlike anything on these frozen seas.\'</em>"</span><br><span style="font-size:11px;color:#886600;margin-top:10px;display:block;letter-spacing:2px;animation:pulse 1s infinite">PRESS ANY KEY TO CONTINUE</span>';
         document.body.appendChild(el);
-        waitingToResume = true; playerState.iframes = 999;
+        waitingToResume = true; playerState.iframes = 999; _popupPaused = true;
         setTimeout(() => {
           const _chestKey = () => {
             window.removeEventListener('keydown', _chestKey);
             el.remove();
+            _popupPaused = false;
             resumeGame();
           };
           window.addEventListener('keydown', _chestKey);
@@ -5788,7 +5791,7 @@ window.addEventListener('keydown', e => {
   // Ctrl+Shift+6+7 → debug menu (use keyCodes — Shift changes e.key value)
   if (e.ctrlKey && e.shiftKey && keyCodes['Digit6'] && keyCodes['Digit7'] && (e.code === 'Digit6' || e.code === 'Digit7')) { e.preventDefault(); toggleDebugMenu(); }
   const typing = document.activeElement?.id === 'nameInput';
-  if (!typing && !_debugOpen) resumeGame();
+  if (!typing && !_debugOpen && !_popupPaused) resumeGame();
 });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; keyCodes[e.code] = false; });
 
