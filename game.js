@@ -373,8 +373,26 @@ let   _l3WightTriggered = false;
 let   _l3BanditSpawnTimer = 3;
 let   _l3CaveEnemySpawnTimer = 5;
 let   _l3WightHUDShown = false;
-const _l3Bullets       = [];   // bandit + reptilian ranged shots in L3
-let   _l3InteractPrompt = '';
+const _l3Bullets         = [];   // bandit + reptilian ranged shots in L3
+let   _l3InteractPrompt  = '';
+// Puzzle
+const _l3Torches         = [];          // interactive puzzle torches
+const _l3TorchOrder      = [2, 1, 3, 0]; // correct sequence: MOON→DAWN→SUN→DUSK
+let   _l3TorchProgress   = 0;
+let   _l3JumpPlatCount   = 0;
+let   _l3JumpPlatActivated = false;
+let   _l3PlateLastY      = 0;
+let   _l3PuzzleGate      = null;
+let   _l3PuzzleSolved    = false;
+let   _l3PuzzleGateColIdx = -1; // mountainColliders start index for gate row
+// Bridge
+const _l3LooseTiles      = [];   // { mesh, triggered, timer, x, z }
+const _l3FireJets        = [];   // { z, side, cooldown, timer, active, beamMesh, beamLight }
+const _l3ActiveArrows    = [];   // { mesh, vx, life }
+const _l3ArrowTraps      = [];   // { z, side, cooldown, timer }
+// Boss gate
+let   _l3BossGate        = null;
+let   _l3BossGateClosed  = false;
 let   _sharkEscapeCooldown   = 0;
 let   _desertPortalStandTimer = 0;
 let   _desertPortalGroup      = null;
@@ -683,110 +701,191 @@ if (CURRENT_LEVEL === 2) {
 
 // ── Level 3 Map Setup ─────────────────────────────────────────────────────────
 if (CURRENT_LEVEL === 3) {
-  const sandMat    = new THREE.MeshStandardMaterial({ color: 0xd4aa60, roughness: 0.95 });
-  const caveMat    = new THREE.MeshStandardMaterial({ color: 0x9a7840, roughness: 0.9 });
-  const rockMat    = new THREE.MeshStandardMaterial({ color: 0xa08050, roughness: 0.95 });
-  const goldMat    = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xaa8800, emissiveIntensity: 0.5, roughness: 0.3, metalness: 0.8 });
-  const stoneMat   = new THREE.MeshStandardMaterial({ color: 0x887755, roughness: 0.9 });
-  const darkMat    = new THREE.MeshStandardMaterial({ color: 0x4a3820, roughness: 1.0 });
+  const sandMat  = new THREE.MeshStandardMaterial({ color: 0xd4aa60, roughness: 0.95 });
+  const caveMat  = new THREE.MeshStandardMaterial({ color: 0x9a7840, roughness: 0.9 });
+  const rockMat  = new THREE.MeshStandardMaterial({ color: 0xa08050, roughness: 0.95 });
+  const goldMat  = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xaa8800, emissiveIntensity: 0.5, roughness: 0.3, metalness: 0.8 });
+  const stoneMat = new THREE.MeshStandardMaterial({ color: 0x887755, roughness: 0.9 });
+  const voidMat  = new THREE.MeshStandardMaterial({ color: 0x060300, roughness: 1.0 });
 
   // Sandy outside floor
   const outsideFloor = new THREE.Mesh(new THREE.PlaneGeometry(200, 120), sandMat);
-  outsideFloor.rotation.x = -Math.PI / 2;
-  outsideFloor.position.set(0, 0, 45);
-  scene.add(outsideFloor);
+  outsideFloor.rotation.x = -Math.PI / 2; outsideFloor.position.set(0, 0, 45); scene.add(outsideFloor);
 
-  // Cave floor (darker)
-  const caveFloor = new THREE.Mesh(new THREE.PlaneGeometry(70, 160), caveMat);
-  caveFloor.rotation.x = -Math.PI / 2;
-  caveFloor.position.set(0, 0.01, -60);
-  scene.add(caveFloor);
+  // Puzzle room floor (z: +8 to -52)
+  const puzzleFloor = new THREE.Mesh(new THREE.PlaneGeometry(70, 62), caveMat);
+  puzzleFloor.rotation.x = -Math.PI / 2; puzzleFloor.position.set(0, 0.01, -22); scene.add(puzzleFloor);
 
-  // Cliff face — wide wall with gap in centre (entrance)
+  // Dark void chasm under the bridge (visual depth)
+  const voidFloor = new THREE.Mesh(new THREE.PlaneGeometry(80, 66), voidMat);
+  voidFloor.rotation.x = -Math.PI / 2; voidFloor.position.set(0, -8, -86); scene.add(voidFloor);
+
+  // Boss arena floor
+  const arenaFloor = new THREE.Mesh(new THREE.PlaneGeometry(50, 52), caveMat);
+  arenaFloor.rotation.x = -Math.PI / 2; arenaFloor.position.set(0, 0.01, -142); scene.add(arenaFloor);
+
+  // ── Cliff face & entrance arch ────────────────────────────────────────────
   const cliffH = 8, cliffY = 4;
-  [[-46, 0], [46, 0]].forEach(([bx]) => { // left and right cliff blocks
+  [[-46,0],[46,0]].forEach(([bx]) => {
     const w = new THREE.Mesh(new THREE.BoxGeometry(70, cliffH, 5), rockMat);
     w.position.set(bx, cliffY, 9); scene.add(w);
-    // collision posts along this block
-    for (let cx = bx - 34; cx <= bx + 34; cx += 2)
-      mountainColliders.push({ x: cx, z: 9, r: 1.3 });
+    for (let cx = bx-34; cx <= bx+34; cx += 2) mountainColliders.push({ x: cx, z: 9, r: 1.3 });
   });
-  // Cliff arch over entrance
-  const archTop = new THREE.Mesh(new THREE.BoxGeometry(22, 3, 5), stoneMat);
-  archTop.position.set(0, 7, 9); scene.add(archTop);
-  const archL   = new THREE.Mesh(new THREE.BoxGeometry(2, 6, 5), stoneMat);
-  archL.position.set(-10, 3.5, 9); scene.add(archL);
-  mountainColliders.push({ x: -10, z: 9, r: 1.2 });
-  const archR   = archL.clone(); archR.position.set(10, 3.5, 9); scene.add(archR);
-  mountainColliders.push({ x: 10, z: 9, r: 1.2 });
+  const archTop = new THREE.Mesh(new THREE.BoxGeometry(22, 3, 5), stoneMat); archTop.position.set(0, 7, 9); scene.add(archTop);
+  const archL = new THREE.Mesh(new THREE.BoxGeometry(2, 6, 5), stoneMat); archL.position.set(-10, 3.5, 9); scene.add(archL); mountainColliders.push({ x:-10, z:9, r:1.2 });
+  const archR = archL.clone(); archR.position.set(10, 3.5, 9); scene.add(archR); mountainColliders.push({ x:10, z:9, r:1.2 });
 
-  // Cave side walls (left + right) running north
-  [-36, 36].forEach(wx => {
-    for (let wz = 8; wz > -105; wz -= 8) {
+  // ── Puzzle room cave walls (x=±36, z: 8 → -50) ───────────────────────────
+  [-36,36].forEach(wx => {
+    for (let wz = 8; wz > -50; wz -= 8) {
       const seg = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 8), rockMat);
-      seg.position.set(wx, 3, wz); scene.add(seg);
-      mountainColliders.push({ x: wx, z: wz, r: 3.5 });
+      seg.position.set(wx, 3, wz); scene.add(seg); mountainColliders.push({ x: wx, z: wz, r: 3.5 });
     }
   });
 
-  // Boss room back wall
-  const backWall = new THREE.Mesh(new THREE.BoxGeometry(80, 8, 5), stoneMat);
-  backWall.position.set(0, 4, -136); scene.add(backWall);
-  for (let bx = -40; bx <= 40; bx += 3)
-    mountainColliders.push({ x: bx, z: -136, r: 2 });
-
-  // Inside cave: gold columns & treasure piles
-  [[-20,-20],[-20,-50],[20,-20],[20,-50],[-20,-75],[20,-75]].forEach(([cx,cz]) => {
-    const col = new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.5,5.5,8), stoneMat);
-    col.position.set(cx, 2.75, cz); scene.add(col);
-    mountainColliders.push({ x: cx, z: cz, r: 1.8 });
-    // Gold pile at base
-    const pile = new THREE.Mesh(new THREE.SphereGeometry(0.9, 6, 4), goldMat);
-    pile.scale.y = 0.4; pile.position.set(cx, 0.2, cz + 2); scene.add(pile);
+  // ── Puzzle room columns & gold piles ─────────────────────────────────────
+  [[-20,-15],[20,-15],[-20,-40],[20,-40]].forEach(([cx,cz]) => {
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.5,5.5,8), stoneMat); col.position.set(cx, 2.75, cz); scene.add(col); mountainColliders.push({ x:cx, z:cz, r:1.8 });
+    const pile = new THREE.Mesh(new THREE.SphereGeometry(0.9,6,4), goldMat); pile.scale.y=0.4; pile.position.set(cx, 0.2, cz+2); scene.add(pile);
   });
-
-  // Scattered gold coins/pots outside columns
-  for (let i = 0; i < 24; i++) {
-    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.04, 8), goldMat);
-    coin.position.set((Math.random()-0.5)*60, 0.02, -10 - Math.random()*90);
-    scene.add(coin);
+  for (let i = 0; i < 18; i++) {
+    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.04,8), goldMat);
+    coin.position.set((Math.random()-0.5)*55, 0.02, -5-Math.random()*40); scene.add(coin);
   }
 
-  // Sandstone ruins outside
+  // ── Sandstone ruins outside ────────────────────────────────────────────────
   [[-35,30],[-20,55],[25,40],[40,60],[-45,50]].forEach(([rx,rz]) => {
     const ruin = new THREE.Mesh(new THREE.BoxGeometry(4+Math.random()*3, 2+Math.random()*4, 4+Math.random()*3), rockMat);
-    ruin.position.set(rx, ruin.geometry.parameters.height/2, rz); scene.add(ruin);
-    mountainColliders.push({ x: rx, z: rz, r: 3 });
+    ruin.position.set(rx, ruin.geometry.parameters.height/2, rz); scene.add(ruin); mountainColliders.push({ x:rx, z:rz, r:3 });
   });
 
-  // Cave warm ambient lights
-  const ambLight = new THREE.PointLight(0xffaa44, 2.0, 50); ambLight.position.set(0, 4, -40); scene.add(ambLight);
-  const ambLight2 = new THREE.PointLight(0xff8800, 1.5, 50); ambLight2.position.set(0, 4, -90); scene.add(ambLight2);
-  const torches = [[-18,-25],[18,-25],[-18,-60],[18,-60],[-18,-90],[18,-90]];
-  torches.forEach(([tx,tz]) => {
-    const tl = new THREE.PointLight(0xff6600, 1.8, 12); tl.position.set(tx, 3, tz); scene.add(tl);
-    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.2,0.5,6), new THREE.MeshBasicMaterial({color:0xff8800}));
-    flame.position.set(tx, 3, tz); scene.add(flame);
-  });
-
-  // Boss room — dark with eerie green/purple lights
-  const bossLight = new THREE.PointLight(0x44ff88, 1.5, 30); bossLight.position.set(0, 4, -115); scene.add(bossLight);
-  const bossLight2 = new THREE.PointLight(0x8800ff, 0.8, 20); bossLight2.position.set(0, 4, -125); scene.add(bossLight2);
-
-  // Magic lamp on pedestal at back of boss room
+  // ── Riddle stone (engraved slab near cave entrance) ────────────────────────
   (() => {
-    const pedMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.8 });
+    const rs = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.2, 0.3), stoneMat); rs.position.set(-12, 1.1, 3); scene.add(rs);
+    const gl = new THREE.PointLight(0xffcc44, 0.8, 5); gl.position.set(-12, 2.2, 3); scene.add(gl);
+  })();
+
+  // ── Pressure plate — jump on it twice to unlock torches ───────────────────
+  (() => {
+    const plateMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.7, emissive: 0x221100, emissiveIntensity: 0.4 });
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.1, 2.6), plateMat); plate.position.set(0, 0.05, -28); scene.add(plate);
+    [[-0.4,0.06,0.3],[0.5,0.06,-0.3],[-0.1,0.06,0.7]].forEach(([ox,oy,oz]) => {
+      const c = new THREE.Mesh(new THREE.BoxGeometry(1.0+Math.random()*0.5, 0.04, 0.07), new THREE.MeshBasicMaterial({color:0x221100}));
+      c.rotation.y = Math.random()*Math.PI; c.position.set(ox,oy,oz); plate.add(c);
+    });
+    window._l3PlateGlow = new THREE.PointLight(0x664400, 0.5, 4); window._l3PlateGlow.position.set(0, 1, -28); scene.add(window._l3PlateGlow);
+  })();
+
+  // ── Interactive puzzle torches (light in MOON→DAWN→SUN→DUSK order) ────────
+  // _l3TorchOrder = [2,1,3,0]: idx2=MOON first, idx1=DAWN second, idx3=SUN third, idx0=DUSK last
+  const torchDefs = [
+    { name:'DUSK', x:-17, z:-10, litCol:0xff4400, unlitCol:0x220800 },  // idx 0 — light 4th
+    { name:'DAWN', x: 17, z:-10, litCol:0xff8844, unlitCol:0x220800 },  // idx 1 — light 2nd
+    { name:'MOON', x:-17, z:-42, litCol:0x88aaff, unlitCol:0x080818 },  // idx 2 — light 1st
+    { name:'SUN',  x: 17, z:-42, litCol:0xffee00, unlitCol:0x221100 },  // idx 3 — light 3rd
+  ];
+  torchDefs.forEach((td) => {
+    const g = new THREE.Group(); g.position.set(td.x, 0, td.z);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,1.8,6), new THREE.MeshStandardMaterial({color:0x554433,roughness:0.9})); pole.position.y=0.9; g.add(pole);
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.15,0.22,8), stoneMat); bowl.position.y=1.85; g.add(bowl);
+    const sym = new THREE.Mesh(new THREE.BoxGeometry(0.7,0.35,0.06), stoneMat); sym.position.set(0,0.55,-0.16); sym.rotation.x=-0.25; g.add(sym);
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.1,0.28,6), new THREE.MeshBasicMaterial({color:td.unlitCol})); flame.position.y=2.06; g.add(flame);
+    const light = new THREE.PointLight(td.litCol, 0, 8); light.position.y=2.1; g.add(light);
+    scene.add(g);
+    _l3Torches.push({ group:g, flame, light, lit:false, name:td.name, litCol:td.litCol, unlitCol:td.unlitCol });
+  });
+
+  // Decorative wall torches & puzzle room ambient
+  [[-18,-22],[18,-22]].forEach(([tx,tz]) => {
+    const tl = new THREE.PointLight(0xff6600, 1.8, 12); tl.position.set(tx,3,tz); scene.add(tl);
+    const fl = new THREE.Mesh(new THREE.ConeGeometry(0.2,0.5,6), new THREE.MeshBasicMaterial({color:0xff8800})); fl.position.set(tx,3,tz); scene.add(fl);
+  });
+  const puzzleAmb = new THREE.PointLight(0xffaa44, 2.0, 50); puzzleAmb.position.set(0,4,-25); scene.add(puzzleAmb);
+
+  // ── Puzzle gate (z=-53, sinks into ground when puzzle solved) ─────────────
+  (() => {
+    const gMat = new THREE.MeshStandardMaterial({ color: 0x776655, roughness: 0.9 });
+    const g = new THREE.Group(); g.position.set(0, 0, -53);
+    const gw = new THREE.Mesh(new THREE.BoxGeometry(72, 8, 2), gMat); gw.position.y=4; g.add(gw);
+    [-20,-10,0,10,20].forEach(rx => {
+      const rune = new THREE.Mesh(new THREE.BoxGeometry(0.12, 3.5, 0.15), new THREE.MeshBasicMaterial({color:0xffcc44})); rune.position.set(rx,4,1.1); g.add(rune);
+    });
+    const gl = new THREE.PointLight(0xffcc44, 1.2, 15); gl.position.set(0,4,1); g.add(gl);
+    scene.add(g); _l3PuzzleGate = g;
+    _l3PuzzleGateColIdx = mountainColliders.length;
+    for (let gx = -33; gx <= 33; gx += 3) mountainColliders.push({ x: gx, z: -53, r: 1.6 });
+  })();
+
+  // ── Bridge: chasm walls (x=±8, z: -56 → -116) ────────────────────────────
+  [-8,8].forEach(wx => {
+    for (let wz = -57; wz > -117; wz -= 8) {
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(4, 10, 8), rockMat); seg.position.set(wx, 5, wz); scene.add(seg); mountainColliders.push({ x:wx, z:wz, r:2.5 });
+    }
+  });
+
+  // Bridge floor slabs (some are loose — they crumble under foot)
+  const slabMat  = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.85 });
+  const looseMat = new THREE.MeshStandardMaterial({ color: 0x776655, roughness: 0.9, emissive: 0x110800, emissiveIntensity: 0.5 });
+  const looseTileZSet = new Set([-74, -90, -106]);
+  for (let sz = -58; sz >= -114; sz -= 8) {
+    const isLoose = looseTileZSet.has(sz);
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.18, 7.5), isLoose ? looseMat : slabMat);
+    slab.position.set(0, 0.09, sz); scene.add(slab);
+    if (isLoose) _l3LooseTiles.push({ mesh: slab, x: 0, z: sz, triggered: false, timer: 0 });
+    [-2.85,2.85].forEach(rx => { const rail = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.55,7.5), stoneMat); rail.position.set(rx,0.36,sz); scene.add(rail); });
+  }
+  // Eerie bridge lighting
+  [-66,-86,-106].forEach(bz => { const bl = new THREE.PointLight(0xff4400, 0.55, 12); bl.position.set(0,3,bz); scene.add(bl); });
+
+  // ── Fire jet emitters (alternating sides, 3 on bridge) ───────────────────
+  [{z:-67,side:-1},{z:-85,side:1},{z:-103,side:-1}].forEach((jd, ji) => {
+    const bkt = new THREE.Mesh(new THREE.BoxGeometry(0.55,0.55,0.55), new THREE.MeshStandardMaterial({color:0x554433})); bkt.position.set(jd.side*3.1, 1.1, jd.z); scene.add(bkt);
+    _l3FireJets.push({ z:jd.z, side:jd.side, cooldown:3.5+ji*0.7, timer:1.8+ji*0.9, active:false, beamMesh:null, beamLight:null });
+  });
+
+  // ── Arrow traps (4 across bridge, alternating sides) ─────────────────────
+  [{z:-63,side:-1},{z:-79,side:1},{z:-95,side:-1},{z:-111,side:1}].forEach((ad, ai) => {
+    const bkt = new THREE.Mesh(new THREE.BoxGeometry(0.45,0.45,0.45), new THREE.MeshStandardMaterial({color:0x443322})); bkt.position.set(ad.side*3.1, 0.9, ad.z); scene.add(bkt);
+    const notch = new THREE.Mesh(new THREE.ConeGeometry(0.07,0.28,4), new THREE.MeshBasicMaterial({color:0x886644})); notch.rotation.z=ad.side<0?-Math.PI/2:Math.PI/2; notch.position.set(ad.side*2.9, 0.9, ad.z); scene.add(notch);
+    _l3ArrowTraps.push({ z:ad.z, side:ad.side, cooldown:3.8+ai*0.5, timer:2.2+ai*0.7 });
+  });
+
+  // ── Boss gate (starts raised, slams shut on arena entry) ──────────────────
+  (() => {
+    const gMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.9 });
+    const gw = new THREE.Mesh(new THREE.BoxGeometry(16, 10, 2), gMat); gw.position.set(0, 12, -118); scene.add(gw); _l3BossGate = gw;
+    [-8.5,8.5].forEach(fx => {
+      const fp = new THREE.Mesh(new THREE.BoxGeometry(2,10,2.5), gMat); fp.position.set(fx,5,-118); scene.add(fp); mountainColliders.push({ x:fx, z:-118, r:1.2 });
+    });
+    const ft = new THREE.Mesh(new THREE.BoxGeometry(16,2,2.5), gMat); ft.position.set(0,10,-118); scene.add(ft);
+    const sk = new THREE.Mesh(new THREE.SphereGeometry(0.45,6,5), new THREE.MeshStandardMaterial({color:0xddccaa})); sk.position.set(0,9.5,-117.9); scene.add(sk);
+  })();
+
+  // ── Boss arena: circular walls (centre z=-140, r=22) ─────────────────────
+  (() => {
+    const arMat = new THREE.MeshStandardMaterial({ color: 0x6a5040, roughness: 0.95 });
+    for (let i = 0; i < 14; i++) {
+      const angle = (i/14)*Math.PI*2;
+      if (Math.abs(angle - Math.PI/2) < 0.6) continue; // south entrance gap
+      const wx = Math.sin(angle)*22, wz = -140+Math.cos(angle)*22;
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(11,10,5), arMat); seg.position.set(wx,5,wz); seg.rotation.y=-angle; scene.add(seg); mountainColliders.push({ x:wx, z:wz, r:5 });
+    }
+    const al1 = new THREE.PointLight(0x44ff88, 1.5, 38); al1.position.set(0,4,-133); scene.add(al1);
+    const al2 = new THREE.PointLight(0x8800ff, 0.9, 28); al2.position.set(0,4,-148); scene.add(al2);
+  })();
+
+  // ── Magic lamp on pedestal (deep in arena) ────────────────────────────────
+  (() => {
+    const pedMat   = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.8 });
     const lampBrass = new THREE.MeshStandardMaterial({ color: 0xcc9900, emissive: 0xaa7700, emissiveIntensity: 0.6, roughness: 0.3, metalness: 0.9 });
-    const pg = new THREE.Group(); pg.position.set(0, 0, -128);
-    // Pedestal
+    const pg = new THREE.Group(); pg.position.set(0, 0, -148);
     const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.8,1.0,1.0,8), pedMat); ped.position.y=0.5; pg.add(ped);
-    // Lamp body (genie lamp shape approximated)
-    const lb = new THREE.Mesh(new THREE.SphereGeometry(0.38,8,6), lampBrass); lb.scale.set(1.2,0.8,1.0); lb.position.y=1.4; pg.add(lb);
-    const lspout = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.1,0.5,6), lampBrass); lspout.rotation.z=0.8; lspout.position.set(0.52,1.38,0); pg.add(lspout);
-    const lhandle = new THREE.Mesh(new THREE.TorusGeometry(0.22,0.04,6,12), lampBrass); lhandle.rotation.y=Math.PI/2; lhandle.position.set(-0.4,1.4,0); pg.add(lhandle);
-    const lglow = new THREE.PointLight(0xffcc44, 1.2, 6); lglow.position.y=1.5; pg.add(lglow);
+    const lb  = new THREE.Mesh(new THREE.SphereGeometry(0.38,8,6), lampBrass); lb.scale.set(1.2,0.8,1.0); lb.position.y=1.4; pg.add(lb);
+    const lsp = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.1,0.5,6), lampBrass); lsp.rotation.z=0.8; lsp.position.set(0.52,1.38,0); pg.add(lsp);
+    const lhd = new THREE.Mesh(new THREE.TorusGeometry(0.22,0.04,6,12), lampBrass); lhd.rotation.y=Math.PI/2; lhd.position.set(-0.4,1.4,0); pg.add(lhd);
+    const lgw = new THREE.PointLight(0xffcc44, 1.2, 6); lgw.position.y=1.5; pg.add(lgw);
     scene.add(pg);
-    _l3Lamp = { group: pg, x: 0, z: -128 };
+    _l3Lamp = { group: pg, x: 0, z: -148 };
   })();
 
   // Defer initial spawns — player isn't defined yet (TDZ) at map-setup time
@@ -1046,6 +1145,22 @@ function updateL3(dt) {
   if (CURRENT_LEVEL !== 3) return;
   const px = player.position.x, pz = player.position.z;
 
+  // ── Pressure plate: detect jump landings ──────────────────────────────────
+  if (!_l3JumpPlatActivated) {
+    if (Math.hypot(px, pz + 28) < 2.2 && _l3PlateLastY > 1.5 && playerY < 0.15) {
+      _l3JumpPlatCount++;
+      if (window._l3PlateGlow) window._l3PlateGlow.intensity = 0.5 + _l3JumpPlatCount * 1.5;
+      if (_l3JumpPlatCount >= 2) {
+        _l3JumpPlatActivated = true;
+        if (window._l3PlateGlow) { window._l3PlateGlow.intensity = 4.0; window._l3PlateGlow.color.set(0xffee44); }
+        const pa = document.createElement('div');
+        pa.style.cssText = 'position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:22px;color:#ffee44;text-shadow:0 0 14px #ffaa00;pointer-events:none;z-index:9999;letter-spacing:2px';
+        pa.textContent = '⚡ The ancient stone awakens...'; document.body.appendChild(pa); setTimeout(() => pa.remove(), 2800);
+      }
+    }
+    _l3PlateLastY = playerY;
+  }
+
   // Outside enemy respawn (bandits + reptilians)
   _l3BanditSpawnTimer -= dt;
   const outsideCount = _l3Enemies.filter(e => e.type === 'bandit3' || e.type === 'reptilian').length;
@@ -1108,10 +1223,10 @@ function updateL3(dt) {
     } else if (b.life <= 0) { scene.remove(b.mesh); _l3Bullets.splice(i, 1); }
   }
 
-  // Wight trigger — first time player steps into boss room
-  if (!_l3WightTriggered && pz < -105) {
+  // Wight trigger — first time player enters the circular boss arena
+  if (!_l3WightTriggered && pz < -121) {
     _l3WightTriggered = true;
-    const wm = buildWight(); wm.position.set(0, 0, -118); scene.add(wm);
+    const wm = buildWight(); wm.position.set(0, 0, -135); scene.add(wm);
     _l3Wight = { mesh:wm, hp:1200, maxHp:1200, speed:3.5, shootTimer:2.5, puddleTimer:6 };
     _updateWightHUD();
   }
@@ -1194,11 +1309,87 @@ function updateL3(dt) {
     }
   }
 
-  // Magic lamp interact prompt (wight must be dead)
-  _l3InteractPrompt = '';
-  if (_l3Lamp && !_l3LampPickedUp && !_l3Wight && Math.hypot(px - _l3Lamp.x, pz - _l3Lamp.z) < 3.5) {
-    _l3InteractPrompt = 'E — Pick up the Magic Lamp';
+  // ── Fire jets on bridge ───────────────────────────────────────────────────
+  for (const jet of _l3FireJets) {
+    jet.timer -= dt;
+    if (jet.timer <= 0) {
+      jet.active = !jet.active;
+      jet.timer = jet.active ? 1.1 : jet.cooldown;
+      if (jet.active) {
+        const bm = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.28, 0.28), new THREE.MeshBasicMaterial({color:0xff5500,transparent:true,opacity:0.88}));
+        bm.position.set(0, 1.1, jet.z); scene.add(bm); jet.beamMesh = bm;
+        jet.beamLight = new THREE.PointLight(0xff4400, 4.0, 9); jet.beamLight.position.set(0, 1.1, jet.z); scene.add(jet.beamLight);
+      } else {
+        if (jet.beamMesh) { scene.remove(jet.beamMesh); jet.beamMesh = null; }
+        if (jet.beamLight) { scene.remove(jet.beamLight); jet.beamLight = null; }
+      }
+    }
+    if (jet.active && Math.abs(pz - jet.z) < 1.0 && Math.abs(px) < 3.5 && playerState.iframes <= 0 && !_godMode)
+      damagePlayer(28);
   }
+
+  // ── Arrow traps on bridge ─────────────────────────────────────────────────
+  for (const trap of _l3ArrowTraps) {
+    trap.timer -= dt;
+    if (trap.timer <= 0) {
+      trap.timer = trap.cooldown;
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.65,4), new THREE.MeshBasicMaterial({color:0x886644}));
+      shaft.rotation.z = Math.PI/2; shaft.position.set(trap.side*3.2, 0.9, trap.z); scene.add(shaft);
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.07,0.22,4), new THREE.MeshBasicMaterial({color:0xbbbbbb}));
+      tip.rotation.z = trap.side<0 ? -Math.PI/2 : Math.PI/2; tip.position.x = -trap.side*0.44; shaft.add(tip);
+      _l3ActiveArrows.push({ mesh: shaft, vx: -trap.side*18, life: 0.5 });
+    }
+  }
+  for (let i = _l3ActiveArrows.length-1; i >= 0; i--) {
+    const a = _l3ActiveArrows[i];
+    a.mesh.position.x += a.vx*dt; a.life -= dt;
+    const adx = a.mesh.position.x-px, adz = a.mesh.position.z-pz;
+    if (adx*adx+adz*adz < 0.45 && playerState.iframes <= 0 && !_godMode) {
+      damagePlayer(20); scene.remove(a.mesh); _l3ActiveArrows.splice(i,1);
+    } else if (a.life <= 0) { scene.remove(a.mesh); _l3ActiveArrows.splice(i,1); }
+  }
+
+  // ── Loose bridge tiles ─────────────────────────────────────────────────────
+  for (let i = _l3LooseTiles.length-1; i >= 0; i--) {
+    const tile = _l3LooseTiles[i];
+    if (!tile.triggered && Math.abs(px-tile.x) < 2.9 && Math.abs(pz-tile.z) < 4.0 && playerY < 0.3)
+      { tile.triggered = true; tile.timer = 1.5; }
+    if (tile.triggered) {
+      tile.timer -= dt;
+      tile.mesh.position.x = tile.x + (Math.random()-0.5)*0.07*(tile.timer < 0.5 ? 4 : 1);
+      if (tile.timer <= 0) {
+        const onTile = Math.abs(pz-tile.z) < 4.5;
+        scene.remove(tile.mesh); _l3LooseTiles.splice(i,1);
+        if (onTile && !playerState.dead) {
+          player.position.set(0, 0, -55); playerY = 0; playerVY = 0;
+          const fl = document.createElement('div'); fl.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);pointer-events:none;z-index:9998'; document.body.appendChild(fl); setTimeout(()=>fl.remove(),380);
+          if (!_godMode) damagePlayer(12);
+          const msg = document.createElement('div'); msg.style.cssText='position:fixed;top:40%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:22px;color:#ff8844;text-shadow:0 0 10px #ff4400;pointer-events:none;z-index:9999';
+          msg.textContent='💀 The floor gives way!'; document.body.appendChild(msg); setTimeout(()=>msg.remove(),1800);
+        }
+      }
+    }
+  }
+
+  // ── Boss gate: slam shut when player enters the arena ─────────────────────
+  if (!_l3BossGateClosed && _l3BossGate && pz < -119) {
+    _l3BossGateClosed = true;
+    const gInterval = setInterval(() => {
+      _l3BossGate.position.y = Math.max(3, _l3BossGate.position.y-0.8);
+      if (_l3BossGate.position.y <= 3) { mountainColliders.push({ x:0, z:-118, r:8 }); clearInterval(gInterval); }
+    }, 16);
+  }
+
+  // ── Interact prompts ──────────────────────────────────────────────────────
+  _l3InteractPrompt = '';
+  if (Math.hypot(px+12, pz-3) < 3.5) _l3InteractPrompt = 'E — Read ancient inscription';
+  if (!_l3InteractPrompt) {
+    for (const t of _l3Torches) {
+      if (!t.lit && Math.hypot(px-t.group.position.x, pz-t.group.position.z) < 2.5) { _l3InteractPrompt = `E — Light the ${t.name} torch`; break; }
+    }
+  }
+  if (!_l3InteractPrompt && _l3Lamp && !_l3LampPickedUp && !_l3Wight && Math.hypot(px-_l3Lamp.x, pz-_l3Lamp.z) < 3.5)
+    _l3InteractPrompt = 'E — Pick up the Magic Lamp';
   // _interactPrompt element is created later; reach it via window to avoid TDZ
   const _ipEl = window._interactPromptEl;
   if (_ipEl) {
@@ -5761,20 +5952,64 @@ window.addEventListener('keydown', e => {
   }
   if (e.key.toLowerCase() === 'e' && CURRENT_LEVEL === 3) {
     const px = player.position.x, pz = player.position.z;
-    if (_l3Lamp && !_l3LampPickedUp && !_l3Wight && Math.hypot(px - _l3Lamp.x, pz - _l3Lamp.z) < 3.5) {
+
+    // ── Read riddle stone ────────────────────────────────────────────────────
+    if (Math.hypot(px+12, pz-3) < 3.5) {
+      const rd = document.createElement('div');
+      rd.style.cssText = 'position:fixed;top:22%;left:50%;transform:translateX(-50%);background:rgba(10,5,0,0.93);border:2px solid #aa8844;border-radius:12px;padding:20px 34px;font-family:monospace;font-size:15px;color:#e8d4aa;text-shadow:0 0 8px #aa7700;pointer-events:none;z-index:9999;text-align:center;max-width:480px;line-height:1.9';
+      rd.innerHTML = '<span style="color:#cc9944;font-size:12px;letter-spacing:3px;display:block;margin-bottom:10px">👁 ANCIENT INSCRIPTION</span><em>Where moonlight fades, the cycle turns to first light\'s breath,<br>then climbs to noon\'s harsh crown,<br>until day surrenders where it last glows.</em><br><br><span style="color:#886644;font-size:13px">But the <strong style="color:#ffcc44">eye of the stone</strong> must blink twice<br>before the fires will answer.</span><br><br><span style="font-size:11px;color:#665533;letter-spacing:2px;animation:pulse 1s infinite">PRESS ANY KEY TO CONTINUE</span>';
+      document.body.appendChild(rd);
+      waitingToResume = true; playerState.iframes = 999; _popupPaused = true;
+      setTimeout(() => {
+        const dismiss = () => { window.removeEventListener('keydown', dismiss); rd.remove(); _popupPaused = false; resumeGame(); };
+        window.addEventListener('keydown', dismiss);
+      }, 600);
+      return;
+    }
+
+    // ── Light a puzzle torch ─────────────────────────────────────────────────
+    for (let ti = 0; ti < _l3Torches.length; ti++) {
+      const t = _l3Torches[ti];
+      if (!t.lit && Math.hypot(px-t.group.position.x, pz-t.group.position.z) < 2.5) {
+        if (!_l3JumpPlatActivated) {
+          const hint = document.createElement('div'); hint.style.cssText='position:fixed;top:40%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:18px;color:#aa8844;text-shadow:0 0 8px #664400;pointer-events:none;z-index:9999';
+          hint.textContent='🪨 The ancient stone must awaken first...'; document.body.appendChild(hint); setTimeout(()=>hint.remove(),2200);
+        } else if (_l3TorchOrder[_l3TorchProgress] === ti) {
+          t.lit = true; t.light.intensity = 2.5; t.flame.material.color.setHex(t.litCol);
+          _l3TorchProgress++;
+          const msg = document.createElement('div'); msg.style.cssText='position:fixed;top:40%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:20px;color:#ffaa44;text-shadow:0 0 12px #ff6600;pointer-events:none;z-index:9999';
+          msg.textContent=`🔥 ${t.name} torch lit! (${_l3TorchProgress}/4)`; document.body.appendChild(msg); setTimeout(()=>msg.remove(),1800);
+          if (_l3TorchProgress === 4) {
+            _l3PuzzleSolved = true;
+            const gInterval = setInterval(() => {
+              _l3PuzzleGate.position.y -= 0.22;
+              if (_l3PuzzleGate.position.y <= -9) { scene.remove(_l3PuzzleGate); mountainColliders.splice(_l3PuzzleGateColIdx, 23); clearInterval(gInterval); }
+            }, 16);
+            const gMsg = document.createElement('div'); gMsg.style.cssText='position:fixed;top:32%;left:50%;transform:translateX(-50%);background:rgba(10,5,0,0.92);border:2px solid #ffaa44;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:20px;color:#ffd700;text-shadow:0 0 14px #ff8800;pointer-events:none;z-index:9999;text-align:center;max-width:440px;line-height:1.7';
+            gMsg.innerHTML='🗝️ <strong>All torches lit!</strong><br><span style="font-size:14px;color:#ffeeaa">The ancient gate sinks into the earth...</span><br><span style="font-size:13px;color:#cc8844;font-style:italic">A long bridge stretches into the darkness. Beware.</span>';
+            document.body.appendChild(gMsg); setTimeout(()=>gMsg.remove(),4500);
+          }
+        } else {
+          _l3TorchProgress = 0;
+          _l3Torches.forEach(tt => { tt.lit=false; tt.light.intensity=0; tt.flame.material.color.setHex(tt.unlitCol); });
+          const err = document.createElement('div'); err.style.cssText='position:fixed;top:40%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:20px;color:#ff6644;text-shadow:0 0 10px #ff2200;pointer-events:none;z-index:9999';
+          err.textContent='💨 The flames gutter out... wrong order.'; document.body.appendChild(err); setTimeout(()=>err.remove(),2200);
+        }
+        break;
+      }
+    }
+
+    // ── Pick up magic lamp ───────────────────────────────────────────────────
+    if (_l3Lamp && !_l3LampPickedUp && !_l3Wight && Math.hypot(px-_l3Lamp.x, pz-_l3Lamp.z) < 3.5) {
       _l3LampPickedUp = true;
       scene.remove(_l3Lamp.group);
-      // Spawn genie
       if (!_l3GenieSpawned) {
         _l3GenieSpawned = true;
-        const gm = buildGenie(); gm.position.set(0, 0, -124); scene.add(gm);
-        // Genie floats upward then fades
+        const gm = buildGenie(); gm.position.set(0, 0, -142); scene.add(gm);
         let gt = 0;
-        const _genieAnim = (dt2) => { gt += dt2; gm.position.y += 0.5 * dt2; gm.rotation.y += dt2; if (gt > 5) scene.remove(gm); };
-        // We animate via a simple interval
+        const _genieAnim = (dt2) => { gt += dt2; gm.position.y += 0.5*dt2; gm.rotation.y += dt2; if (gt > 5) scene.remove(gm); };
         const _gInterval = setInterval(() => { _genieAnim(0.016); if (gt > 5) clearInterval(_gInterval); }, 16);
       }
-      // Victory popup
       const vd = document.createElement('div');
       vd.style.cssText = 'position:fixed;top:28%;left:50%;transform:translateX(-50%);background:rgba(10,5,30,0.95);border:2px solid #4488ff;border-radius:14px;padding:22px 36px;font-family:monospace;font-size:20px;color:#aaccff;text-shadow:0 0 16px #4488ff;pointer-events:none;z-index:9999;text-align:center;max-width:500px;line-height:1.8';
       vd.innerHTML = '✨ <strong style="color:#ffd700">Magic Lamp obtained!</strong><br><span style="font-size:15px;color:#88aaff">A swirl of blue smoke fills the room...</span><br><span style="font-size:15px;color:#aaddff;font-style:italic">The genie materialises before you!</span><br><br><span style="font-size:13px;color:#88aacc">"You have freed me, little penguin!<br>Your wish shall be granted... but not today."</span>';
