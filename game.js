@@ -3896,17 +3896,17 @@ function updateSnowballs(dt) {
           _riddle.style.cssText = 'position:fixed;top:28%;left:50%;transform:translateX(-50%);background:rgba(5,0,20,0.92);border:2px solid #6688aa;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:16px;color:#aaccee;text-shadow:0 0 10px #4488bb;pointer-events:none;z-index:9999;text-align:center;max-width:500px;line-height:1.6';
           _riddle.innerHTML = '<span style="color:#88aacc;font-size:12px;letter-spacing:3px;display:block;margin-bottom:8px">👻 GHOST PIRATE\'S LAST WORDS</span>Ha... ha ha... you bested me, bird...<br>The chest awaits on the cold northern shore...<br><em style="color:#88ccee">Head north past the pirates, west along the sand...</em><br>Where the beach grows quiet and dark...<br>My key will show you the way... <span style="color:#aaddff">find it...</span><br><span style="font-size:12px;color:#668899;margin-top:6px;display:block">(Press E near the key to pick it up)</span><br><span style="font-size:11px;color:#445566;margin-top:10px;display:block;letter-spacing:2px;animation:pulse 1s infinite">PRESS ANY KEY TO CONTINUE</span>';
           document.body.appendChild(_riddle);
-          movementLockout = Infinity; // freeze player while riddle is showing
-          let _riddleDismissed = false;
-          const _riddleKey = () => {
-            if (_riddleDismissed) return;
-            _riddleDismissed = true;
-            window.removeEventListener('keydown', _riddleKey);
-            _riddle.remove();
-            movementLockout = 0;
-          };
+          // Pause the whole game loop; iframes keep player safe
+          waitingToResume = true; playerState.iframes = 999;
           // 1-second delay so player can't accidentally skip it
-          setTimeout(() => window.addEventListener('keydown', _riddleKey), 1000);
+          setTimeout(() => {
+            const _riddleKey = () => {
+              window.removeEventListener('keydown', _riddleKey);
+              _riddle.remove();
+              resumeGame();
+            };
+            window.addEventListener('keydown', _riddleKey);
+          }, 1000);
         }
         if (!s.boomerang) hit = true;
       }
@@ -5706,12 +5706,20 @@ window.addEventListener('keydown', e => {
         const _newModel = activeSkin === 'evil' ? buildEvilPenguin() : activeSkin === 'wizard' ? buildWizardCat() : activeSkin === 'human' ? buildHumanPlayer() : buildPenguin();
         penguinMesh.add(_newModel);
         _humanGunPivot = _newModel.userData.gunPivot ?? null;
-        // Show reward popup with portal note
+        // Show reward popup with portal note — pause game until dismissed
         const el = document.createElement('div');
         el.style.cssText = 'position:fixed;top:32%;left:50%;transform:translateX(-50%);background:rgba(10,5,0,0.92);border:2px solid #ffcc44;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:18px;color:#ffd700;text-shadow:0 0 14px #ffaa00;pointer-events:none;z-index:9999;text-align:center;max-width:480px;line-height:1.7';
-        el.innerHTML = '🕶️ <strong>Anti-Heat Sunglasses</strong> obtained!<br><span style="font-size:14px;color:#ffeeaa">These will protect you from extreme desert heat.</span><br><hr style="border-color:#886600;margin:8px 0"><span style="font-size:13px;color:#ccaa66;font-style:italic">"A tattered note falls from the chest:<br><em>\'I once glimpsed a shimmering portal to the east...<br>strange and warm, unlike anything on these frozen seas.\'</em>"</span>';
+        el.innerHTML = '🕶️ <strong>Anti-Heat Sunglasses</strong> obtained!<br><span style="font-size:14px;color:#ffeeaa">These will protect you from extreme desert heat.</span><br><hr style="border-color:#886600;margin:8px 0"><span style="font-size:13px;color:#ccaa66;font-style:italic">"A tattered note falls from the chest:<br><em>\'I once glimpsed a shimmering portal to the east...<br>strange and warm, unlike anything on these frozen seas.\'</em>"</span><br><span style="font-size:11px;color:#886600;margin-top:10px;display:block;letter-spacing:2px;animation:pulse 1s infinite">PRESS ANY KEY TO CONTINUE</span>';
         document.body.appendChild(el);
-        setTimeout(() => el.remove(), 7000);
+        waitingToResume = true; playerState.iframes = 999;
+        setTimeout(() => {
+          const _chestKey = () => {
+            window.removeEventListener('keydown', _chestKey);
+            el.remove();
+            resumeGame();
+          };
+          window.addEventListener('keydown', _chestKey);
+        }, 1000);
       } else {
         const el = document.createElement('div');
         el.style.cssText = 'position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:18px;color:#ff8844;text-shadow:0 0 8px #ff4400;pointer-events:none;z-index:9999';
