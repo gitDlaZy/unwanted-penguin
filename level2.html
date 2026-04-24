@@ -46,23 +46,37 @@
   <script>
     window.CURRENT_LEVEL = 2;
 
-    const bgm = window.bgm = new Audio('sounds/Cowboy%20Bebop%20-%20Opening%20Tank.mp3');
-    bgm.loop   = false;
-    bgm.volume = parseFloat(localStorage.getItem('bgmVolume') ?? '0.1');
+    const _vol2 = parseFloat(localStorage.getItem('bgmVolume') ?? '0.1');
+    const _playlist2 = [
+      'sounds/BGM/Pirate/Ghost%20Pirate%20Theme%20Song.mp3',
+      'sounds/BGM/Pirate/Penguin%20Airlift.mp3',
+      'sounds/BGM/Pirate/Penguin%20Sprints.mp3',
+      'sounds/BGM/Pirate/Piet%20Piraat.mp3',
+    ];
+    let _tIdx2 = 0, _shuf2 = [];
+    function _shuf2fn() { _shuf2 = _playlist2.slice().sort(() => Math.random() - 0.5); _tIdx2 = 0; }
+    _shuf2fn();
+    const bgm = window.bgm = new Audio();
+    bgm.volume = _vol2;
+    bgm.addEventListener('ended', () => { _tIdx2 = (_tIdx2 + 1) % _shuf2.length; if (_tIdx2 === 0) _shuf2fn(); bgm.src = _shuf2[_tIdx2]; bgm.play().catch(() => {}); });
 
     const volWrap = document.createElement('div');
     volWrap.style.cssText = 'position:fixed;bottom:16px;right:16px;display:flex;align-items:center;gap:6px;font-family:monospace;font-size:12px;color:#668899;pointer-events:auto;z-index:50';
-    volWrap.innerHTML = `🎵 <input id="volSlider" type="range" min="0" max="1" step="0.05" value="${bgm.volume}" style="width:72px;accent-color:#44aaff;cursor:pointer"> <span id="volLabel" style="min-width:34px;display:inline-block">${Math.round(bgm.volume*100)}%</span>`;
+    volWrap.innerHTML = `🎵 <input id="volSlider" type="range" min="0" max="1" step="0.05" value="${_vol2}" style="width:72px;accent-color:#44aaff;cursor:pointer"> <span id="volLabel" style="min-width:34px;display:inline-block">${Math.round(_vol2*100)}%</span>`;
     document.body.appendChild(volWrap);
     document.getElementById('volSlider').addEventListener('input', e => {
-      bgm.volume = parseFloat(e.target.value);
-      localStorage.setItem('bgmVolume', bgm.volume);
-      document.getElementById('volLabel').textContent = Math.round(bgm.volume * 100) + '%';
+      const v = parseFloat(e.target.value);
+      bgm.volume = v; localStorage.setItem('bgmVolume', v);
+      document.getElementById('volLabel').textContent = Math.round(v * 100) + '%';
     });
 
+    window.startBGM = function() {
+      if (bgm._started) return; bgm._started = true;
+      bgm.src = _shuf2[_tIdx2]; bgm.play().catch(() => {});
+    };
     if (sessionStorage.getItem('bgmAutoStart')) {
       sessionStorage.removeItem('bgmAutoStart');
-      bgm.play().catch(() => {});
+      window.startBGM();
     }
     setTimeout(() => { document.getElementById('ui').style.opacity = '0'; }, 3000);
 

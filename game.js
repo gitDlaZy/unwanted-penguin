@@ -351,8 +351,26 @@ let   _ghostPirate     = null;   // { mesh, hp, state, timers… }
 const _ghostBullets    = [];
 let   _rustyKeyMesh    = null;
 let   _hasRustyKey           = false;
-let   _hasAntiHeatSunglasses = false;
+let   _hasAntiHeatSunglasses = _levelSave?.sunglasses ?? false;
 let   _chestOpened           = false;
+
+// ── Level 3 State ─────────────────────────────────────────────────────────────
+const _l3Enemies     = [];   // bandits, reptilians, scorpions, mummies
+let   _l3Wight       = null;
+const _l3WightBullets = [];
+const _l3DeathPuddles = [];  // { mesh, x, z, r }
+let   _l3Lamp        = null;
+let   _l3LampPickedUp = false;
+let   _l3GenieSpawned = false;
+let   _l3PuddleContactTime = 0;
+let   _l3PoisonActive = false;
+let   _l3PoisonTimer  = 0;
+let   _l3WightTriggered = false;
+let   _l3BanditSpawnTimer = 3;
+let   _l3CaveEnemySpawnTimer = 5;
+let   _l3WightHUDShown = false;
+const _l3Bullets       = [];   // bandit + reptilian ranged shots in L3
+let   _l3InteractPrompt = '';
 let   _sharkEscapeCooldown   = 0;
 let   _desertPortalStandTimer = 0;
 let   _desertPortalGroup      = null;
@@ -659,6 +677,143 @@ if (CURRENT_LEVEL === 2) {
   })();
 }
 
+// ── Level 3 Map Setup ─────────────────────────────────────────────────────────
+if (CURRENT_LEVEL === 3) {
+  const sandMat    = new THREE.MeshStandardMaterial({ color: 0xd4aa60, roughness: 0.95 });
+  const caveMat    = new THREE.MeshStandardMaterial({ color: 0x9a7840, roughness: 0.9 });
+  const rockMat    = new THREE.MeshStandardMaterial({ color: 0xa08050, roughness: 0.95 });
+  const goldMat    = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xaa8800, emissiveIntensity: 0.5, roughness: 0.3, metalness: 0.8 });
+  const stoneMat   = new THREE.MeshStandardMaterial({ color: 0x887755, roughness: 0.9 });
+  const darkMat    = new THREE.MeshStandardMaterial({ color: 0x4a3820, roughness: 1.0 });
+
+  // Sandy outside floor
+  const outsideFloor = new THREE.Mesh(new THREE.PlaneGeometry(200, 120), sandMat);
+  outsideFloor.rotation.x = -Math.PI / 2;
+  outsideFloor.position.set(0, 0, 45);
+  scene.add(outsideFloor);
+
+  // Cave floor (darker)
+  const caveFloor = new THREE.Mesh(new THREE.PlaneGeometry(70, 160), caveMat);
+  caveFloor.rotation.x = -Math.PI / 2;
+  caveFloor.position.set(0, 0.01, -60);
+  scene.add(caveFloor);
+
+  // Cliff face — wide wall with gap in centre (entrance)
+  const cliffH = 8, cliffY = 4;
+  [[-46, 0], [46, 0]].forEach(([bx]) => { // left and right cliff blocks
+    const w = new THREE.Mesh(new THREE.BoxGeometry(70, cliffH, 5), rockMat);
+    w.position.set(bx, cliffY, 9); scene.add(w);
+    // collision posts along this block
+    for (let cx = bx - 34; cx <= bx + 34; cx += 2)
+      mountainColliders.push({ x: cx, z: 9, r: 1.3 });
+  });
+  // Cliff arch over entrance
+  const archTop = new THREE.Mesh(new THREE.BoxGeometry(22, 3, 5), stoneMat);
+  archTop.position.set(0, 7, 9); scene.add(archTop);
+  const archL   = new THREE.Mesh(new THREE.BoxGeometry(2, 6, 5), stoneMat);
+  archL.position.set(-10, 3.5, 9); scene.add(archL);
+  mountainColliders.push({ x: -10, z: 9, r: 1.2 });
+  const archR   = archL.clone(); archR.position.set(10, 3.5, 9); scene.add(archR);
+  mountainColliders.push({ x: 10, z: 9, r: 1.2 });
+
+  // Cave side walls (left + right) running north
+  [-36, 36].forEach(wx => {
+    for (let wz = 8; wz > -105; wz -= 8) {
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 8), rockMat);
+      seg.position.set(wx, 3, wz); scene.add(seg);
+      mountainColliders.push({ x: wx, z: wz, r: 3.5 });
+    }
+  });
+
+  // Boss room back wall
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(80, 8, 5), stoneMat);
+  backWall.position.set(0, 4, -136); scene.add(backWall);
+  for (let bx = -40; bx <= 40; bx += 3)
+    mountainColliders.push({ x: bx, z: -136, r: 2 });
+
+  // Inside cave: gold columns & treasure piles
+  [[-20,-20],[-20,-50],[20,-20],[20,-50],[-20,-75],[20,-75]].forEach(([cx,cz]) => {
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.5,5.5,8), stoneMat);
+    col.position.set(cx, 2.75, cz); scene.add(col);
+    mountainColliders.push({ x: cx, z: cz, r: 1.8 });
+    // Gold pile at base
+    const pile = new THREE.Mesh(new THREE.SphereGeometry(0.9, 6, 4), goldMat);
+    pile.scale.y = 0.4; pile.position.set(cx, 0.2, cz + 2); scene.add(pile);
+  });
+
+  // Scattered gold coins/pots outside columns
+  for (let i = 0; i < 24; i++) {
+    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.04, 8), goldMat);
+    coin.position.set((Math.random()-0.5)*60, 0.02, -10 - Math.random()*90);
+    scene.add(coin);
+  }
+
+  // Sandstone ruins outside
+  [[-35,30],[-20,55],[25,40],[40,60],[-45,50]].forEach(([rx,rz]) => {
+    const ruin = new THREE.Mesh(new THREE.BoxGeometry(4+Math.random()*3, 2+Math.random()*4, 4+Math.random()*3), rockMat);
+    ruin.position.set(rx, ruin.geometry.parameters.height/2, rz); scene.add(ruin);
+    mountainColliders.push({ x: rx, z: rz, r: 3 });
+  });
+
+  // Cave warm ambient lights
+  const ambLight = new THREE.PointLight(0xffaa44, 2.0, 50); ambLight.position.set(0, 4, -40); scene.add(ambLight);
+  const ambLight2 = new THREE.PointLight(0xff8800, 1.5, 50); ambLight2.position.set(0, 4, -90); scene.add(ambLight2);
+  const torches = [[-18,-25],[18,-25],[-18,-60],[18,-60],[-18,-90],[18,-90]];
+  torches.forEach(([tx,tz]) => {
+    const tl = new THREE.PointLight(0xff6600, 1.8, 12); tl.position.set(tx, 3, tz); scene.add(tl);
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.2,0.5,6), new THREE.MeshBasicMaterial({color:0xff8800}));
+    flame.position.set(tx, 3, tz); scene.add(flame);
+  });
+
+  // Boss room — dark with eerie green/purple lights
+  const bossLight = new THREE.PointLight(0x44ff88, 1.5, 30); bossLight.position.set(0, 4, -115); scene.add(bossLight);
+  const bossLight2 = new THREE.PointLight(0x8800ff, 0.8, 20); bossLight2.position.set(0, 4, -125); scene.add(bossLight2);
+
+  // Magic lamp on pedestal at back of boss room
+  (() => {
+    const pedMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.8 });
+    const lampBrass = new THREE.MeshStandardMaterial({ color: 0xcc9900, emissive: 0xaa7700, emissiveIntensity: 0.6, roughness: 0.3, metalness: 0.9 });
+    const pg = new THREE.Group(); pg.position.set(0, 0, -128);
+    // Pedestal
+    const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.8,1.0,1.0,8), pedMat); ped.position.y=0.5; pg.add(ped);
+    // Lamp body (genie lamp shape approximated)
+    const lb = new THREE.Mesh(new THREE.SphereGeometry(0.38,8,6), lampBrass); lb.scale.set(1.2,0.8,1.0); lb.position.y=1.4; pg.add(lb);
+    const lspout = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.1,0.5,6), lampBrass); lspout.rotation.z=0.8; lspout.position.set(0.52,1.38,0); pg.add(lspout);
+    const lhandle = new THREE.Mesh(new THREE.TorusGeometry(0.22,0.04,6,12), lampBrass); lhandle.rotation.y=Math.PI/2; lhandle.position.set(-0.4,1.4,0); pg.add(lhandle);
+    const lglow = new THREE.PointLight(0xffcc44, 1.2, 6); lglow.position.y=1.5; pg.add(lglow);
+    scene.add(pg);
+    _l3Lamp = { group: pg, x: 0, z: -128 };
+  })();
+
+  // Spawn initial outside enemies
+  for (let i = 0; i < 5; i++) _l3SpawnBandit();
+  for (let i = 0; i < 3; i++) _l3SpawnReptilian();
+}
+
+function _l3SpawnBandit() {
+  let sx, sz; do { sx=(Math.random()-0.5)*80; sz=20+Math.random()*55; } while(Math.hypot(sx-player.position.x,sz-player.position.z)<14);
+  const m = buildHumanPlayer(); m.scale.setScalar(0.88);
+  // Desert recolor: swap to desert tones
+  m.traverse(c => { if(c.isMesh && c.material.color) { const col=c.material.color.getHex(); if(col===0x334455) c.material = new THREE.MeshStandardMaterial({color:0x8b5e1a,roughness:0.9}); if(col===0x111111 && !c.material.emissive) c.material = new THREE.MeshStandardMaterial({color:0x8b3a1a,roughness:0.8}); } });
+  m.position.set(sx,0,sz); m.rotation.y=Math.random()*Math.PI*2; scene.add(m);
+  _l3Enemies.push({ mesh:m, type:'bandit3', hp:60, maxHp:60, shootTimer:3+Math.random()*2 });
+}
+function _l3SpawnReptilian() {
+  let sx,sz; do{sx=(Math.random()-0.5)*80;sz=20+Math.random()*55;}while(Math.hypot(sx-player.position.x,sz-player.position.z)<14);
+  const m=buildReptilian(); m.position.set(sx,0,sz); m.rotation.y=Math.random()*Math.PI*2; scene.add(m);
+  _l3Enemies.push({ mesh:m, type:'reptilian', hp:45, maxHp:45 });
+}
+function _l3SpawnScorpion() {
+  let sx,sz; do{sx=(Math.random()-0.5)*50;sz=-10-Math.random()*70;}while(Math.hypot(sx-player.position.x,sz-player.position.z)<10);
+  const m=buildScorpion3(); m.position.set(sx,0,sz); m.rotation.y=Math.random()*Math.PI*2; scene.add(m);
+  _l3Enemies.push({ mesh:m, type:'scorpion3', hp:55, maxHp:55 });
+}
+function _l3SpawnMummy() {
+  let sx,sz; do{sx=(Math.random()-0.5)*40;sz=-80-Math.random()*25;}while(Math.hypot(sx-player.position.x,sz-player.position.z)<12);
+  const m=buildMummy(); m.position.set(sx,0,sz); m.rotation.y=Math.random()*Math.PI*2; scene.add(m);
+  _l3Enemies.push({ mesh:m, type:'mummy', hp:80, maxHp:80 });
+}
+
 function updateL2Enemies(dt) {
   if (CURRENT_LEVEL !== 2) return;
   const px = player.position.x, pz = player.position.z;
@@ -866,6 +1021,183 @@ function updateL2Enemies(dt) {
     penguinMesh.rotation.x += (targetX - penguinMesh.rotation.x) * 0.15;
     penguinMesh.rotation.z = onWaterSurface ? Math.sin(t) * 0.12 : penguinMesh.rotation.z * 0.85;
     penguinMesh.position.y = onWaterSurface ? Math.sin(t * 1.2) * 0.07 : 0;
+  }
+}
+
+function _updateWightHUD() {
+  const el  = document.getElementById('wightHUD');
+  const bar = document.getElementById('wightBarInner');
+  if (!el) return;
+  if (_l3Wight) {
+    el.style.display = 'block';
+    bar.style.width = Math.max(0, _l3Wight.hp / _l3Wight.maxHp * 100) + '%';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function updateL3(dt) {
+  if (CURRENT_LEVEL !== 3) return;
+  const px = player.position.x, pz = player.position.z;
+
+  // Outside enemy respawn (bandits + reptilians)
+  _l3BanditSpawnTimer -= dt;
+  const outsideCount = _l3Enemies.filter(e => e.type === 'bandit3' || e.type === 'reptilian').length;
+  if (_l3BanditSpawnTimer <= 0 && outsideCount < 8) {
+    _l3BanditSpawnTimer = 8 + Math.random() * 6;
+    Math.random() < 0.5 ? _l3SpawnBandit() : _l3SpawnReptilian();
+  }
+
+  // Cave enemy respawn (scorpions + mummies) — only when player is inside
+  if (pz < 8) {
+    _l3CaveEnemySpawnTimer -= dt;
+    const caveCount = _l3Enemies.filter(e => e.type === 'scorpion3' || e.type === 'mummy').length;
+    if (_l3CaveEnemySpawnTimer <= 0 && caveCount < 6) {
+      _l3CaveEnemySpawnTimer = 12 + Math.random() * 8;
+      if (pz < -65) _l3SpawnMummy(); else _l3SpawnScorpion();
+    }
+  }
+
+  // Enemy AI
+  for (let i = _l3Enemies.length - 1; i >= 0; i--) {
+    const e = _l3Enemies[i];
+    if (!e.mesh) continue;
+    const ex = e.mesh.position.x, ez = e.mesh.position.z;
+    const dx = px - ex, dz = pz - ez;
+    const dist = Math.hypot(dx, dz);
+    if (dist > 32) continue;
+    e.mesh.rotation.y = Math.atan2(-dx, -dz);
+
+    if (e.type === 'bandit3') {
+      if (dist > 7) { e.mesh.position.x += (dx/dist)*3.5*dt; e.mesh.position.z += (dz/dist)*3.5*dt; }
+      e.shootTimer -= dt;
+      if (e.shootTimer <= 0 && dist < 22) {
+        e.shootTimer = 3 + Math.random() * 2;
+        const bm = new THREE.Mesh(new THREE.SphereGeometry(0.12,5,5), new THREE.MeshBasicMaterial({color:0xffaa00}));
+        bm.position.set(ex + dx/dist*1.2, 0.9, ez + dz/dist*1.2);
+        scene.add(bm);
+        _l3Bullets.push({ mesh:bm, vx:dx/dist*9, vz:dz/dist*9, life:4 });
+      }
+    } else if (e.type === 'reptilian') {
+      if (dist > 1.2) { e.mesh.position.x += (dx/dist)*4*dt; e.mesh.position.z += (dz/dist)*4*dt; }
+      if (dist < 1.5 && playerState.iframes <= 0 && !_godMode) damagePlayer(15);
+    } else if (e.type === 'scorpion3') {
+      if (dist > 1.0) { e.mesh.position.x += (dx/dist)*3*dt; e.mesh.position.z += (dz/dist)*3*dt; }
+      if (dist < 1.4 && playerState.iframes <= 0 && !_godMode) damagePlayer(20);
+    } else if (e.type === 'mummy') {
+      if (dist > 1.2) { e.mesh.position.x += (dx/dist)*2*dt; e.mesh.position.z += (dz/dist)*2*dt; }
+      if (dist < 1.6 && playerState.iframes <= 0 && !_godMode) damagePlayer(25);
+    }
+  }
+
+  // L3 bandit bullets
+  for (let i = _l3Bullets.length - 1; i >= 0; i--) {
+    const b = _l3Bullets[i];
+    b.mesh.position.x += b.vx * dt;
+    b.mesh.position.z += b.vz * dt;
+    b.life -= dt;
+    const bdx = b.mesh.position.x - px, bdz = b.mesh.position.z - pz;
+    if (bdx*bdx + bdz*bdz < 0.5 && playerState.iframes <= 0 && !_godMode) {
+      damagePlayer(18); scene.remove(b.mesh); _l3Bullets.splice(i, 1);
+    } else if (b.life <= 0) { scene.remove(b.mesh); _l3Bullets.splice(i, 1); }
+  }
+
+  // Wight trigger — first time player steps into boss room
+  if (!_l3WightTriggered && pz < -105) {
+    _l3WightTriggered = true;
+    const wm = buildWight(); wm.position.set(0, 0, -118); scene.add(wm);
+    _l3Wight = { mesh:wm, hp:1200, maxHp:1200, speed:3.5, shootTimer:2.5, puddleTimer:6 };
+    _updateWightHUD();
+  }
+
+  // Wight AI
+  if (_l3Wight && !playerState.dead) {
+    const wdx = px - _l3Wight.mesh.position.x;
+    const wdz = pz - _l3Wight.mesh.position.z;
+    const wdist = Math.hypot(wdx, wdz);
+    _l3Wight.mesh.rotation.y = Math.atan2(-wdx, -wdz);
+    if (wdist > 3) { _l3Wight.mesh.position.x += (wdx/wdist)*_l3Wight.speed*dt; _l3Wight.mesh.position.z += (wdz/wdist)*_l3Wight.speed*dt; }
+    if (wdist < 2 && playerState.iframes <= 0 && !_godMode) damagePlayer(35);
+
+    // Skull projectiles
+    _l3Wight.shootTimer -= dt;
+    if (_l3Wight.shootTimer <= 0) {
+      _l3Wight.shootTimer = 2 + Math.random() * 1.5;
+      const sg = new THREE.Group();
+      sg.add(new THREE.Mesh(new THREE.SphereGeometry(0.18,6,5), new THREE.MeshStandardMaterial({color:0x222222,emissive:0x550088,emissiveIntensity:0.9})));
+      [-0.07,0.07].forEach(ox => { const h=new THREE.Mesh(new THREE.SphereGeometry(0.06,4,4),new THREE.MeshBasicMaterial({color:0xaa00ff})); h.position.set(ox,0.04,0.15); sg.add(h); });
+      sg.position.set(_l3Wight.mesh.position.x, 1.2, _l3Wight.mesh.position.z);
+      scene.add(sg);
+      const sd = Math.hypot(wdx, wdz) || 1;
+      _l3WightBullets.push({ mesh:sg, vx:wdx/sd*7, vz:wdz/sd*7, life:5 });
+    }
+
+    // Death puddles
+    _l3Wight.puddleTimer -= dt;
+    if (_l3Wight.puddleTimer <= 0) {
+      _l3Wight.puddleTimer = 5 + Math.random() * 3;
+      const pm = new THREE.Mesh(new THREE.CircleGeometry(1.5,10), new THREE.MeshStandardMaterial({color:0x000000,emissive:0x330044,emissiveIntensity:0.7,transparent:true,opacity:0.85}));
+      pm.rotation.x = -Math.PI/2;
+      const ppx = _l3Wight.mesh.position.x + (Math.random()-0.5)*10;
+      const ppz = _l3Wight.mesh.position.z + (Math.random()-0.5)*10;
+      pm.position.set(ppx, 0.01, ppz); scene.add(pm);
+      const puddleEntry = { mesh:pm, x:ppx, z:ppz, r:1.5 };
+      _l3DeathPuddles.push(puddleEntry);
+      setTimeout(() => { scene.remove(pm); const idx=_l3DeathPuddles.indexOf(puddleEntry); if(idx>=0) _l3DeathPuddles.splice(idx,1); }, 20000);
+    }
+
+    _updateWightHUD();
+  }
+
+  // Wight skull bullets
+  for (let i = _l3WightBullets.length - 1; i >= 0; i--) {
+    const b = _l3WightBullets[i];
+    b.mesh.position.x += b.vx * dt;
+    b.mesh.position.z += b.vz * dt;
+    b.mesh.rotation.y += dt * 3;
+    b.life -= dt;
+    const bdx = b.mesh.position.x - px, bdz = b.mesh.position.z - pz;
+    if (bdx*bdx + bdz*bdz < 0.65 && playerState.iframes <= 0 && !_godMode) {
+      damagePlayer(40); scene.remove(b.mesh); _l3WightBullets.splice(i, 1);
+    } else if (b.life <= 0) { scene.remove(b.mesh); _l3WightBullets.splice(i, 1); }
+  }
+
+  // Death puddle contact (>0.5s → 50% HP poison over 10s)
+  let inPuddle = false;
+  for (const p of _l3DeathPuddles) {
+    if (Math.hypot(px - p.x, pz - p.z) < p.r) { inPuddle = true; break; }
+  }
+  if (inPuddle) {
+    _l3PuddleContactTime += dt;
+    if (_l3PuddleContactTime > 0.5 && !_l3PoisonActive) {
+      _l3PoisonActive = true; _l3PoisonTimer = 10;
+      const pd = document.createElement('div');
+      pd.id = '_l3PoisonHUD';
+      pd.style.cssText = 'position:fixed;top:20%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:28px;color:#44ff88;text-shadow:0 0 16px #00ff66;pointer-events:none;z-index:9999;letter-spacing:3px';
+      pd.textContent = '☠ POISONED'; document.body.appendChild(pd);
+    }
+  } else {
+    _l3PuddleContactTime = 0;
+  }
+  if (_l3PoisonActive) {
+    _l3PoisonTimer -= dt;
+    if (!_godMode) { playerState.hp = Math.max(1, playerState.hp - (playerState.maxHp * 0.5 / 10) * dt); updateHUD(); }
+    if (_l3PoisonTimer <= 0) {
+      _l3PoisonActive = false;
+      const phud = document.getElementById('_l3PoisonHUD'); if (phud) phud.remove();
+    }
+  }
+
+  // Magic lamp interact prompt (wight must be dead)
+  _l3InteractPrompt = '';
+  if (_l3Lamp && !_l3LampPickedUp && !_l3Wight && Math.hypot(px - _l3Lamp.x, pz - _l3Lamp.z) < 3.5) {
+    _l3InteractPrompt = 'E — Pick up the Magic Lamp';
+  }
+  // _interactPrompt element is created later; reach it via window to avoid TDZ
+  const _ipEl = window._interactPromptEl;
+  if (_ipEl) {
+    _ipEl.style.display = _l3InteractPrompt ? 'block' : 'none';
+    if (_l3InteractPrompt) _ipEl.textContent = _l3InteractPrompt;
   }
 }
 
@@ -1267,6 +1599,115 @@ function buildWizardCat() {
   return g;
 }
 
+// ── Level 3 Enemy Builders ────────────────────────────────────────────────────
+function buildReptilian() {
+  const g = new THREE.Group();
+  const scale = new THREE.MeshStandardMaterial({ color: 0x3a8040, roughness: 0.8 });
+  const belly = new THREE.MeshStandardMaterial({ color: 0x88cc66, roughness: 0.9 });
+  const eye   = new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xaa5500, roughness: 0.3 });
+  const body  = new THREE.Mesh(new THREE.SphereGeometry(0.42,8,6), scale); body.scale.set(1.1,0.9,1.4); body.position.y=0.42; g.add(body);
+  const head  = new THREE.Mesh(new THREE.SphereGeometry(0.28,8,6), scale); head.scale.set(1,0.8,1.5); head.position.set(0,0.55,0.58); g.add(head);
+  const bel   = new THREE.Mesh(new THREE.SphereGeometry(0.28,6,5), belly); bel.scale.set(0.9,0.7,1.0); bel.position.set(0,0.38,0.3); g.add(bel);
+  [-0.1,0.1].forEach(x => { const ey=new THREE.Mesh(new THREE.SphereGeometry(0.06,6,6),eye); ey.position.set(x,0.6,0.82); g.add(ey); });
+  // Tail
+  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.18,1.0,6), scale); tail.rotation.x=0.5; tail.position.set(0,0.35,-0.75); g.add(tail);
+  // Legs
+  [[-0.4,0.2,0.3],[0.4,0.2,0.3],[-0.35,0.15,-0.25],[0.35,0.15,-0.25]].forEach(([lx,ly,lz]) => {
+    const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.05,0.42,6),scale); leg.position.set(lx,ly,lz); g.add(leg);
+  });
+  return g;
+}
+
+function buildScorpion3() {
+  const g = new THREE.Group();
+  const chitin = new THREE.MeshStandardMaterial({ color: 0xcc6622, roughness: 0.8 });
+  const dark   = new THREE.MeshStandardMaterial({ color: 0x882200, roughness: 0.9 });
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.38,8,5), chitin); body.scale.set(1.2,0.7,1.5); body.position.y=0.28; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22,7,5), chitin); head.position.set(0,0.3,0.52); g.add(head);
+  // Claws
+  [-1,1].forEach(s => {
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.5,6),chitin); arm.rotation.z=s*0.9; arm.position.set(s*0.52,0.3,0.3); g.add(arm);
+    const claw=new THREE.Mesh(new THREE.SphereGeometry(0.14,6,5),dark); claw.scale.set(1.3,0.7,1.0); claw.position.set(s*0.82,0.3,0.55); g.add(claw);
+  });
+  // Legs
+  [-1,1].forEach(s => { for(let i=0;i<3;i++) {
+    const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.5,4),chitin); leg.rotation.z=s*0.7; leg.position.set(s*0.45,0.1,0.1-i*0.22); g.add(leg);
+  }});
+  // Tail/stinger
+  const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.1,0.7,6),chitin); tail.rotation.x=-1.1; tail.position.set(0,0.6,-0.6); g.add(tail);
+  const stinger=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.28,6),dark); stinger.rotation.x=0.6; stinger.position.set(0,1.0,-0.85); g.add(stinger);
+  return g;
+}
+
+function buildMummy() {
+  const g = new THREE.Group();
+  const wrap = new THREE.MeshStandardMaterial({ color: 0xd4c890, roughness: 0.95 });
+  const dark  = new THREE.MeshStandardMaterial({ color: 0x8b7540, roughness: 0.9 });
+  const eye   = new THREE.MeshStandardMaterial({ color: 0x22ff44, emissive: 0x00aa22, emissiveIntensity: 0.8, roughness: 0.2 });
+  // Body wrapped in bandages
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.4,1.0,8), wrap); body.position.y=0.55; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3,8,6), wrap); head.position.y=1.42; g.add(head);
+  // Bandage strips (thin boxes crossing body)
+  for(let i=0;i<4;i++){const b=new THREE.Mesh(new THREE.BoxGeometry(0.72,0.05,0.72),dark);b.position.y=0.3+i*0.2;b.rotation.y=i*0.4;g.add(b);}
+  // Glowing eyes
+  [-0.1,0.1].forEach(x=>{const ey=new THREE.Mesh(new THREE.SphereGeometry(0.07,6,6),eye);ey.position.set(x,1.46,0.27);g.add(ey);});
+  // Arms outstretched
+  [-1,1].forEach(s=>{const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.7,6),wrap);arm.rotation.z=s*1.1;arm.position.set(s*0.62,0.85,0);g.add(arm);});
+  // Legs
+  [-0.18,0.18].forEach(x=>{const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.09,0.52,6),wrap);leg.position.set(x,0.26,0);g.add(leg);});
+  return g;
+}
+
+function buildWight() {
+  const g = new THREE.Group();
+  const bone   = new THREE.MeshStandardMaterial({ color: 0xccccaa, emissive: 0x444422, emissiveIntensity: 0.3, roughness: 0.9 });
+  const robe   = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.95 });
+  const eye    = new THREE.MeshStandardMaterial({ color: 0x4400ff, emissive: 0x2200cc, emissiveIntensity: 1.2, roughness: 0.1 });
+  const crown  = new THREE.MeshStandardMaterial({ color: 0x885500, emissive: 0x441100, emissiveIntensity: 0.4, roughness: 0.4, metalness: 0.7 });
+  // Robe body (tall cylinder)
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.65,1.6,8), robe); body.position.y=0.85; g.add(body);
+  // Skeletal rib cage (thin box frame)
+  for(let i=0;i<3;i++){const rib=new THREE.Mesh(new THREE.BoxGeometry(0.72,0.05,0.5),bone);rib.position.y=0.8+i*0.22;g.add(rib);}
+  // Head — skull
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38,8,6), bone); head.scale.set(1,1.1,0.9); head.position.y=1.9; g.add(head);
+  // Jaw
+  const jaw  = new THREE.Mesh(new THREE.BoxGeometry(0.42,0.14,0.3), bone); jaw.position.set(0,1.62,0.22); g.add(jaw);
+  // Crown
+  const crownBase = new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.42,0.18,8), crown); crownBase.position.y=2.2; g.add(crownBase);
+  [0,1,2,3,4,5,6,7].forEach(i=>{const spike=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.28,5),crown);const a=(i/8)*Math.PI*2;spike.position.set(Math.cos(a)*0.38,2.42,Math.sin(a)*0.38);g.add(spike);});
+  // Glowing eyes
+  [-0.14,0.14].forEach(x=>{const ey=new THREE.Mesh(new THREE.SphereGeometry(0.08,6,6),eye);ey.position.set(x,1.96,0.3);g.add(ey);});
+  // Arms — bony
+  [-1,1].forEach(s=>{
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.9,6),bone); arm.rotation.z=s*0.8; arm.position.set(s*0.72,1.2,0); g.add(arm);
+    const hand=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,5),bone); hand.position.set(s*1.12,0.85,0); g.add(hand);
+  });
+  return g;
+}
+
+function buildGenie() {
+  const g = new THREE.Group();
+  const skin  = new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x2255bb, emissiveIntensity: 0.6, roughness: 0.5 });
+  const turban= new THREE.MeshStandardMaterial({ color: 0xffdd00, emissive: 0xaa8800, emissiveIntensity: 0.4, roughness: 0.6 });
+  const cloth = new THREE.MeshStandardMaterial({ color: 0x2244cc, transparent: true, opacity: 0.85, roughness: 0.4 });
+  // Wispy tail (tapering cone)
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.5,1.8,8), cloth); tail.rotation.x=Math.PI; tail.position.y=0.5; g.add(tail);
+  // Body
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.45,10,8), skin); body.scale.set(1,1.2,1); body.position.y=1.55; g.add(body);
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.35,10,8), skin); head.position.y=2.45; g.add(head);
+  // Turban
+  const tb = new THREE.Mesh(new THREE.SphereGeometry(0.38,8,5,0,Math.PI*2,0,Math.PI*0.55), turban); tb.position.y=2.55; g.add(tb);
+  const tbJ = new THREE.Mesh(new THREE.SphereGeometry(0.12,6,5), turban); tbJ.position.set(0,2.78,0.34); g.add(tbJ);
+  // Eyes
+  [-0.12,0.12].forEach(x=>{const e=new THREE.Mesh(new THREE.SphereGeometry(0.07,6,6),new THREE.MeshBasicMaterial({color:0xffffff}));e.position.set(x,2.5,0.3);g.add(e);});
+  // Arms
+  [-1,1].forEach(s=>{const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.09,0.9,8),skin);arm.rotation.z=s*1.0;arm.position.set(s*0.72,1.6,0);g.add(arm);});
+  // Glow
+  const gl = new THREE.PointLight(0x4488ff, 2.5, 8); gl.position.y=1.8; g.add(gl);
+  return g;
+}
+
 function buildShark() {
   const sg = new THREE.Group();
   const bodyMat  = new THREE.MeshStandardMaterial({ color: 0x2d5566, roughness: 0.55, metalness: 0.1 });
@@ -1350,6 +1791,7 @@ const _interactPrompt = (() => {
   const el = document.createElement('div');
   el.style.cssText = 'display:none;position:fixed;bottom:130px;left:50%;transform:translateX(-50%);font-family:monospace;font-size:14px;color:#ccaaff;text-shadow:0 0 8px #8855ff;pointer-events:none;z-index:9999;letter-spacing:2px';
   document.body.appendChild(el);
+  window._interactPromptEl = el; // exposed for updateL3 lazy access
   return el;
 })();
 let _shipPopupOpen = false, _bottlePopupOpen = false;
@@ -1517,16 +1959,15 @@ function buildGhostPirate() {
   return g;
 }
 
-const _gpHUD      = document.getElementById('ghostPirateHUD');
-const _gpBarInner = document.getElementById('ghostPirateBarInner');
-
 function _updateGhostPirateHUD() {
-  if (!_gpHUD) return;
+  const el  = document.getElementById('ghostPirateHUD');
+  const bar = document.getElementById('ghostPirateBarInner');
+  if (!el) return;
   if (_ghostPirate) {
-    _gpHUD.style.display = 'block';
-    _gpBarInner.style.width = Math.max(0, _ghostPirate.hp / _ghostPirate.maxHp * 100) + '%';
+    el.style.display  = 'block';
+    bar.style.width   = Math.max(0, _ghostPirate.hp / _ghostPirate.maxHp * 100) + '%';
   } else {
-    _gpHUD.style.display = 'none';
+    el.style.display  = 'none';
   }
 }
 
@@ -3084,6 +3525,21 @@ function findNearestEnemy() {
       if (d < bestDist) { bestDist = d; nearest = t; }
     }
   }
+  // Level 3 enemies
+  if (CURRENT_LEVEL === 3) {
+    if (_l3Wight) {
+      const dx = _l3Wight.mesh.position.x - player.position.x;
+      const dz = _l3Wight.mesh.position.z - player.position.z;
+      const d = dx*dx + dz*dz;
+      if (d < bestDist) { bestDist = d; nearest = _l3Wight; }
+    }
+    for (const le of _l3Enemies) {
+      const dx = le.mesh.position.x - player.position.x;
+      const dz = le.mesh.position.z - player.position.z;
+      const d = dx*dx + dz*dz;
+      if (d < bestDist) { bestDist = d; nearest = le; }
+    }
+  }
   return nearest;
 }
 
@@ -3343,6 +3799,46 @@ function updateSnowballs(dt) {
             scene.remove(bp.mesh);
             _l2BeachPirates.splice(bi, 1);
             killCount++; spawnXpOrb(bp.mesh.position.x, bp.mesh.position.z, 2); updateHUD();
+          }
+          if (!s.boomerang) hit = true;
+          break;
+        }
+      }
+    }
+
+    // L3: Wight hit
+    if (CURRENT_LEVEL === 3 && _l3Wight) {
+      if (Math.hypot(s.mesh.position.x - _l3Wight.mesh.position.x, s.mesh.position.z - _l3Wight.mesh.position.z) < 2.0 * playerStats.projSize) {
+        const isCrit = Math.random() < playerStats.critChance;
+        _l3Wight.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
+        spawnImpact(s.mesh.position.x, 1.0, s.mesh.position.z, isCrit);
+        _updateWightHUD();
+        if (_l3Wight.hp <= 0) {
+          scene.remove(_l3Wight.mesh);
+          _l3WightBullets.forEach(b => scene.remove(b.mesh)); _l3WightBullets.length = 0;
+          killCount++; spawnXpOrb(_l3Wight.mesh.position.x, _l3Wight.mesh.position.z, 15); updateHUD();
+          _l3Wight = null; _updateWightHUD();
+          // Show lamp appear message
+          const wd = document.createElement('div');
+          wd.style.cssText = 'position:fixed;top:30%;left:50%;transform:translateX(-50%);background:rgba(15,10,0,0.92);border:2px solid #cc9900;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:18px;color:#ffd700;text-shadow:0 0 14px #ffaa00;pointer-events:none;z-index:9999;text-align:center;max-width:440px;line-height:1.7';
+          wd.innerHTML = '💀 <strong>The Wight has fallen!</strong><br><span style="font-size:14px;color:#ffeeaa">The magic lamp glows before you...</span><br><span style="font-size:13px;color:#ccaa66;font-style:italic">Approach the lamp and press E to claim it.</span>';
+          document.body.appendChild(wd); setTimeout(() => wd.remove(), 6000);
+        }
+        if (!s.boomerang) hit = true;
+      }
+    }
+
+    // L3: regular enemy hit
+    if (!hit && CURRENT_LEVEL === 3) {
+      for (let li = _l3Enemies.length - 1; li >= 0; li--) {
+        const le = _l3Enemies[li];
+        if (Math.hypot(s.mesh.position.x - le.mesh.position.x, s.mesh.position.z - le.mesh.position.z) < 1.4 * playerStats.projSize) {
+          const isCrit = Math.random() < playerStats.critChance;
+          le.hp -= SNOWBALL_DAMAGE * playerStats.damage * (playerStats.snowballDmgMult||1) * (isCrit ? 2 : 1);
+          spawnImpact(s.mesh.position.x, 0.6, s.mesh.position.z, isCrit);
+          if (le.hp <= 0) {
+            scene.remove(le.mesh); _l3Enemies.splice(li, 1);
+            killCount++; spawnXpOrb(le.mesh.position.x, le.mesh.position.z, 3); updateHUD();
           }
           if (!s.boomerang) hit = true;
           break;
@@ -5099,6 +5595,10 @@ window.addEventListener('keydown', e => {
       }
     } else if (_desertPortalGroup && Math.hypot(px-47,pz+85)<2.5) {
       if (_hasAntiHeatSunglasses) {
+        // Save L2 progress before going to desert
+        const _ds = { hp: playerState.hp, maxHp: playerState.maxHp, stats: {...playerStats}, tomeStacks: {...tomeStacks}, weapons: [...equippedWeapons], level: playerLevel, pendingTomes, skin: localStorage.getItem('playerSkin')||'normal', activeSkinVal: activeSkin, sunglasses: true };
+        sessionStorage.setItem('levelProgress', JSON.stringify(_ds));
+        sessionStorage.setItem('bgmAutoStart','1');
         window.location.href = 'desert.html';
       } else {
         const el = document.createElement('div');
@@ -5114,6 +5614,28 @@ window.addEventListener('keydown', e => {
           _shipPopup.style.display='block'; _shipPopupOpen=true; break;
         }
       }
+    }
+  }
+  if (e.key.toLowerCase() === 'e' && CURRENT_LEVEL === 3) {
+    const px = player.position.x, pz = player.position.z;
+    if (_l3Lamp && !_l3LampPickedUp && !_l3Wight && Math.hypot(px - _l3Lamp.x, pz - _l3Lamp.z) < 3.5) {
+      _l3LampPickedUp = true;
+      scene.remove(_l3Lamp.group);
+      // Spawn genie
+      if (!_l3GenieSpawned) {
+        _l3GenieSpawned = true;
+        const gm = buildGenie(); gm.position.set(0, 0, -124); scene.add(gm);
+        // Genie floats upward then fades
+        let gt = 0;
+        const _genieAnim = (dt2) => { gt += dt2; gm.position.y += 0.5 * dt2; gm.rotation.y += dt2; if (gt > 5) scene.remove(gm); };
+        // We animate via a simple interval
+        const _gInterval = setInterval(() => { _genieAnim(0.016); if (gt > 5) clearInterval(_gInterval); }, 16);
+      }
+      // Victory popup
+      const vd = document.createElement('div');
+      vd.style.cssText = 'position:fixed;top:28%;left:50%;transform:translateX(-50%);background:rgba(10,5,30,0.95);border:2px solid #4488ff;border-radius:14px;padding:22px 36px;font-family:monospace;font-size:20px;color:#aaccff;text-shadow:0 0 16px #4488ff;pointer-events:none;z-index:9999;text-align:center;max-width:500px;line-height:1.8';
+      vd.innerHTML = '✨ <strong style="color:#ffd700">Magic Lamp obtained!</strong><br><span style="font-size:15px;color:#88aaff">A swirl of blue smoke fills the room...</span><br><span style="font-size:15px;color:#aaddff;font-style:italic">The genie materialises before you!</span><br><br><span style="font-size:13px;color:#88aacc">"You have freed me, little penguin!<br>Your wish shall be granted... but not today."</span>';
+      document.body.appendChild(vd); setTimeout(() => vd.remove(), 9000);
     }
   }
   if (e.key === 'Escape') { _bottlePopup.style.display='none'; _shipPopup.style.display='none'; _bottlePopupOpen=false; _shipPopupOpen=false; }
@@ -5237,6 +5759,7 @@ const _debugActions = [
   { label: '🐱  Trigger Level 1 End',  fn: () => { triggerLevel1End(); } },
   { label: () => _godMode ? '🛡  God Mode  [ON]' : '🛡  God Mode  [OFF]', fn: () => { _godMode = !_godMode; setGodModeVisual(_godMode); }, noClose: true },
   { label: '🌊  Go to Level 2',           fn: () => { saveProgressAndUnlockPortal(); sessionStorage.setItem('bgmAutoStart','1'); setTimeout(() => { window.location.href = 'level2.html'; }, 100); } },
+  { label: '🏜  Go to Level 3',           fn: () => { const _ds={hp:playerState.hp,maxHp:playerState.maxHp,stats:{...playerStats},tomeStacks:{...tomeStacks},weapons:[...equippedWeapons],level:playerLevel,pendingTomes,skin:localStorage.getItem('playerSkin')||'normal',activeSkinVal:activeSkin,sunglasses:true}; sessionStorage.setItem('levelProgress',JSON.stringify(_ds)); sessionStorage.setItem('bgmAutoStart','1'); window.location.href='desert.html'; } },
 ];
 
 function buildDebugList() {
@@ -5695,7 +6218,8 @@ function update(dt) {
 
   // Auto-attack (boomerang waits for return before firing again)
   const _hasL2Targets = CURRENT_LEVEL === 2 && (_ghostPirate || _l2Sharks.length > 0 || _l2Orcas.length > 0 || _l2BeachPirates.length > 0);
-  if ((enemies.length > 0 || boss || _hasL2Targets) && !boomerangInFlight && movementLockout !== Infinity) {
+  const _hasL3Targets = CURRENT_LEVEL === 3 && (_l3Wight || _l3Enemies.length > 0);
+  if ((enemies.length > 0 || boss || _hasL2Targets || _hasL3Targets) && !boomerangInFlight && movementLockout !== Infinity) {
     attackTimer -= dt;
     if (attackTimer <= 0) {
       const target = findNearestEnemy();
@@ -5726,6 +6250,7 @@ function update(dt) {
   updateXpOrbs(dt);
   updateL2Enemies(dt);
   if (CURRENT_LEVEL === 2) updateGhostPirate(dt);
+  if (CURRENT_LEVEL === 3) updateL3(dt);
   updateSnowballs(dt);
   updateNomOrbs(dt);
   updateBombs(dt);

@@ -37,7 +37,10 @@
       "Bash(awk NR>=490 && NR<=540 *)",
       "Bash(python3 *)",
       "Bash(git rm *)",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "Bash(npx ccstatusline@latest *)",
+      "Bash(rsync -av --exclude=\"Backup\" /workspaces/1Claude/ \"/workspaces/1Claude/Backup/Unwanted Penguin beta 1.0/\")",
+      "Bash(npm run *)"
     ]
   }
 }
