@@ -1599,17 +1599,25 @@ function buildPenguin() {
   beak.rotation.x = Math.PI / 2; beak.position.set(0, 1.36, 0.44);
   g.add(beak);
 
+  const _pgWings = [];
   [-1, 1].forEach(side => {
     const wing = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), black);
     wing.scale.set(0.35, 0.85, 0.28); wing.position.set(side * 0.53, 0.72, 0);
     wing.rotation.z = side * 0.35; wing.castShadow = true;
-    g.add(wing);
+    wing.userData.baseRotZ = wing.rotation.z;
+    g.add(wing); _pgWings.push(wing);
   });
+  g.userData.wings = _pgWings;
 
+  const _pgFeet = [];
   [-0.17, 0.17].forEach(x => {
     const foot = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 0.28), orange);
-    foot.position.set(x, 0.025, 0.08); g.add(foot);
+    foot.position.set(x, 0.025, 0.08);
+    foot.userData.baseZ = 0.08; foot.userData.baseY = 0.025;
+    g.add(foot); _pgFeet.push(foot);
   });
+  g.userData.feet = _pgFeet;
+  g.userData.animPhase = Math.random() * Math.PI * 2;
 
   if (_hasAntiHeatSunglasses) g.add(_makeSunglasses(1.44, 0.38, 0.12));
   return g;
@@ -1666,18 +1674,26 @@ function buildEvilPenguin() {
   g.add(beak);
 
   // Chubby wings
+  const _epWings = [];
   [-1, 1].forEach(side => {
     const wing = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), gray);
     wing.scale.set(0.38, 0.88, 0.3); wing.position.set(side * 0.6, 0.7, 0);
     wing.rotation.z = side * 0.3; wing.castShadow = true;
-    g.add(wing);
+    wing.userData.baseRotZ = wing.rotation.z;
+    g.add(wing); _epWings.push(wing);
   });
+  g.userData.wings = _epWings;
 
   // Dark feet
+  const _epFeet = [];
   [-0.19, 0.19].forEach(x => {
     const foot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.3), darkbeak);
-    foot.position.set(x, 0.025, 0.09); g.add(foot);
+    foot.position.set(x, 0.025, 0.09);
+    foot.userData.baseZ = 0.09; foot.userData.baseY = 0.025;
+    g.add(foot); _epFeet.push(foot);
   });
+  g.userData.feet = _epFeet;
+  g.userData.animPhase = Math.random() * Math.PI * 2;
 
   if (_hasAntiHeatSunglasses) g.add(_makeSunglasses(1.46, 0.40, 0.14));
   return g;
@@ -1749,9 +1765,10 @@ function buildHumanPlayer() {
 
   // Arms — cylinders off shoulders
   const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.62, 8), shirt);
-  armL.position.set(-0.42, 1.18, 0); g.add(armL);
+  armL.position.set(-0.42, 1.18, 0); armL.userData.baseRotZ = 0; g.add(armL);
   const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.5, 8), shirt);
-  armR.position.set(0.42, 1.32, 0.12); armR.rotation.x = -0.65; g.add(armR);
+  armR.position.set(0.42, 1.32, 0.12); armR.rotation.x = -0.65; armR.userData.baseRotZ = 0; g.add(armR);
+  g.userData.arms = [armL, armR]; g.userData.animPhase = Math.random() * Math.PI * 2;
 
   // Rifle — barrel + stock inside a pivot group so we can rotate it
   const gunPivot = new THREE.Group();
@@ -1833,11 +1850,14 @@ function buildBeachPirate() {
 
   // Left arm — raised, holding flintlock pistol
   const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.62, 8), coat);
-  armL.rotation.z = -0.5; armL.rotation.x = 0.3; armL.position.set(-0.44, 1.22, -0.08); g.add(armL);
+  armL.rotation.z = -0.5; armL.rotation.x = 0.3; armL.position.set(-0.44, 1.22, -0.08);
+  armL.userData.baseRotZ = armL.rotation.z; g.add(armL);
 
   // Right arm — angled out holding sword
   const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.6, 8), coat);
-  armR.rotation.z = 0.7; armR.rotation.x = -0.4; armR.position.set(0.44, 1.28, -0.1); g.add(armR);
+  armR.rotation.z = 0.7; armR.rotation.x = -0.4; armR.position.set(0.44, 1.28, -0.1);
+  armR.userData.baseRotZ = armR.rotation.z; g.add(armR);
+  g.userData.arms = [armL, armR]; g.userData.animPhase = Math.random() * Math.PI * 2;
 
   // Sword — blade + guard + grip in right hand
   const blade = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.72, 0.02), silver);
@@ -1957,12 +1977,14 @@ function buildWizardCat() {
   g.add(band);
 
   // Arms
+  const _wcArms = [];
   [-1, 1].forEach(side => {
     const arm = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), purple);
     arm.scale.set(0.4, 0.9, 0.35); arm.position.set(side * 0.55, 0.6, 0.05);
-    arm.rotation.z = side * 0.5;
-    g.add(arm);
+    arm.rotation.z = side * 0.5; arm.userData.baseRotZ = arm.rotation.z;
+    g.add(arm); _wcArms.push(arm);
   });
+  g.userData.arms = _wcArms; g.userData.animPhase = Math.random() * Math.PI * 2;
 
   // Tail — curved back
   const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.04, 0.9, 8), purple);
@@ -1994,9 +2016,12 @@ function buildReptilian() {
   // Tail
   const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.18,1.0,6), scale); tail.rotation.x=0.5; tail.position.set(0,0.35,-0.75); g.add(tail);
   // Legs
+  const _repLegs = [];
   [[-0.4,0.2,0.3],[0.4,0.2,0.3],[-0.35,0.15,-0.25],[0.35,0.15,-0.25]].forEach(([lx,ly,lz]) => {
-    const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.05,0.42,6),scale); leg.position.set(lx,ly,lz); g.add(leg);
+    const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.05,0.42,6),scale); leg.position.set(lx,ly,lz);
+    leg.userData.baseRotX = 0; g.add(leg); _repLegs.push(leg);
   });
+  g.userData.legs = _repLegs; g.userData.animPhase = Math.random() * Math.PI * 2;
   return g;
 }
 
@@ -2007,14 +2032,20 @@ function buildScorpion3() {
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.38,8,5), chitin); body.scale.set(1.2,0.7,1.5); body.position.y=0.28; g.add(body);
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.22,7,5), chitin); head.position.set(0,0.3,0.52); g.add(head);
   // Claws
+  const _scClaws = [];
   [-1,1].forEach(s => {
-    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.5,6),chitin); arm.rotation.z=s*0.9; arm.position.set(s*0.52,0.3,0.3); g.add(arm);
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.5,6),chitin); arm.rotation.z=s*0.9; arm.position.set(s*0.52,0.3,0.3);
+    arm.userData.baseRotZ = arm.rotation.z; g.add(arm); _scClaws.push(arm);
     const claw=new THREE.Mesh(new THREE.SphereGeometry(0.14,6,5),dark); claw.scale.set(1.3,0.7,1.0); claw.position.set(s*0.82,0.3,0.55); g.add(claw);
   });
+  g.userData.claws = _scClaws;
   // Legs
+  const _scLegs = [];
   [-1,1].forEach(s => { for(let i=0;i<3;i++) {
-    const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.5,4),chitin); leg.rotation.z=s*0.7; leg.position.set(s*0.45,0.1,0.1-i*0.22); g.add(leg);
+    const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.5,4),chitin); leg.rotation.z=s*0.7; leg.position.set(s*0.45,0.1,0.1-i*0.22);
+    leg.userData.baseRotZ = leg.rotation.z; leg.userData.baseRotX = 0; g.add(leg); _scLegs.push(leg);
   }});
+  g.userData.legs = _scLegs; g.userData.animPhase = Math.random() * Math.PI * 2;
   // Tail/stinger
   const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.1,0.7,6),chitin); tail.rotation.x=-1.1; tail.position.set(0,0.6,-0.6); g.add(tail);
   const stinger=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.28,6),dark); stinger.rotation.x=0.6; stinger.position.set(0,1.0,-0.85); g.add(stinger);
@@ -2034,7 +2065,9 @@ function buildMummy() {
   // Glowing eyes
   [-0.1,0.1].forEach(x=>{const ey=new THREE.Mesh(new THREE.SphereGeometry(0.07,6,6),eye);ey.position.set(x,1.46,0.27);g.add(ey);});
   // Arms outstretched
-  [-1,1].forEach(s=>{const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.7,6),wrap);arm.rotation.z=s*1.1;arm.position.set(s*0.62,0.85,0);g.add(arm);});
+  const _mmArms = [];
+  [-1,1].forEach(s=>{const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.7,6),wrap);arm.rotation.z=s*1.1;arm.position.set(s*0.62,0.85,0);arm.userData.baseRotZ=arm.rotation.z;g.add(arm);_mmArms.push(arm);});
+  g.userData.arms = _mmArms; g.userData.animPhase = Math.random() * Math.PI * 2;
   // Legs
   [-0.18,0.18].forEach(x=>{const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.09,0.52,6),wrap);leg.position.set(x,0.26,0);g.add(leg);});
   return g;
@@ -2060,10 +2093,12 @@ function buildWight() {
   // Glowing eyes
   [-0.14,0.14].forEach(x=>{const ey=new THREE.Mesh(new THREE.SphereGeometry(0.08,6,6),eye);ey.position.set(x,1.96,0.3);g.add(ey);});
   // Arms — bony
+  const _wiArms = [];
   [-1,1].forEach(s=>{
-    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.9,6),bone); arm.rotation.z=s*0.8; arm.position.set(s*0.72,1.2,0); g.add(arm);
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.9,6),bone); arm.rotation.z=s*0.8; arm.position.set(s*0.72,1.2,0); arm.userData.baseRotZ=arm.rotation.z; g.add(arm); _wiArms.push(arm);
     const hand=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,5),bone); hand.position.set(s*1.12,0.85,0); g.add(hand);
   });
+  g.userData.arms = _wiArms; g.userData.animPhase = Math.random() * Math.PI * 2;
   return g;
 }
 
@@ -2326,8 +2361,9 @@ function buildGhostPirate() {
   const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,0.08,10), hatMat); brim.position.y=1.76; g.add(brim);
   const crown= new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.38,0.52,8), hatMat); crown.position.y=2.05; g.add(crown);
   // Arms
-  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.72,6), ghostMat); armL.position.set(-0.55,0.9,0); armL.rotation.z=0.7; g.add(armL);
-  const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.72,6), ghostMat); armR.position.set( 0.55,0.9,0); armR.rotation.z=-0.7; g.add(armR);
+  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.72,6), ghostMat); armL.position.set(-0.55,0.9,0); armL.rotation.z=0.7; armL.userData.baseRotZ=0.7; g.add(armL);
+  const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.72,6), ghostMat); armR.position.set( 0.55,0.9,0); armR.rotation.z=-0.7; armR.userData.baseRotZ=-0.7; g.add(armR);
+  g.userData.arms = [armL, armR]; g.userData.animPhase = Math.random() * Math.PI * 2;
   // Sword on right arm — pommel, grip, crossguard, tapered blade
   const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.08,6,5), swordMat); pommel.position.set(0.95,0.28,0); g.add(pommel);
   const grip   = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.34,6), swordMat); grip.position.set(0.95,0.48,0); g.add(grip);
@@ -2552,7 +2588,9 @@ function buildSeal() {
     f2.rotation.y = side * 0.5; parts.push(f2);
   });
 
-  return buildMergedGroup(parts); // 4 draw calls → replaces ~16
+  const _sg = buildMergedGroup(parts); // 4 draw calls → replaces ~16
+  _sg.userData.bodyBob = { amp: 0.07, speed: 4 }; _sg.userData.animPhase = Math.random() * Math.PI * 2;
+  return _sg;
 }
 
 function buildSkua() {
@@ -2583,6 +2621,7 @@ function buildSkua() {
 
   const g = buildMergedGroup(parts); // 3 draw calls → replaces ~8
   g.traverse(c => { if (c.isMesh) c.castShadow = true; });
+  g.userData.bodyBob = { amp: 0.06, speed: 5 }; g.userData.animPhase = Math.random() * Math.PI * 2;
   return g;
 }
 
@@ -3301,6 +3340,7 @@ function buildPolarBear() {
 
   const g = buildMergedGroup(parts); // 3 draw calls → replaces ~16
   g.traverse(c => { if (c.isMesh) c.castShadow = true; });
+  g.userData.bodyBob = { amp: 0.07, speed: 3.5 }; g.userData.animPhase = Math.random() * Math.PI * 2;
   return g;
 }
 
@@ -3338,12 +3378,14 @@ function buildKrill() {
   });
 
   // Legs (pairs)
+  const _krLegs = [];
   [-0.1, 0.4, 0.9].forEach(x => {
     [-1, 1].forEach(side => {
       const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.02, 0.7, 5), darkPink);
-      leg.rotation.z = side * 0.5; leg.position.set(x, 0.2, side * 0.55); g.add(leg);
+      leg.rotation.z = side * 0.5; leg.userData.baseRotZ = leg.rotation.z; leg.position.set(x, 0.2, side * 0.55); g.add(leg); _krLegs.push(leg);
     });
   });
+  g.userData.legs = _krLegs; g.userData.animPhase = Math.random() * Math.PI * 2;
 
   // Boss glow
   const glow = new THREE.PointLight(0xff2255, 3, 12);
@@ -3630,7 +3672,9 @@ function buildBelgica() {
     }
   });
 
-  return buildMergedGroup(parts); // 1 draw call → replaces ~8
+  const _bel = buildMergedGroup(parts); // 1 draw call → replaces ~8
+  _bel.userData.bodyBob = { amp: 0.04, speed: 6 }; _bel.userData.animPhase = Math.random() * Math.PI * 2;
+  return _bel;
 }
 
 function spawnSwarmWave() {
@@ -6481,8 +6525,78 @@ let lastTime = performance.now();
 let movementLockout = 0;
 let frameTime = 0; // cached Date.now()/1000 per frame — avoids repeated calls in update loops
 
+// ── Walking / Idle Animations ─────────────────────────────────────────────────
+function animateModels() {
+  const t = frameTime;
+
+  // Player model
+  if (!playerState.dead) {
+    const moving = playerVel.x !== 0 || playerVel.z !== 0;
+    const pm = builtModel.userData;
+    const pp = pm.animPhase ?? 0;
+    if (pm.wings) {
+      pm.wings.forEach((w, i) => {
+        w.rotation.z = w.userData.baseRotZ + (moving ? Math.sin(t * 9 + pp + i * Math.PI) * 0.5 : Math.sin(t * 1.5 + pp + i * Math.PI) * 0.08);
+      });
+    }
+    if (pm.feet) {
+      pm.feet.forEach((f, i) => {
+        const s = moving ? Math.sin(t * 9 + pp + i * Math.PI) : 0;
+        f.position.z = f.userData.baseZ + s * 0.1;
+        f.position.y = f.userData.baseY + (moving ? Math.max(0, s) * 0.07 : 0);
+      });
+    }
+    if (pm.arms) {
+      pm.arms.forEach((a, i) => {
+        a.rotation.z = (a.userData.baseRotZ ?? 0) + (moving ? Math.sin(t * 9 + pp + i * Math.PI) * 0.32 : 0);
+      });
+    }
+  }
+
+  // All enemy/entity meshes
+  const allEnts = [...enemies];
+  if (CURRENT_LEVEL === 2) { allEnts.push(..._l2BeachPirates); if (_ghostPirate) allEnts.push(_ghostPirate); }
+  if (CURRENT_LEVEL === 3) { allEnts.push(..._l3Enemies); if (_l3Wight) allEnts.push(_l3Wight); }
+  if (boss) allEnts.push(boss);
+
+  for (let ei = 0; ei < allEnts.length; ei++) {
+    const e = allEnts[ei];
+    if (!e.mesh) continue;
+    const ud = e.mesh.userData;
+    const ph = (ud.animPhase ?? ei * 1.7);
+
+    if (ud.wings) {
+      ud.wings.forEach((w, i) => {
+        w.rotation.z = w.userData.baseRotZ + Math.sin(t * 7 + ph + i * Math.PI) * 0.38;
+      });
+    }
+    if (ud.legs) {
+      ud.legs.forEach((l, i) => {
+        const baseRX = l.userData.baseRotX ?? 0;
+        const baseRZ = l.userData.baseRotZ ?? 0;
+        l.rotation.x = baseRX + Math.sin(t * 6 + ph + i * (Math.PI * 2 / ud.legs.length)) * 0.32;
+        if (baseRZ !== 0) l.rotation.z = baseRZ + Math.sin(t * 6 + ph + i * Math.PI) * 0.18;
+      });
+    }
+    if (ud.arms) {
+      ud.arms.forEach((a, i) => {
+        a.rotation.z = a.userData.baseRotZ + Math.sin(t * 2.5 + ph + i * Math.PI) * 0.2;
+      });
+    }
+    if (ud.claws) {
+      ud.claws.forEach((c, i) => {
+        c.rotation.z = c.userData.baseRotZ + Math.sin(t * 3.5 + ph + i * Math.PI) * 0.25;
+      });
+    }
+    if (ud.bodyBob) {
+      e.mesh.position.y = Math.sin(t * ud.bodyBob.speed + ph) * ud.bodyBob.amp;
+    }
+  }
+}
+
 function update(dt) {
   frameTime = Date.now() / 1000;
+  animateModels();
   updateTomeInput(dt);
   if (_humanGunPivot) {
     _gunHoldTimer = Math.max(0, _gunHoldTimer - dt);
