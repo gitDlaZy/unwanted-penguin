@@ -5778,12 +5778,12 @@ document.body.appendChild(leftPad);
 if (EASY) {
   const easyBadge = document.createElement('div');
   easyBadge.style.cssText = `
-    position:fixed; bottom:192px; left:40px; z-index:251;
-    font-family:monospace; font-size:11px; font-weight:bold;
+    position:fixed; bottom:200px; left:40px; z-index:251;
+    font-family:monospace; font-size:22px; font-weight:bold;
     color:#ffdd44; text-shadow:0 0 8px #ffaa00;
     background:rgba(40,20,0,0.6); border:1px solid #ffaa0055;
-    border-radius:6px; padding:3px 8px; pointer-events:none;
-    letter-spacing:1px;
+    border-radius:10px; padding:6px 16px; pointer-events:none;
+    letter-spacing:2px;
   `;
   easyBadge.textContent = '⚡ EASY MODE — testing';
   document.body.appendChild(easyBadge);
