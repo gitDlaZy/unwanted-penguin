@@ -2,6 +2,11 @@
 const CURRENT_LEVEL = window.CURRENT_LEVEL || 1;
 const _levelSave    = JSON.parse(sessionStorage.getItem('levelProgress') || 'null');
 
+// ── Difficulty ────────────────────────────────────────────────────────────────
+// 'normal' = balanced (saved balancing), 'easy' = player 20% stronger + 10x L3 gold
+const DIFFICULTY = 'easy';
+const EASY = DIFFICULTY === 'easy';
+
 
 // ── Renderer ──────────────────────────────────────────────────────────────────
 
@@ -2601,9 +2606,10 @@ player.position.set(35, 0, 25);
 scene.add(player);
 
 // Restore progress from Level 1 if entering Level 2
+const _baseHp = EASY ? 120 : 100;
 const playerState = {
-  hp:               _levelSave?.hp              ?? 100,
-  maxHp:            _levelSave?.maxHp           ?? 100,
+  hp:               _levelSave?.hp              ?? _baseHp,
+  maxHp:            _levelSave?.maxHp           ?? _baseHp,
   iframes: 0, dead: false,
   shaggyCharges:    _levelSave?.shaggyCharges    ?? 0,
   shaggyMaxCharges: _levelSave?.shaggyMaxCharges ?? 0,
@@ -2613,10 +2619,10 @@ const playerState = {
 // ── Player Stats (tome upgrades) ──────────────────────────────────────────────
 
 const playerStats = Object.assign({
-  damage: 1.0, critChance: 0, attackRate: 1.0, weaponCooldown: 1.0, magicDmgMult: 1.0,
+  damage: EASY ? 1.2 : 1.0, critChance: 0, attackRate: 1.0, weaponCooldown: 1.0, magicDmgMult: EASY ? 1.2 : 1.0,
   projCount: 1, projExtraChance: 0, projSize: 1.0, projSpeed: 1.0,
   maxShield: 0, shield: 0, shieldRecharge: 0, shieldDmgTimer: 0,
-  evasion: 0, lifesteal: 0, bloodHeal: 0, moveSpeed: 1.05, pickupRadius: 0.7,
+  evasion: 0, lifesteal: 0, bloodHeal: 0, moveSpeed: EASY ? 1.26 : 1.05, pickupRadius: 0.7,
   knockback: 0, cursed: 0, boomerang: false, iframeDuration: 1.0, shaggyStacks: 0, gustOfWind: 0,
 }, _levelSave?.stats ?? {});
 
@@ -4215,7 +4221,7 @@ function updateSnowballs(dt) {
         if (_l3Wight.hp <= 0) {
           scene.remove(_l3Wight.mesh);
           _l3WightBullets.forEach(b => scene.remove(b.mesh)); _l3WightBullets.length = 0;
-          killCount++; spawnXpOrb(_l3Wight.mesh.position.x, _l3Wight.mesh.position.z, 15); updateHUD();
+          killCount++; spawnXpOrb(_l3Wight.mesh.position.x, _l3Wight.mesh.position.z, EASY ? 150 : 15); updateHUD();
           _l3Wight = null; _updateWightHUD();
           // Show lamp appear message
           const wd = document.createElement('div');
@@ -4237,7 +4243,7 @@ function updateSnowballs(dt) {
           spawnImpact(s.mesh.position.x, 0.6, s.mesh.position.z, isCrit);
           if (le.hp <= 0) {
             scene.remove(le.mesh); _l3Enemies.splice(li, 1);
-            killCount++; spawnXpOrb(le.mesh.position.x, le.mesh.position.z, 3); updateHUD();
+            killCount++; spawnXpOrb(le.mesh.position.x, le.mesh.position.z, EASY ? 30 : 3); updateHUD();
           }
           if (!s.boomerang) hit = true;
           break;
