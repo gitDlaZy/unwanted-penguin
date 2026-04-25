@@ -4221,7 +4221,7 @@ function updateSnowballs(dt) {
         if (_l3Wight.hp <= 0) {
           scene.remove(_l3Wight.mesh);
           _l3WightBullets.forEach(b => scene.remove(b.mesh)); _l3WightBullets.length = 0;
-          killCount++; spawnXpOrb(_l3Wight.mesh.position.x, _l3Wight.mesh.position.z, EASY ? 150 : 15); updateHUD();
+          killCount++; spawnXpOrb(_l3Wight.mesh.position.x, _l3Wight.mesh.position.z, EASY ? 600 : 15); updateHUD();
           _l3Wight = null; _updateWightHUD();
           // Show lamp appear message
           const wd = document.createElement('div');
@@ -4243,7 +4243,7 @@ function updateSnowballs(dt) {
           spawnImpact(s.mesh.position.x, 0.6, s.mesh.position.z, isCrit);
           if (le.hp <= 0) {
             scene.remove(le.mesh); _l3Enemies.splice(li, 1);
-            killCount++; spawnXpOrb(le.mesh.position.x, le.mesh.position.z, EASY ? 30 : 3); updateHUD();
+            killCount++; spawnXpOrb(le.mesh.position.x, le.mesh.position.z, EASY ? 120 : 3); updateHUD();
           }
           if (!s.boomerang) hit = true;
           break;
