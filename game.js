@@ -4720,7 +4720,7 @@ function showDeathScreen() {
   _nootSfx.play().catch(() => {});
   deathScreen.innerHTML = `
     <div style="font-size:46px;font-weight:bold;letter-spacing:6px;text-shadow:0 0 30px #00aaff">YOU FROZE</div>
-    <div style="font-size:15px;opacity:0.5">☠ ${killCount} kills &nbsp;|&nbsp; Level ${playerLevel}</div>
+    <div style="font-size:15px;opacity:0.5">☠ ${killCount} kills &nbsp;|&nbsp; Level ${playerLevel}${EASY ? ' &nbsp;|&nbsp; <span style="color:#ffdd44;opacity:1">⚡ Easy Mode</span>' : ''}</div>
 <div style="display:flex;gap:10px;align-items:center;margin-bottom:4px">
       <input id="nameInput" type="text" maxlength="16" placeholder="Enter your name"
         style="background:rgba(0,20,50,0.8);border:1px solid #44aaff;color:#aee8ff;
@@ -4784,8 +4784,9 @@ function showDeathScreen() {
     submit.textContent = 'SAVING...';
     submit.disabled = true;
     localStorage.setItem('playerName', input.value);
-    const isNewHigh = await submitOnlineScore(input.value, killCount, playerLevel);
-    submit.textContent = isNewHigh ? '✓ NEW HIGH SCORE' : '✓ SUBMITTED';
+    const submittedName = EASY ? input.value.trim() + ' ⚡' : input.value;
+    const isNewHigh = await submitOnlineScore(submittedName, killCount, playerLevel);
+    submit.textContent = isNewHigh ? (EASY ? '✓ NEW HIGH SCORE (EASY)' : '✓ NEW HIGH SCORE') : '✓ SUBMITTED';
     submit.style.borderColor = '#44ffaa';
     submit.style.color = '#44ffaa';
     const el = document.getElementById('scoreboardEl');
