@@ -6548,11 +6548,6 @@ function animateModels() {
         f.position.y = f.userData.baseY + (moving ? Math.max(0, s) * 0.07 : 0);
       });
     }
-    if (pm.arms) {
-      pm.arms.forEach((a, i) => {
-        a.rotation.z = (a.userData.baseRotZ ?? 0) + (moving ? Math.sin(t * 9 + pp + i * Math.PI) * 0.32 : 0);
-      });
-    }
   }
 
   // All enemy/entity meshes
@@ -6578,11 +6573,6 @@ function animateModels() {
         const baseRZ = l.userData.baseRotZ ?? 0;
         l.rotation.x = baseRX + Math.sin(t * 6 + ph + i * (Math.PI * 2 / ud.legs.length)) * 0.32;
         if (baseRZ !== 0) l.rotation.z = baseRZ + Math.sin(t * 6 + ph + i * Math.PI) * 0.18;
-      });
-    }
-    if (ud.arms) {
-      ud.arms.forEach((a, i) => {
-        a.rotation.z = a.userData.baseRotZ + Math.sin(t * 2.5 + ph + i * Math.PI) * 0.2;
       });
     }
     if (ud.claws) {
