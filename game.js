@@ -617,10 +617,10 @@ if (CURRENT_LEVEL === 2) {
     const b1   = new THREE.Mesh(new THREE.BoxGeometry(1.22,0.08,0.82), goldMat); b1.position.set(0,0.3,0); g.add(b1);
     const b2   = b1.clone(); b2.position.set(0,0.6,0); g.add(b2);
     const lock = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.22,0.1), goldMat); lock.position.set(0,0.55,0.42); g.add(lock);
-    g.position.set(-63, 0, -100);
+    g.position.set(47, 0, -85);
     scene.add(g);
     const glow = new THREE.PointLight(0xffaa00, 1.0, 10);
-    glow.position.set(-63, 2, -100);
+    glow.position.set(47, 2, -85);
     scene.add(glow);
     // Store for animation and interaction
     window._l2ChestGroup = g;
@@ -642,7 +642,7 @@ if (CURRENT_LEVEL === 2) {
     const sandRingMat  = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff9900, emissiveIntensity: 1.6, roughness: 0.3, metalness: 0.4 });
 
     const pg = new THREE.Group();
-    pg.position.set(47, 0, -85);
+    pg.position.set(-63, 0, -100);
 
     // Sandy stone pillars
     const pL = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.32, 5.0, 6), sandStoneMat);
@@ -693,6 +693,7 @@ if (CURRENT_LEVEL === 2) {
     const lt = new THREE.PointLight(0xff8800, 3.5, 18);
     lt.position.set(0, 2.5, 0.8); pg.add(lt);
 
+    pg.visible = false; // hidden until chest is opened
     scene.add(pg);
     _desertPortalGroup   = pg;
     _desertPortalShimmer1 = sw1;
@@ -700,7 +701,7 @@ if (CURRENT_LEVEL === 2) {
     _desertPortalLight    = lt;
 
     // Register as walkable surface so player doesn't sink on approach
-    _l2IcePlatforms.push({ x: 47, z: -85, r: 4 });
+    _l2IcePlatforms.push({ x: -63, z: -100, r: 4 });
   })();
 }
 
@@ -3029,7 +3030,7 @@ document.body.appendChild(hud);
 
 const hpLabel = document.createElement('div');
 hpLabel.style.cssText = 'color:#aee8ff;font-family:monospace;font-size:13px;text-shadow:0 0 6px #44aaff';
-hpLabel.textContent = `HP  ${playerState.hp} / ${playerState.maxHp}`;
+hpLabel.textContent = `HP  ${Math.ceil(playerState.hp)} / ${playerState.maxHp}`;
 hud.appendChild(hpLabel);
 
 const hpBarOuter = document.createElement('div');
@@ -3289,7 +3290,7 @@ function updateHUD() {
   const pct = Math.max(0, playerState.hp / playerState.maxHp) * 100;
   hpBarInner.style.width = pct + '%';
   hpBarInner.style.background = pct > 50 ? '#22ccff' : pct > 25 ? '#ffaa00' : '#ff3300';
-  hpLabel.textContent = `HP  ${playerState.hp} / ${playerState.maxHp}`;
+  hpLabel.textContent = `HP  ${Math.ceil(playerState.hp)} / ${playerState.maxHp}`;
   if (playerStats.maxShield > 0) {
     shieldRow.style.display = 'flex';
     shieldBarInner.style.width = (playerStats.shield / playerStats.maxShield * 100) + '%';
@@ -6032,7 +6033,7 @@ window.addEventListener('keydown', e => {
     else if (_l2Bottle && Math.hypot(px-_l2Bottle.x,pz-_l2Bottle.z)<3.5) {
       document.getElementById('_bottleText').textContent = 'Brave traveller — a key lies hidden in these waters. Find it, and the ancient chest aboard the wreck shall open. The cold depths hide what the warm world forgot.';
       _bottlePopup.style.display='block'; _bottlePopupOpen=true;
-    } else if (!_chestOpened && Math.hypot(px+63,pz+100)<3.5) {
+    } else if (!_chestOpened && Math.hypot(px-47,pz+85)<3.5) {
       if (_hasRustyKey) {
         _chestOpened = true;
         if (window._l2ChestGroup) {
@@ -6040,6 +6041,7 @@ window.addEventListener('keydown', e => {
           if (lid) lid.rotation.x = -Math.PI/2;
           if (window._l2ChestGlow) window._l2ChestGlow.color.set(0xffee88);
         }
+        if (_desertPortalGroup) _desertPortalGroup.visible = true;
         // Grant Anti-Heat Sunglasses and rebuild skin with glasses
         _hasAntiHeatSunglasses = true;
         penguinMesh.clear();
@@ -6068,7 +6070,7 @@ window.addEventListener('keydown', e => {
         document.body.appendChild(el);
         setTimeout(() => el.remove(), 2000);
       }
-    } else if (_desertPortalGroup && Math.hypot(px-47,pz+85)<2.5) {
+    } else if (_desertPortalGroup && _desertPortalGroup.visible && Math.hypot(px+63,pz+100)<2.5) {
       if (_hasAntiHeatSunglasses) {
         // Save L2 progress before going to desert
         const _ds = { hp: playerState.hp, maxHp: playerState.maxHp, stats: {...playerStats}, tomeStacks: {...tomeStacks}, weapons: [...equippedWeapons], level: playerLevel, pendingTomes, skin: localStorage.getItem('playerSkin')||'normal', activeSkinVal: activeSkin, sunglasses: true };
