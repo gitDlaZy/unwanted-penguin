@@ -4,7 +4,7 @@ const _levelSave    = JSON.parse(sessionStorage.getItem('levelProgress') || 'nul
 
 // ── Difficulty ────────────────────────────────────────────────────────────────
 // 'normal' = balanced (saved balancing), 'easy' = player 20% stronger + 10x L3 gold
-const DIFFICULTY = 'easy';
+const DIFFICULTY = 'normal';
 const EASY = DIFFICULTY === 'easy';
 
 
