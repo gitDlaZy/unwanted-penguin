@@ -6538,7 +6538,7 @@ function animateModels() {
     const pp = pm.animPhase ?? 0;
     if (pm.wings) {
       pm.wings.forEach((w, i) => {
-        w.rotation.z = w.userData.baseRotZ + (moving ? Math.sin(t * 9 + pp + i * Math.PI) * 0.5 : Math.sin(t * 1.5 + pp + i * Math.PI) * 0.08);
+        w.rotation.z = w.userData.baseRotZ + (moving ? Math.sin(t * 9 + pp + i * Math.PI) * 0.5 : 0);
       });
     }
     if (pm.feet) {
