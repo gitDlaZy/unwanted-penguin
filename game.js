@@ -754,77 +754,94 @@ if (CURRENT_LEVEL === 3) {
     const col = new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.5,5.5,8), stoneMat); col.position.set(cx, 2.75, cz); scene.add(col); mountainColliders.push({ x:cx, z:cz, r:1.8 });
     const pile = new THREE.Mesh(new THREE.SphereGeometry(0.9,6,4), goldMat); pile.scale.y=0.4; pile.position.set(cx, 0.2, cz+2); scene.add(pile);
   });
-  // ── Gold mine decoration — coins, cups, statues, nuggets, veins everywhere ──
+  // ── Gold mine decoration — CAVE OF GOLD, everything is gold ─────────────────
   const _gm  = goldMat;
   const _gDk = new THREE.MeshStandardMaterial({ color:0xcc8800, emissive:0x884400, emissiveIntensity:0.4, roughness:0.4, metalness:0.9 });
   const _gBr = new THREE.MeshStandardMaterial({ color:0xffee88, emissive:0xddcc00, emissiveIntensity:0.6, roughness:0.2, metalness:1.0 });
+  // Spread gold across the whole cave including bridge/corridor (z -2 to -130) and outside (z 8 to 70)
+  const _gZ  = () => Math.random() < 0.4 ? 8+Math.random()*65 : -2-Math.random()*128;
+  const _gX  = () => (Math.random()-0.5)*56;
+  const _gDummy = new THREE.Object3D();
 
-  // 80 floor coins scattered throughout entire level
-  for (let i = 0; i < 80; i++) {
-    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.04,10), _gBr);
-    const zRange = Math.random(); const cz = zRange < 0.4 ? 10+Math.random()*60 : -2-Math.random()*48;
-    coin.position.set((Math.random()-0.5)*58, 0.02, cz); coin.rotation.y = Math.random()*Math.PI; scene.add(coin);
+  // 700 floor coins — InstancedMesh keeps draw calls at 1
+  const _coinInst = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.08,0.08,0.04,8), _gBr, 700);
+  for (let i = 0; i < 700; i++) {
+    _gDummy.position.set(_gX(), 0.02, _gZ()); _gDummy.rotation.set(0, Math.random()*Math.PI, 0); _gDummy.updateMatrix();
+    _coinInst.setMatrixAt(i, _gDummy.matrix);
   }
+  _coinInst.instanceMatrix.needsUpdate = true; scene.add(_coinInst);
 
-  // Gold cups (chalice shape) — 12 scattered
-  for (let i = 0; i < 12; i++) {
+  // 70 gold cups (chalice shape)
+  for (let i = 0; i < 70; i++) {
     const cg = new THREE.Group();
-    const base  = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.22,0.07,10), _gBr); base.position.y=0.035; cg.add(base);
-    const stem  = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.08,0.22,8), _gm);   stem.position.y=0.145; cg.add(stem);
-    const cup   = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.1,0.3,10,1,true), _gBr); cup.position.y=0.38; cg.add(cup);
-    const rim   = new THREE.Mesh(new THREE.TorusGeometry(0.22,0.03,6,16), _gDk); rim.position.y=0.53; cg.add(rim);
-    const cz2   = Math.random() < 0.5 ? 15+Math.random()*50 : -4-Math.random()*44;
-    cg.position.set((Math.random()-0.5)*54, 0, cz2); cg.rotation.y=Math.random()*Math.PI; scene.add(cg);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.22,0.07,8), _gBr); base.position.y=0.035; cg.add(base);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.08,0.22,6), _gm);  stem.position.y=0.145; cg.add(stem);
+    const cup  = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.1,0.3,8,1,true), _gBr); cup.position.y=0.38; cg.add(cup);
+    const rim  = new THREE.Mesh(new THREE.TorusGeometry(0.22,0.03,5,12), _gDk); rim.position.y=0.53; cg.add(rim);
+    cg.position.set(_gX(), 0, _gZ()); cg.rotation.y=Math.random()*Math.PI; scene.add(cg);
   }
 
-  // Gold nuggets/chunks — 30 small lumps on the floor
-  for (let i = 0; i < 30; i++) {
-    const ng = new THREE.Mesh(new THREE.SphereGeometry(0.08+Math.random()*0.1,5,4), _gDk);
-    ng.scale.set(1.5+Math.random(),0.8+Math.random()*0.5,1.2+Math.random());
-    const cz3 = Math.random() < 0.45 ? 10+Math.random()*58 : -3-Math.random()*46;
-    ng.position.set((Math.random()-0.5)*56, 0.06, cz3); ng.rotation.y=Math.random()*Math.PI; scene.add(ng);
+  // 220 gold nuggets/chunks on the floor
+  for (let i = 0; i < 220; i++) {
+    const ng = new THREE.Mesh(new THREE.SphereGeometry(0.07+Math.random()*0.14,5,4), i%3===0?_gBr:_gDk);
+    ng.scale.set(1.4+Math.random(),0.7+Math.random()*0.5,1.1+Math.random());
+    ng.position.set(_gX(), 0.06, _gZ()); ng.rotation.y=Math.random()*Math.PI; scene.add(ng);
   }
 
-  // Gold statues (simple penguin-shaped gold idol, 6 of them)
-  for (let i = 0; i < 6; i++) {
+  // 22 gold statues lining the cave
+  for (let i = 0; i < 22; i++) {
     const sg = new THREE.Group();
     const sb = new THREE.Mesh(new THREE.SphereGeometry(0.28,7,6), _gBr); sb.scale.set(1,1.2,0.9); sb.position.y=0.45; sg.add(sb);
     const sh = new THREE.Mesh(new THREE.SphereGeometry(0.2,7,6), _gBr);  sh.position.y=0.88; sg.add(sh);
     const st = new THREE.Mesh(new THREE.SphereGeometry(0.06,5,5), _gDk); st.position.set(0.09,0.91,0.17); sg.add(st);
     const st2= st.clone(); st2.position.set(-0.09,0.91,0.17); sg.add(st2);
     const ped2= new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.38,0.22,8), stoneMat); ped2.position.y=0.11; sg.add(ped2);
-    const cz4 = Math.random() < 0.5 ? 18+Math.random()*44 : -4-Math.random()*38;
-    sg.position.set((Math.random()-0.5)*46, 0, cz4); sg.rotation.y=Math.random()*Math.PI*2; scene.add(sg);
-    // Glow
-    const sl = new THREE.PointLight(0xffcc44, 0.7, 6); sl.position.set(sg.position.x, 1.2, sg.position.z); scene.add(sl);
+    sg.position.set(_gX(), 0, _gZ()); sg.rotation.y=Math.random()*Math.PI*2; scene.add(sg);
+    const sl = new THREE.PointLight(0xffcc44, 0.6, 7); sl.position.set(sg.position.x, 1.2, sg.position.z); scene.add(sl);
   }
 
-  // Gold vein streaks on cave walls (boss arena + puzzle room)
-  for (let i = 0; i < 20; i++) {
-    const vein = new THREE.Mesh(new THREE.BoxGeometry(0.08+Math.random()*0.12, 0.6+Math.random()*1.2, 0.06), _gDk);
+  // 100 gold vein streaks on both cave walls, full length of cave
+  for (let i = 0; i < 100; i++) {
+    const vein = new THREE.Mesh(new THREE.BoxGeometry(0.08+Math.random()*0.18, 0.5+Math.random()*2.2, 0.06), i%2===0?_gDk:_gBr);
     const side = Math.random() < 0.5 ? -34.5 : 34.5;
-    vein.position.set(side, 1+Math.random()*3, -5-Math.random()*42); vein.rotation.z=(Math.random()-0.5)*0.6; scene.add(vein);
+    vein.position.set(side, 0.8+Math.random()*4, -2-Math.random()*128); vein.rotation.z=(Math.random()-0.5)*0.9; scene.add(vein);
   }
 
-  // Large gold pile mounds (3 big piles in corners of puzzle room)
-  [[-24,-8],[24,-8],[0,-48]].forEach(([px2,pz2]) => {
-    for (let j = 0; j < 8; j++) {
-      const lump = new THREE.Mesh(new THREE.SphereGeometry(0.15+Math.random()*0.2,6,5), j%2===0?_gBr:_gDk);
-      lump.scale.y = 0.5+Math.random()*0.5; lump.position.set(px2+(Math.random()-0.5)*1.8, 0.12, pz2+(Math.random()-0.5)*1.8); scene.add(lump);
+  // 50 gold veins on the ceiling
+  for (let i = 0; i < 50; i++) {
+    const vein = new THREE.Mesh(new THREE.BoxGeometry(0.1+Math.random()*0.22, 0.06, 0.4+Math.random()*2.0), i%2===0?_gBr:_gDk);
+    vein.position.set((Math.random()-0.5)*50, 5.2+Math.random()*1.2, -4-Math.random()*120); scene.add(vein);
+  }
+
+  // 24 large gold pile mounds spread across the entire cave
+  [[-24,-8],[24,-8],[0,-48],[-18,-20],[18,-20],[0,-35],[-22,-60],[22,-60],[0,-75],
+   [-18,-90],[18,-90],[0,-105],[-20,-118],[20,-118],[0,-130],[-28,-55],[28,-55],
+   [-12,-72],[12,-72],[0,-88],[-24,-100],[24,-100],[0,-45],[-10,-28]].forEach(([px2,pz2]) => {
+    for (let j = 0; j < 14; j++) {
+      const lump = new THREE.Mesh(new THREE.SphereGeometry(0.14+Math.random()*0.28,6,5), j%2===0?_gBr:_gDk);
+      lump.scale.y = 0.4+Math.random()*0.55; lump.position.set(px2+(Math.random()-0.5)*2.8, 0.1, pz2+(Math.random()-0.5)*2.8); scene.add(lump);
     }
-    const pl = new THREE.PointLight(0xffaa00, 0.6, 5); pl.position.set(px2, 0.8, pz2); scene.add(pl);
+    const pl = new THREE.PointLight(0xffaa00, 0.7+Math.random()*0.5, 9); pl.position.set(px2, 1.0, pz2); scene.add(pl);
   });
 
-  // Arena gold: coins and cups on the boss arena floor
-  for (let i = 0; i < 25; i++) {
-    const angle = Math.random()*Math.PI*2; const r = Math.random()*18;
-    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.04,10), _gBr);
-    coin.position.set(Math.sin(angle)*r, 0.02, -140+Math.cos(angle)*r); scene.add(coin);
+  // Ambient gold glow every ~12 units along the whole corridor so it never goes dark
+  for (let gz = -8; gz > -132; gz -= 12) {
+    const al = new THREE.PointLight(0xff9900, 0.35+Math.random()*0.3, 14);
+    al.position.set((Math.random()-0.5)*18, 2.0, gz); scene.add(al);
   }
-  for (let i = 0; i < 6; i++) {
-    const angle = Math.random()*Math.PI*2; const r = 5+Math.random()*14;
-    const ng2 = new THREE.Mesh(new THREE.SphereGeometry(0.1+Math.random()*0.12,5,4), _gDk);
-    ng2.scale.set(1.4,0.7,1.2); ng2.position.set(Math.sin(angle)*r, 0.05, -140+Math.cos(angle)*r); scene.add(ng2);
+
+  // Arena gold: dense carpet of coins + big nugget piles
+  const _arenaInst = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.07,0.07,0.04,8), _gBr, 180);
+  for (let i = 0; i < 180; i++) {
+    const angle = Math.random()*Math.PI*2; const r = Math.random()*22;
+    _gDummy.position.set(Math.sin(angle)*r, 0.02, -140+Math.cos(angle)*r); _gDummy.rotation.set(0,Math.random()*Math.PI,0); _gDummy.updateMatrix();
+    _arenaInst.setMatrixAt(i, _gDummy.matrix);
+  }
+  _arenaInst.instanceMatrix.needsUpdate = true; scene.add(_arenaInst);
+  for (let i = 0; i < 35; i++) {
+    const angle = Math.random()*Math.PI*2; const r = 2+Math.random()*20;
+    const ng2 = new THREE.Mesh(new THREE.SphereGeometry(0.1+Math.random()*0.18,5,4), i%2===0?_gBr:_gDk);
+    ng2.scale.set(1.5,0.65,1.3); ng2.position.set(Math.sin(angle)*r, 0.05, -140+Math.cos(angle)*r); scene.add(ng2);
   }
 
   // ── Sandstone ruins outside ────────────────────────────────────────────────
