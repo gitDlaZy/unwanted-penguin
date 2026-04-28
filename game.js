@@ -2638,6 +2638,7 @@ function buildSkua() {
   tail.rotation.z = Math.PI / 2; tail.position.set(-0.7, -0.05, 0); parts.push(tail);
 
   const g = buildMergedGroup(parts); // 3 draw calls → replaces ~8
+  g.scale.setScalar(0.5);
   g.traverse(c => { if (c.isMesh) c.castShadow = true; });
   g.userData.bodyBob = { amp: 0.06, speed: 5 }; g.userData.animPhase = Math.random() * Math.PI * 2;
   return g;
@@ -3659,7 +3660,7 @@ function spawnSkua(hpScale = 1) {
   const sx = player.position.x + Math.cos(angle) * spawnDist;
   const sz = player.position.z + Math.sin(angle) * spawnDist;
   const mesh = buildSkua();
-  mesh.position.set(sx, 7, sz);
+  mesh.position.set(sx, 14, sz);
   const elite = Math.random() < 0.05;
   if (elite) makeElite(mesh);
   scene.add(mesh);
@@ -3823,7 +3824,7 @@ function updateEnemies(dt) {
         const speed = 22;
         e.mesh.position.x += (tdx / tdist) * speed * dt;
         e.mesh.position.z += (tdz / tdist) * speed * dt;
-        e.mesh.position.y = 7 + Math.sin(frameTime * 4 + i) * 0.3;
+        e.mesh.position.y = 14 + Math.sin(frameTime * 4 + i) * 0.3;
         e.mesh.rotation.y = Math.atan2(-tdz, tdx);
         // Drop when overhead the target
         if (e.target && tdist < 3) {
