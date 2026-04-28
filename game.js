@@ -3806,23 +3806,32 @@ function updateEnemies(dt) {
 
     if (e.type === 'skua') {
       if (e.state === 'approaching') {
-        // Fast dive-bomb: fly directly toward player at speed 22, visible for ~1 sec
-        const speed = 22;
-        e.mesh.position.x += (dx / dist) * speed * dt;
-        e.mesh.position.z += (dz / dist) * speed * dt;
-        e.mesh.position.y = 7 + Math.sin(frameTime * 4 + i) * 0.3;
-        e.mesh.rotation.y = Math.atan2(-dz, dx);
-        // Drop bomb directly on player position when overhead
-        if (dist < 3) {
+        // Lock drop target once close enough to make a good lead prediction
+        if (!e.target && dist < 20) {
           const fallTime = e.mesh.position.y / 10;
           const leadTime = fallTime + 1.0;
-          const leadX = player.position.x + playerVel.x * leadTime + (Math.random() - 0.5) * 0.75;
-          const leadZ = player.position.z + playerVel.z * leadTime + (Math.random() - 0.5) * 0.75;
-          const _tooClose = bombs.some(b => b.landed && Math.hypot(b.tx - leadX, b.tz - leadZ) < 2.5);
-          if (!_tooClose) dropBomb(leadX, leadZ, e.mesh.position.y);
+          e.target = {
+            x: player.position.x + playerVel.x * leadTime + (Math.random() - 0.5) * 0.75,
+            z: player.position.z + playerVel.z * leadTime + (Math.random() - 0.5) * 0.75,
+          };
+        }
+        // Fly toward locked target (or player if target not yet set)
+        const tx = e.target ? e.target.x : player.position.x;
+        const tz = e.target ? e.target.z : player.position.z;
+        const tdx = tx - e.mesh.position.x, tdz = tz - e.mesh.position.z;
+        const tdist = Math.hypot(tdx, tdz) || 1;
+        const speed = 22;
+        e.mesh.position.x += (tdx / tdist) * speed * dt;
+        e.mesh.position.z += (tdz / tdist) * speed * dt;
+        e.mesh.position.y = 7 + Math.sin(frameTime * 4 + i) * 0.3;
+        e.mesh.rotation.y = Math.atan2(-tdz, tdx);
+        // Drop when overhead the target
+        if (e.target && tdist < 3) {
+          const _tooClose = bombs.some(b => b.landed && Math.hypot(b.tx - e.target.x, b.tz - e.target.z) < 2.5);
+          if (!_tooClose) dropBomb(e.target.x, e.target.z, e.mesh.position.y);
           e.state = 'leaving';
-          e.exitDX = -(dx / (dist || 1));
-          e.exitDZ = -(dz / (dist || 1));
+          e.exitDX = -(tdx / tdist);
+          e.exitDZ = -(tdz / tdist);
         }
       } else if (e.state === 'leaving') {
         // Climb fast and flee
