@@ -2700,10 +2700,10 @@ function showAdhdMsg() {
 const TOME_DEFS = [
   { id:'damage',     name:'Damage Tome',           emoji:'⚔️',  color:'#ff6644', desc:'+5% damage (all weapons)',       apply: s => { s.damage     *= 1.05; } },
   { id:'snowball_dmg', name: selectedSkin === 'human' ? 'Bullet Tome' : 'Snowball Tome', emoji: selectedSkin === 'human' ? '🔫' : '🌨️', color:'#cceeff', desc: selectedSkin === 'human' ? '+20% bullet damage' : '+20% snowball damage', apply: s => { s.snowballDmgMult = (s.snowballDmgMult||1) * 1.2; } },
-  { id:'magic_dmg',   name:'Magic Tome',             emoji:'✨',  color:'#cc88ff', desc:'+10% magic damage (staff, aura, orb, gust, shaggy)', apply: s => { s.magicDmgMult = (s.magicDmgMult||1) * 1.1; } },
+  { id:'magic_dmg',   name:'Magic Tome',             emoji:'✨',  color:'#cc88ff', desc:'+20% magic damage (staff, aura, orb, gust, shaggy)', apply: s => { s.magicDmgMult = (s.magicDmgMult||1) * 1.2; } },
   { id:'precision',  name:'Precision Tome',        emoji:'🎯',  color:'#ffaa22', desc:'+5% critical hit chance',   apply: s => { s.critChance  = Math.min(0.9, s.critChance+0.05); } },
   { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-8% spell cooldown (staff, aura, homhom)', apply: s => { s.weaponCooldown *= 0.92; } },
-  { id:'atkspeed',   name:'Attack Speed Tome',     emoji:'🏹',  color:'#ffcc44', desc:'+8% snowball attack speed',  apply: s => { s.attackRate *= 0.92; } },
+  { id:'atkspeed',   name:'Attack Speed Tome',     emoji:'🏹',  color:'#ffcc44', desc:'+10% snowball attack speed', apply: s => { s.attackRate *= 0.90; } },
   { id:'quantity',   name:'Quantity Tome',         emoji:'❄️',  color:'#aaddff', desc:'+1 snowball (50% less each stack)', apply: (s) => {
     const stacks = tomeStacks['quantity'] || 0;
     if (stacks === 0) { s.projCount += 1; }
@@ -2713,13 +2713,13 @@ const TOME_DEFS = [
       playerState.shaggyCharges = Math.min(playerState.shaggyCharges + 1, playerState.shaggyMaxCharges);
     }
   }},
-  { id:'size',       name:'Size Tome',             emoji:'🔮',  color:'#cc88ff', desc:'+20% projectile size',      apply: s => { s.projSize   *= 1.2; } },
+  { id:'size',       name:'Size Tome',             emoji:'🔮',  color:'#cc88ff', desc:'+0.5 projectile radius',    apply: s => { s.projSize   += 0.5; } },
   { id:'projspeed',  name:'Speed Tome',            emoji:'💨',  color:'#88ffcc', desc:'+15% projectile speed',     apply: s => { s.projSpeed  *= 1.15; } },
   { id:'shield',     name:'Shield Tome',           emoji:'🛡️', color:'#44aaff', desc:'First: +1 shield. Extra stacks: +0.3s iframes on shield hit', apply: s => { if (!(tomeStacks['shield'] > 0)) { s.maxShield = Math.max(s.maxShield, 1); s.shield = Math.max(s.shield, 1); } else { s.shieldIframes = (s.shieldIframes ?? 1.2) + 0.3; } updateHUD(); } },
   { id:'evasion',    name:'Evasion Tome',          emoji:'🌀',  color:'#44ffaa', desc:'+10% dodge chance',         apply: s => { s.evasion    = Math.min(0.7, s.evasion+0.1); } },
   { id:'bloody',     name:'Bloody Tome',           emoji:'🩸',  color:'#ff4466', desc:'+2% chance to heal 1 HP on hit',     apply: s => { s.bloodHeal = Math.min(1, s.bloodHeal + 0.02); } },
   { id:'hp',         name:'HP Tome',               emoji:'💙',  color:'#2266ff', desc:'+25 max HP',                apply: s => { playerState.maxHp+=25; playerState.hp+=25; updateHUD(); } },
-  { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+1% movement speed. "You obtained ADHD!"',   apply: s => { s.moveSpeed *= 1.01;  showAdhdMsg(); } },
+  { id:'phrico',     name:'Phrico Rico',            emoji:'🌪️', color:'#aaff44', desc:'+1.2% movement speed. "You obtained ADHD!"', apply: s => { s.moveSpeed *= 1.012; showAdhdMsg(); } },
   { id:'attraction', name:'Attraction Tome',       emoji:'🧲',  color:'#ffaa44', desc:'+1 pickup radius',          apply: s => { s.pickupRadius += 1; } },
   { id:'knockback',  name:'Knockback Tome',        emoji:'💥',  color:'#ff8844', desc:'+0.75 knockback on hit',    apply: s => { s.knockback  += 0.75; } },
   { id:'cursed',     name:'Cursed Tome',           emoji:'💀',  color:'#884400', desc:'+25% spawn rate, +30% enemy HP', apply:s => { s.cursed += 1; } },
