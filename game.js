@@ -2713,7 +2713,7 @@ const TOME_DEFS = [
       playerState.shaggyCharges = Math.min(playerState.shaggyCharges + 1, playerState.shaggyMaxCharges);
     }
   }},
-  { id:'size',       name:'Size Tome',             emoji:'🔮',  color:'#cc88ff', desc:'+0.5 projectile radius',    apply: s => { s.projSize   += 0.5; } },
+  { id:'size',       name:'Size Tome',             emoji:'🔮',  color:'#cc88ff', desc:'+70% projectile size',      apply: s => { s.projSize   *= 1.7; } },
   { id:'projspeed',  name:'Speed Tome',            emoji:'💨',  color:'#88ffcc', desc:'+15% projectile speed',     apply: s => { s.projSpeed  *= 1.15; } },
   { id:'shield',     name:'Shield Tome',           emoji:'🛡️', color:'#44aaff', desc:'First: +1 shield. Extra stacks: +0.3s iframes on shield hit', apply: s => { if (!(tomeStacks['shield'] > 0)) { s.maxShield = Math.max(s.maxShield, 1); s.shield = Math.max(s.shield, 1); } else { s.shieldIframes = (s.shieldIframes ?? 1.2) + 0.3; } updateHUD(); } },
   { id:'evasion',    name:'Evasion Tome',          emoji:'🌀',  color:'#44ffaa', desc:'+10% dodge chance',         apply: s => { s.evasion    = Math.min(0.7, s.evasion+0.1); } },
