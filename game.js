@@ -3653,15 +3653,18 @@ function spawnSeal(hpScale = 1) {
 }
 
 function spawnSkua(hpScale = 1) {
-  let angle, sx, sz, tries = 0;
-  do { angle = Math.random() * Math.PI * 2; sx = Math.cos(angle) * 140; sz = Math.sin(angle) * 140; tries++; }
-  while (tries < 10 && (sx-player.position.x)**2 + (sz-player.position.z)**2 < 400);
+  // Spawn 30-45 units from player so the dive-in takes ~1 second
+  const angle = Math.random() * Math.PI * 2;
+  const spawnDist = 30 + Math.random() * 15;
+  const sx = player.position.x + Math.cos(angle) * spawnDist;
+  const sz = player.position.z + Math.sin(angle) * spawnDist;
   const mesh = buildSkua();
   mesh.position.set(sx, 7, sz);
   const elite = Math.random() < 0.05;
   if (elite) makeElite(mesh);
   scene.add(mesh);
-  enemies.push({ mesh, type: 'skua', hp: Math.round((elite ? 40 : 20) * hpScale), dropTimer: 3 + Math.random() * 3, state: 'approaching', elite });
+  // hp unused (skuas are untargetable) but keep field for compatibility
+  enemies.push({ mesh, type: 'skua', hp: 9999, state: 'approaching', elite });
 }
 
 let sealSpawnTimer = 2;
@@ -3803,32 +3806,25 @@ function updateEnemies(dt) {
 
     if (e.type === 'skua') {
       if (e.state === 'approaching') {
-        // Fly in from outside until close to player
-        if (dist > 6) {
-          e.mesh.position.x += (dx / dist) * 1.5 * dt;
-          e.mesh.position.z += (dz / dist) * 1.5 * dt;
-        }
-        e.mesh.position.y = 7 + Math.sin(frameTime * 1000 / 500 + i) * 0.4;
+        // Fast dive-bomb: fly directly toward player at speed 22, visible for ~1 sec
+        const speed = 22;
+        e.mesh.position.x += (dx / dist) * speed * dt;
+        e.mesh.position.z += (dz / dist) * speed * dt;
+        e.mesh.position.y = 7 + Math.sin(frameTime * 4 + i) * 0.3;
         e.mesh.rotation.y = Math.atan2(-dz, dx);
-
-        if (dist < 25) e.dropTimer -= dt; // only countdown when skua is close enough to see
-        if (e.dropTimer <= 0) {
-          const fallTime = e.mesh.position.y / 10;
-          const leadTime = fallTime + 1.0;
-          const leadX = player.position.x + playerVel.x * leadTime + (Math.random() - 0.5) * 0.75;
-          const leadZ = player.position.z + playerVel.z * leadTime + (Math.random() - 0.5) * 0.75;
-          const _tooClose = bombs.some(b => b.landed && Math.hypot(b.tx - leadX, b.tz - leadZ) < 2.5);
-          if (!_tooClose) dropBomb(leadX, leadZ, e.mesh.position.y);
+        // Drop bomb directly on player position when overhead
+        if (dist < 3) {
+          const _tooClose = bombs.some(b => b.landed && Math.hypot(b.tx - player.position.x, b.tz - player.position.z) < 2.5);
+          if (!_tooClose) dropBomb(player.position.x, player.position.z, e.mesh.position.y);
           e.state = 'leaving';
-          // Fly away in the opposite direction from player
-          e.exitDX = -dx / (dist || 1);
-          e.exitDZ = -dz / (dist || 1);
+          e.exitDX = -(dx / (dist || 1));
+          e.exitDZ = -(dz / (dist || 1));
         }
       } else if (e.state === 'leaving') {
-        // Climb and flee — remove when far above/outside
-        e.mesh.position.x += e.exitDX * 4 * dt;
-        e.mesh.position.z += e.exitDZ * 4 * dt;
-        e.mesh.position.y += 6 * dt;
+        // Climb fast and flee
+        e.mesh.position.x += e.exitDX * 22 * dt;
+        e.mesh.position.z += e.exitDZ * 22 * dt;
+        e.mesh.position.y += 10 * dt;
         if (e.mesh.position.y > 30) {
           scene.remove(e.mesh);
           enemies.splice(i, 1);
@@ -4063,6 +4059,7 @@ function updateBurst(dt) {
 
 function hitEnemy(j, impactX, impactY, impactZ, dmgMult = 1, skipKnockback = false) {
   const e = enemies[j];
+  if (e.type === 'skua') return false; // skuas are untargetable
   // Belgica has 50% dodge chance
   if (e.type === 'belgica' && Math.random() < 0.5) return false;
   const isCrit = Math.random() < playerStats.critChance;
@@ -6523,7 +6520,7 @@ window.addEventListener('keydown', e => {
 
 // ── Game Loop ─────────────────────────────────────────────────────────────────
 
-const SPEED      = 8.4;
+const SPEED      = 8.45;
 const CAM_OFFSET = new THREE.Vector3(0, 14, 13);
 
 let lastTime = performance.now();
