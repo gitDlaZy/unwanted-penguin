@@ -3814,8 +3814,12 @@ function updateEnemies(dt) {
         e.mesh.rotation.y = Math.atan2(-dz, dx);
         // Drop bomb directly on player position when overhead
         if (dist < 3) {
-          const _tooClose = bombs.some(b => b.landed && Math.hypot(b.tx - player.position.x, b.tz - player.position.z) < 2.5);
-          if (!_tooClose) dropBomb(player.position.x, player.position.z, e.mesh.position.y);
+          const fallTime = e.mesh.position.y / 10;
+          const leadTime = fallTime + 1.0;
+          const leadX = player.position.x + playerVel.x * leadTime + (Math.random() - 0.5) * 0.75;
+          const leadZ = player.position.z + playerVel.z * leadTime + (Math.random() - 0.5) * 0.75;
+          const _tooClose = bombs.some(b => b.landed && Math.hypot(b.tx - leadX, b.tz - leadZ) < 2.5);
+          if (!_tooClose) dropBomb(leadX, leadZ, e.mesh.position.y);
           e.state = 'leaving';
           e.exitDX = -(dx / (dist || 1));
           e.exitDZ = -(dz / (dist || 1));
