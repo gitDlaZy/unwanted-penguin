@@ -1153,8 +1153,8 @@ function updateL2Enemies(dt) {
   if (!showInteract && !_chestOpened && Math.hypot(px+63,pz+100)<3.5) {
     showInteract = _hasRustyKey ? 'E — Open chest' : 'E — Locked chest (need rusty key)';
   }
-  if (!showInteract && _desertPortalGroup && Math.hypot(px-47,pz+85)<4) {
-    showInteract = _hasAntiHeatSunglasses ? 'E — Enter Desert Portal' : 'E — Desert Portal (need Anti-Heat Sunglasses)';
+  if (!showInteract && _desertPortalGroup && _desertPortalGroup.visible && Math.hypot(px+63,pz+100)<4) {
+    showInteract = _hasAntiHeatSunglasses ? 'Stand inside to enter desert...' : '🔥 Need Anti-Heat Sunglasses to enter';
   }
   if (!showInteract && !_shipPopupOpen && !_bottlePopupOpen) {
     for (const ship of _l2Ships) {
@@ -1222,7 +1222,7 @@ function updateL3(dt) {
   // ── Pressure plate: detect jump landings ──────────────────────────────────
   if (!_l3JumpPlatActivated) {
     const nearPlate = Math.hypot(px, pz + 28) < 2.2;
-    if (nearPlate && _l3PlateLastY > 0.5 && playerY < 0.1) {
+    if (nearPlate && _l3PlateLastY > 0 && playerY < 0.1) {
       _l3JumpPlatCount++;
       if (window._l3PlateGlow) window._l3PlateGlow.intensity = 0.5 + _l3JumpPlatCount * 2.0;
       // Visual: briefly press the plate down
@@ -2398,7 +2398,7 @@ function spawnGhostPirate() {
   const mesh = buildGhostPirate();
   mesh.position.set(-64, 0, 50);
   scene.add(mesh);
-  _ghostPirate = { mesh, hp: 750, maxHp: 750, speed: 5,
+  _ghostPirate = { mesh, hp: 3000, maxHp: 3000, speed: 5,
     shootTimer: 3.0, bombTimer: 7.0, swordTimer: 0,
     chasing: false };
   // Don't call _updateGhostPirateHUD here — player isn't defined yet at load time (TDZ)
@@ -4702,6 +4702,7 @@ async function fetchLeaderboard() {
 }
 
 async function submitOnlineScore(name, kills, level) {
+  if (_debugOpen) return false;
   const deviceId  = getDeviceId();
   const cleanName = name.trim().slice(0, 16) || 'Anonymous';
   const _now = new Date();
@@ -5318,8 +5319,7 @@ function spawnXpOrb(x, z, amount = 1) {
   group.add(orb);
   group.position.set(x, 0.5, z);
   scene.add(group);
-  // In L2+ orbs auto-magnetize since the player can't chase them into hostile water
-  xpOrbs.push({ group, orb, amount, bobOffset: Math.random() * Math.PI * 2, spawnDelay: 0.6, magnetize: CURRENT_LEVEL > 1 });
+  xpOrbs.push({ group, orb, amount, bobOffset: Math.random() * Math.PI * 2, spawnDelay: 0.6, magnetize: false });
 }
 
 function gainXP(amount) {
@@ -6070,20 +6070,6 @@ window.addEventListener('keydown', e => {
         document.body.appendChild(el);
         setTimeout(() => el.remove(), 2000);
       }
-    } else if (_desertPortalGroup && _desertPortalGroup.visible && Math.hypot(px+63,pz+100)<2.5) {
-      if (_hasAntiHeatSunglasses) {
-        // Save L2 progress before going to desert
-        const _ds = { hp: playerState.hp, maxHp: playerState.maxHp, stats: {...playerStats}, tomeStacks: {...tomeStacks}, weapons: [...equippedWeapons], level: playerLevel, pendingTomes, skin: localStorage.getItem('playerSkin')||'normal', activeSkinVal: activeSkin, sunglasses: true };
-        sessionStorage.setItem('levelProgress', JSON.stringify(_ds));
-        sessionStorage.setItem('bgmAutoStart','1');
-        window.location.href = 'level3.html';
-      } else {
-        const el = document.createElement('div');
-        el.style.cssText = 'position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:18px;color:#ff8844;text-shadow:0 0 10px #ff6600;pointer-events:none;z-index:9999;text-align:center';
-        el.textContent = '🔥 The desert heat is too intense! You need Anti-Heat Sunglasses.';
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 2500);
-      }
     } else {
       for (const ship of _l2Ships) {
         if (Math.hypot(px-ship.position.x,pz-ship.position.z)<5.5) {
@@ -6830,7 +6816,26 @@ function update(dt) {
   updateEnemies(dt);
   updateXpOrbs(dt);
   updateL2Enemies(dt);
-  if (CURRENT_LEVEL === 2) updateGhostPirate(dt);
+  if (CURRENT_LEVEL === 2) {
+    updateGhostPirate(dt);
+    // Desert portal stand timer — same 2-sec auto-transport as L1 portal
+    if (_desertPortalGroup && _desertPortalGroup.visible && !_portalTransitioning && !playerState.dead) {
+      const _dpx = player.position.x, _dpz = player.position.z;
+      if (Math.hypot(_dpx + 63, _dpz + 100) < 2.2) {
+        _desertPortalStandTimer += dt;
+        if (_desertPortalStandTimer >= 2.0 && _hasAntiHeatSunglasses) {
+          _portalTransitioning = true;
+          movementLockout = Infinity;
+          const _ds = { hp: playerState.hp, maxHp: playerState.maxHp, stats: {...playerStats}, tomeStacks: {...tomeStacks}, weapons: [...equippedWeapons], level: playerLevel, pendingTomes, skin: localStorage.getItem('playerSkin')||'normal', activeSkinVal: activeSkin, sunglasses: true };
+          sessionStorage.setItem('levelProgress', JSON.stringify(_ds));
+          sessionStorage.setItem('bgmAutoStart', '1');
+          setTimeout(() => { window.location.href = 'level3.html'; }, 800);
+        }
+      } else {
+        _desertPortalStandTimer = Math.max(0, _desertPortalStandTimer - dt * 2);
+      }
+    }
+  }
   if (CURRENT_LEVEL === 3) updateL3(dt);
   updateSnowballs(dt);
   updateNomOrbs(dt);
