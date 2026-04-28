@@ -3651,7 +3651,7 @@ let sealSpawnTimer = 2;
 let skuaSpawnTimer = 2;
 let _pebblesActive = false; // pebbles powerup active
 let sepFrame = 0; // alternating frame flag for seal separation
-let gameTime = 0; // seconds elapsed
+let gameTime = _levelSave?.gameTime ?? 0;
 let _lastTimerSec = -1;
 let swarmTimer = 90; // seconds until first belgica swarm
 
@@ -3720,7 +3720,7 @@ function updateEnemies(dt) {
   sealSpawnTimer -= dt;
   skuaSpawnTimer -= dt;
   const hpScale = (gameTime >= 60 ? 1.1 + (gameTime - 60) / 600 : 1) * Math.pow(1.3, playerStats.cursed) * (_pebblesActive ? 1.1 : 1.0);
-  const _l2SpawnMult = CURRENT_LEVEL === 2 ? 4.0 : 1.0; // L2: 25% spawn rate (4× longer timers)
+  const _l2SpawnMult = 1.0;
   if (CURRENT_LEVEL !== 3 && !bossDefeated && !_spawnsDisabled && sealSpawnTimer <= 0) { spawnSeal(hpScale); sealSpawnTimer = (0.9 + Math.random() * 0.5) * pressure * _l2SpawnMult; }
   if (CURRENT_LEVEL !== 3 && !bossDefeated && !_spawnsDisabled && skuaSpawnTimer <= 0) { spawnSkua(hpScale); skuaSpawnTimer = (1.75 + Math.random() * 1) * pressure * _l2SpawnMult; }
 
@@ -6266,7 +6266,7 @@ const _debugActions = [
   { label: '🐱  Trigger Level 1 End',  fn: () => { triggerLevel1End(); } },
   { label: () => _godMode ? '🛡  God Mode  [ON]' : '🛡  God Mode  [OFF]', fn: () => { _godMode = !_godMode; setGodModeVisual(_godMode); }, noClose: true },
   { label: '🌊  Go to Level 2',           fn: () => { saveProgressAndUnlockPortal(); sessionStorage.setItem('bgmAutoStart','1'); setTimeout(() => { window.location.href = 'level2.html'; }, 100); } },
-  { label: '🏜  Go to Level 3',           fn: () => { const _ds={hp:playerState.hp,maxHp:playerState.maxHp,stats:{...playerStats},tomeStacks:{...tomeStacks},weapons:[...equippedWeapons],level:playerLevel,pendingTomes,skin:localStorage.getItem('playerSkin')||'normal',activeSkinVal:activeSkin,sunglasses:true}; sessionStorage.setItem('levelProgress',JSON.stringify(_ds)); sessionStorage.setItem('bgmAutoStart','1'); window.location.href='level3.html'; } },
+  { label: '🏜  Go to Level 3',           fn: () => { const _ds={hp:playerState.hp,maxHp:playerState.maxHp,stats:{...playerStats},tomeStacks:{...tomeStacks},weapons:[...equippedWeapons],level:playerLevel,pendingTomes,gameTime,skin:localStorage.getItem('playerSkin')||'normal',activeSkinVal:activeSkin,sunglasses:true}; sessionStorage.setItem('levelProgress',JSON.stringify(_ds)); sessionStorage.setItem('bgmAutoStart','1'); window.location.href='level3.html'; } },
 ];
 
 function buildDebugList() {
@@ -6312,6 +6312,7 @@ function saveProgressAndUnlockPortal() {
     weapons: [...equippedWeapons],
     level: playerLevel,
     pendingTomes,
+    gameTime,
     skin: localStorage.getItem('playerSkin') || 'normal',
     activeSkinVal: selectedSkin,
   };
@@ -6826,7 +6827,7 @@ function update(dt) {
         if (_desertPortalStandTimer >= 2.0 && _hasAntiHeatSunglasses) {
           _portalTransitioning = true;
           movementLockout = Infinity;
-          const _ds = { hp: playerState.hp, maxHp: playerState.maxHp, stats: {...playerStats}, tomeStacks: {...tomeStacks}, weapons: [...equippedWeapons], level: playerLevel, pendingTomes, skin: localStorage.getItem('playerSkin')||'normal', activeSkinVal: activeSkin, sunglasses: true };
+          const _ds = { hp: playerState.hp, maxHp: playerState.maxHp, stats: {...playerStats}, tomeStacks: {...tomeStacks}, weapons: [...equippedWeapons], level: playerLevel, pendingTomes, gameTime, skin: localStorage.getItem('playerSkin')||'normal', activeSkinVal: activeSkin, sunglasses: true };
           sessionStorage.setItem('levelProgress', JSON.stringify(_ds));
           sessionStorage.setItem('bgmAutoStart', '1');
           setTimeout(() => { window.location.href = 'level3.html'; }, 800);
