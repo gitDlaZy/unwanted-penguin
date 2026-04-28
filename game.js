@@ -2702,7 +2702,7 @@ const TOME_DEFS = [
   { id:'snowball_dmg', name: selectedSkin === 'human' ? 'Bullet Tome' : 'Snowball Tome', emoji: selectedSkin === 'human' ? '🔫' : '🌨️', color:'#cceeff', desc: selectedSkin === 'human' ? '+20% bullet damage' : '+20% snowball damage', apply: s => { s.snowballDmgMult = (s.snowballDmgMult||1) * 1.2; } },
   { id:'magic_dmg',   name:'Magic Tome',             emoji:'✨',  color:'#cc88ff', desc:'+20% magic damage (staff, aura, orb, gust, shaggy)', apply: s => { s.magicDmgMult = (s.magicDmgMult||1) * 1.2; } },
   { id:'precision',  name:'Precision Tome',        emoji:'🎯',  color:'#ffaa22', desc:'+5% critical hit chance',   apply: s => { s.critChance  = Math.min(0.9, s.critChance+0.05); } },
-  { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-8% spell cooldown (staff, aura, homhom)', apply: s => { s.weaponCooldown *= 0.92; } },
+  { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-10% spell cooldown (staff, aura, homhom)', apply: s => { s.weaponCooldown *= 0.90; } },
   { id:'atkspeed',   name:'Attack Speed Tome',     emoji:'🏹',  color:'#ffcc44', desc:'+10% snowball attack speed', apply: s => { s.attackRate *= 0.90; } },
   { id:'quantity',   name:'Quantity Tome',         emoji:'❄️',  color:'#aaddff', desc:'+1 snowball (50% less each stack)', apply: (s) => {
     const stacks = tomeStacks['quantity'] || 0;
@@ -2713,7 +2713,7 @@ const TOME_DEFS = [
       playerState.shaggyCharges = Math.min(playerState.shaggyCharges + 1, playerState.shaggyMaxCharges);
     }
   }},
-  { id:'size',       name:'Size Tome',             emoji:'🔮',  color:'#cc88ff', desc:'+50% projectile size',      apply: s => { s.projSize   *= 1.5; } },
+  { id:'size',       name:'Size Tome',             emoji:'🔮',  color:'#cc88ff', desc:'+20% projectile size',      apply: s => { s.projSize   *= 1.2; } },
   { id:'projspeed',  name:'Speed Tome',            emoji:'💨',  color:'#88ffcc', desc:'+15% projectile speed',     apply: s => { s.projSpeed  *= 1.15; } },
   { id:'shield',     name:'Shield Tome',           emoji:'🛡️', color:'#44aaff', desc:'First: +1 shield. Extra stacks: +0.3s iframes on shield hit', apply: s => { if (!(tomeStacks['shield'] > 0)) { s.maxShield = Math.max(s.maxShield, 1); s.shield = Math.max(s.shield, 1); } else { s.shieldIframes = (s.shieldIframes ?? 1.2) + 0.3; } updateHUD(); } },
   { id:'evasion',    name:'Evasion Tome',          emoji:'🌀',  color:'#44ffaa', desc:'+10% dodge chance',         apply: s => { s.evasion    = Math.min(0.7, s.evasion+0.1); } },
