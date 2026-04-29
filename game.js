@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 // Unwanted Penguin — shared engine for all levels
 const CURRENT_LEVEL = window.CURRENT_LEVEL || 1;
 const _levelSave    = JSON.parse(sessionStorage.getItem('levelProgress') || 'null');
