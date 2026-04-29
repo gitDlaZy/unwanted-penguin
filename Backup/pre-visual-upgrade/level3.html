@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Unwanted Penguin — Level 3: Cave of Wonders</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #1a0e00; }
+    canvas { display: block; }
+    @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+  </style>
+</head>
+<body>
+  <div id="ui" style="position:fixed;top:20px;left:50%;transform:translateX(-50%);color:#ffd080;font-family:monospace;font-size:18px;text-shadow:0 0 8px #ff8800;pointer-events:none;opacity:1;transition:opacity 1s ease">
+    CAVE OF WONDERS &nbsp;|&nbsp; WASD move &nbsp;|&nbsp; P jump &nbsp;|&nbsp; L power-up
+  </div>
+  <div style="position:fixed;top:20px;right:24px;pointer-events:none">
+    <div id="killHUD" style="font-family:monospace;font-size:16px;color:#ffd080;text-shadow:0 0 8px #ff8800;text-align:right">☠ 0</div>
+  </div>
+  <div id="timerHUD" style="display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);font-family:monospace;font-size:18px;color:#ffd080;text-shadow:0 0 8px #ff8800;pointer-events:none">⏱ 5:00</div>
+  <div id="bossArrow" style="display:none;position:fixed;pointer-events:none;z-index:100;font-size:33px;color:#ff4477;text-shadow:0 0 10px #ff0044;transition:opacity 0.2s">▲</div>
+  <div id="bossHUD" style="display:none;position:fixed;top:56px;left:50%;transform:translateX(-50%);pointer-events:none;text-align:center;z-index:100">
+    <div style="font-family:monospace;font-size:12px;color:#ff4477;text-shadow:0 0 8px #ff0044;letter-spacing:2px;margin-bottom:4px">BOSS</div>
+    <div style="width:320px;height:12px;background:#1a0008;border:1px solid #ff4477;border-radius:4px;overflow:hidden">
+      <div id="bossBarInner" style="width:100%;height:100%;background:#ff2255;border-radius:4px;transition:width 0.15s"></div>
+    </div>
+  </div>
+  <div id="wightHUD" style="display:none;position:fixed;top:56px;left:50%;transform:translateX(-50%);pointer-events:none;text-align:center;z-index:100">
+    <div style="font-family:monospace;font-size:12px;color:#aa88ff;text-shadow:0 0 8px #6600cc;letter-spacing:2px;margin-bottom:4px">💀 THE WIGHT</div>
+    <div style="width:320px;height:12px;background:#0a001a;border:1px solid #aa88ff;border-radius:4px;overflow:hidden">
+      <div id="wightBarInner" style="width:100%;height:100%;background:#7733dd;border-radius:4px;transition:width 0.15s"></div>
+    </div>
+  </div>
+  <div id="krillyDefeated" style="display:none;position:fixed;top:38%;left:50%;transform:translateX(-50%);font-family:monospace;font-size:42px;color:#ff4477;text-shadow:0 0 24px #ff0044,0 0 6px #fff;pointer-events:none;z-index:200;letter-spacing:3px;white-space:nowrap">Boss Defeated</div>
+  <div id="spooksDialogue" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(20,0,40,0.88);border:2px solid #aa66cc;border-radius:12px;padding:18px 32px;font-family:monospace;font-size:20px;color:#e8c8ff;text-shadow:0 0 8px #aa66cc;pointer-events:none;z-index:9999;text-align:center;white-space:nowrap">
+    <span style="color:#aa66cc;font-size:13px;letter-spacing:2px;display:block;margin-bottom:6px">SPOOKS</span>
+    <span id="spooksDialogueText"></span>
+  </div>
+  <div id="coordHUD" style="position:fixed;top:20px;left:16px;font-family:monospace;font-size:13px;color:#887755;pointer-events:none">0, 0</div>
+  <div id="playsHUD" style="position:fixed;top:38px;left:16px;font-family:monospace;font-size:13px;color:#887755;pointer-events:none">▶ 0 plays</div>
+  <div id="fpsHUD"   style="position:fixed;top:56px;left:16px;font-family:monospace;font-size:13px;color:#887755;pointer-events:none">-- fps</div>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script>
+    window.CURRENT_LEVEL = 3;
+
+    const _vol3 = parseFloat(localStorage.getItem('bgmVolume') ?? '0.1');
+    const _playlist3 = [
+      'sounds/BGM/Desert/Pyramid%20Puddle.mp3',
+      'sounds/BGM/Desert/Sahara%20Penguin.mp3',
+      'sounds/BGM/Desert/Sandsprite%20Caravan.mp3',
+      'sounds/BGM/Desert/ZANDBANK.mp3',
+      'sounds/BGM/Desert/ZANDPENGUIN.mp3',
+    ];
+    let _tIdx3 = 0, _shuf3 = [];
+    function _shuf3fn() { _shuf3 = _playlist3.slice().sort(() => Math.random() - 0.5); _tIdx3 = 0; }
+    _shuf3fn();
+    const bgm = window.bgm = new Audio();
+    bgm.volume = _vol3;
+    bgm.addEventListener('ended', () => { _tIdx3 = (_tIdx3 + 1) % _shuf3.length; if (_tIdx3 === 0) _shuf3fn(); bgm.src = _shuf3[_tIdx3]; bgm.play().catch(() => {}); });
+
+    const volWrap = document.createElement('div');
+    volWrap.style.cssText = 'position:fixed;bottom:16px;right:16px;display:flex;align-items:center;gap:6px;font-family:monospace;font-size:12px;color:#887755;pointer-events:auto;z-index:50';
+    volWrap.innerHTML = `🎵 <input id="volSlider" type="range" min="0" max="1" step="0.05" value="${_vol3}" style="width:72px;accent-color:#ffaa44;cursor:pointer"> <span id="volLabel" style="min-width:34px;display:inline-block">${Math.round(_vol3*100)}%</span>`;
+    document.body.appendChild(volWrap);
+    document.getElementById('volSlider').addEventListener('input', e => {
+      const v = parseFloat(e.target.value);
+      bgm.volume = v; localStorage.setItem('bgmVolume', v);
+      document.getElementById('volLabel').textContent = Math.round(v * 100) + '%';
+    });
+
+    window.startBGM = function() {
+      if (bgm._started) return; bgm._started = true;
+      bgm.src = _shuf3[_tIdx3]; bgm.play().catch(() => {});
+    };
+    if (sessionStorage.getItem('bgmAutoStart')) {
+      sessionStorage.removeItem('bgmAutoStart');
+      window.startBGM();
+    }
+    setTimeout(() => { document.getElementById('ui').style.opacity = '0'; }, 3000);
+
+    const s = document.createElement('script');
+    s.src = 'game.js?t=' + Date.now();
+    document.body.appendChild(s);
+  </script>
+</body>
+</html>
