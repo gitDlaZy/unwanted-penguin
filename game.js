@@ -6999,9 +6999,6 @@ function loop() {
   checkPortalEntry(dt);
   renderer.render(scene, camera);
 }
-// Spawn one XP diamond near the player start position
-{ const _a = Math.random() * Math.PI * 2, _r = 5 + Math.random() * 15;
-  spawnXpOrb(player.position.x + Math.cos(_a) * _r, player.position.z + Math.sin(_a) * _r, 1); }
 
 loop();
 
