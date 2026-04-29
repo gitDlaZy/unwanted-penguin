@@ -2238,6 +2238,61 @@ const _dragHUD = (() => {
   return el;
 })();
 
+function buildOrca() {
+  const g = new THREE.Group();
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x0a0a12, roughness: 0.5 });
+  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xe8f0f8, roughness: 0.5 });
+
+  // Body — larger torpedo
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 7), blackMat);
+  body.scale.set(3.6, 1.0, 1.2);
+  g.add(body);
+
+  // Snout
+  const snout = new THREE.Mesh(new THREE.ConeGeometry(0.19, 0.55, 7), blackMat);
+  snout.rotation.z = -Math.PI / 2;
+  snout.position.set(1.2, -0.05, 0);
+  g.add(snout);
+
+  // White belly
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 5), whiteMat);
+  belly.scale.set(3.0, 0.42, 1.0);
+  belly.position.set(0.1, -0.18, 0);
+  g.add(belly);
+
+  // White eye patches
+  [-1, 1].forEach(side => {
+    const patch = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 5), whiteMat);
+    patch.scale.set(0.7, 0.55, 0.3);
+    patch.position.set(0.9, 0.22, side * 0.36);
+    g.add(patch);
+  });
+
+  // Tall straight dorsal fin
+  const dorsal = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 0.07), blackMat);
+  dorsal.position.set(0.0, 0.58, 0);
+  g.add(dorsal);
+
+  // Forked tail
+  const tailUp = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.09, 0.09), blackMat);
+  tailUp.position.set(-1.3, 0.24, 0); tailUp.rotation.z = -0.45;
+  g.add(tailUp);
+  const tailDn = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.08), blackMat);
+  tailDn.position.set(-1.3, -0.1, 0); tailDn.rotation.z = 0.38;
+  g.add(tailDn);
+
+  // Pectoral fins
+  const pecGeo = new THREE.BoxGeometry(0.7, 0.07, 0.35);
+  [-1, 1].forEach(side => {
+    const fin = new THREE.Mesh(pecGeo, blackMat);
+    fin.position.set(0.2, -0.15, side * 0.48);
+    fin.rotation.z = -0.2; fin.rotation.y = side * -0.25;
+    g.add(fin);
+  });
+
+  return g;
+}
+
 function buildCrab() {
   const g = new THREE.Group();
   const shellMat = new THREE.MeshStandardMaterial({ color: 0xcc4422, roughness: 0.7 });
