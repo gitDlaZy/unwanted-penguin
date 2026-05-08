@@ -2703,7 +2703,7 @@ const TOME_DEFS = [
   { id:'magic_dmg',   name:'Magic Tome',             emoji:'✨',  color:'#cc88ff', desc:'+20% magic damage (staff, aura, orb, gust, shaggy)', apply: s => { s.magicDmgMult = (s.magicDmgMult||1) * 1.2; } },
   { id:'precision',  name:'Precision Tome',        emoji:'🎯',  color:'#ffaa22', desc:'+5% critical hit chance',   apply: s => { s.critChance  = Math.min(0.9, s.critChance+0.05); } },
   { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-10% spell cooldown (staff, aura, homhom)', apply: s => { s.weaponCooldown *= 0.90; } },
-  { id:'atkspeed',   name:'Attack Speed Tome',     emoji:'🏹',  color:'#ffcc44', desc:'+10% snowball attack speed', apply: s => { s.attackRate *= 0.90; } },
+  { id:'atkspeed',   name:'Attack Speed Tome',     emoji:'🏹',  color:'#ffcc44', desc:'+12% snowball attack speed', apply: s => { s.attackRate *= 0.88; } },
   { id:'quantity',   name:'Quantity Tome',         emoji:'❄️',  color:'#aaddff', desc:'+1 snowball (50% less each stack)', apply: (s) => {
     const stacks = tomeStacks['quantity'] || 0;
     if (stacks === 0) { s.projCount += 1; }
