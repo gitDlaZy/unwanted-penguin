@@ -2699,7 +2699,7 @@ function showAdhdMsg() {
 
 const TOME_DEFS = [
   { id:'damage',     name:'Damage Tome',           emoji:'⚔️',  color:'#ff6644', desc:'+5% damage (all weapons)',       apply: s => { s.damage     *= 1.05; } },
-  { id:'snowball_dmg', name: selectedSkin === 'human' ? 'Bullet Tome' : 'Snowball Tome', emoji: selectedSkin === 'human' ? '🔫' : '🌨️', color:'#cceeff', desc: selectedSkin === 'human' ? '+20% bullet damage' : '+20% snowball damage', apply: s => { s.snowballDmgMult = (s.snowballDmgMult||1) * 1.2; } },
+  { id:'snowball_dmg', name: selectedSkin === 'human' ? 'Bullet Tome' : 'Snowball Tome', emoji: selectedSkin === 'human' ? '🔫' : '🌨️', color:'#cceeff', desc: selectedSkin === 'human' ? '+10% bullet damage' : '+10% snowball damage', apply: s => { s.snowballDmgMult = (s.snowballDmgMult||1) * 1.1; } },
   { id:'magic_dmg',   name:'Magic Tome',             emoji:'✨',  color:'#cc88ff', desc:'+20% magic damage (staff, aura, orb, gust, shaggy)', apply: s => { s.magicDmgMult = (s.magicDmgMult||1) * 1.2; } },
   { id:'precision',  name:'Precision Tome',        emoji:'🎯',  color:'#ffaa22', desc:'+5% critical hit chance',   apply: s => { s.critChance  = Math.min(0.9, s.critChance+0.05); } },
   { id:'cooldown',   name:'Cooldown Tome',         emoji:'⚡',  color:'#ffdd44', desc:'-10% spell cooldown (staff, aura, homhom)', apply: s => { s.weaponCooldown *= 0.90; } },
