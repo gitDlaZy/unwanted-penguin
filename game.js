@@ -4851,6 +4851,7 @@ function showDeathScreen() {
   const savedName = localStorage.getItem('playerName');
   if (savedName) input.value = savedName;
   let submitted = false;
+  if (savedName) setTimeout(doSubmit, 1200); // auto-submit for returning players
 
   async function doSubmit() {
     if (submitted) return;
